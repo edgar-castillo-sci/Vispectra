@@ -1,3 +1,6 @@
+![Status](https://img.shields.io/badge/status-alpha-orange)
+![License](https://img.shields.io/badge/license-MIT-blue)
+
 # Vispectra
 
 Un compilador y visualizador de espectros UV-Vis que corre en el navegador.
