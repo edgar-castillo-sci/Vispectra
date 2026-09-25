@@ -1,0 +1,13 @@
+{
+  "name": "vispectra",
+  "version": "0.0.1",
+  "description": "Compilador y visualizador de espectros UV-Vis",
+  "type": "module",
+  "license": "MIT",
+  "author": "[Edgar Ramón Hernández Castillo]",
+  "keywords": ["uv-vis", "spectroscopy", "parser", "spectra", "visualization"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TU_USUARIO/vispectra.git"
+  }
+}
