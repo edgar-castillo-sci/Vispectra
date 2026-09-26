@@ -7,47 +7,19 @@
     <title>Vispectra</title>
 </head>
 <body>
-    <header>
-        <h1 id="tituloPrincipal">Vispectra</h1>
-    </header>
-    <p>Mi hijo el más chico</p>
 
-    <p>Herramienta para leer <strong>espectros</strong> de <em>caracterización de materiales</em>.</p>
-    <p>Se plantea el uso de <code>código y comandos en línea</code>. (Ver <a href="https://ejemplo.com">enlaces</a>)</p>
+<div id="zonaDrop" style="border:2px dashed #999;padding:2rem;text-align:center;border-radius:8px;">
+  Arrastra tus espectros aquí
+</div>
 
-    <h2>Técnicas soportadas</h2>
-    <ul>
-        <li>UV-Vis (En proceso)</li>
-        <li>IR (Próximamente)</li>
-        <li>DRX (Próximamente)</li>
-        <li>Raman (Próximamente)</li>
-        <li>XPS (Próximamente)</li>
-    </ul>
+<p>o</p>
 
-    <h2>Pasos para usar Vispectra</h2>
-    <ol>
-        <li>Abrir la página</li>
-        <li>Seleccionar tus espectros</li>
-        <li>Listo</li>
-    </ol>
+<input type="file" id="entradaArchivos" multiple>
+<button id="botonProcesar">Procesar</button>
+<button id="botonExportar" disabled>Exportar PNG</button>
+<div id="salida">Esperando archivos...</div>
 
-    <p>Selecciona tus espectros:</p>
-    <input type="file" id="entradaArchivos" multiple>
-    <button id="botonProcesar">Procesar</button>
-    <button id="botonExportar" disabled>Exportar PNG</button>
-    <div id="salida">Esperando archivos...</div>
+<script type="module" src="src/main.js"></script>
 
-    <h1>Experimentos</h1>
-    <button id="b1">1</button>
-    <button id="b2" disabled>2</button>
-    <button id="b3">3</button>
-
-    <footer>
-        Hecho por la fokin máquina de la Química Teórica
-    </footer>
-
-
-    <script src="js/spectrum.js"></script>
-    <script src="js/app.js"></script>
 </body>
 </html>
