@@ -17,7 +17,7 @@
 //       ↓
 //   [04_canon]        → canon generalizado con i + diagnósticos
 //       ↓
-//   [05_congelacion]  → canon fijo + diagnósticos
+//   [05_fijacion]  → canon fijo + diagnósticos
 //       ↓
 //   [06_parser]       → valores por línea + diagnósticos
 //       ↓
@@ -43,7 +43,7 @@ import { muestrear } from './compilador/01_muestreo.js';
 import { lexear } from './compilador/02_lexer.js';
 import { construirIR } from './compilador/03_ir.js';
 import { construirCanon } from './compilador/04_canon.js';
-import { fijarCanon, contarColumnas } from './compilador/05_congelacion.js';
+import { fijarCanon, contarColumnas } from './compilador/05_fijacion.js';
 import { interpretarLinea } from './compilador/06_parser.js';
 import { verificar } from './compilador/07_semantica.js';
 import { crearColumnas, inyectar } from './compilador/08_codegen.js';

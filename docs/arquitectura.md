@@ -25,7 +25,7 @@ por uniformidad, aunque sea un array vacío.
 | [02_lexer]        | estructura por línea + diagnósticos     |
 | [03_ir]           | IR ensamblado                           |
 | [04_canon]        | canon generalizado con i + diagnósticos |
-| [05_congelacion]  | canon fijo + diagnósticos               |
+| [05_fijacion]  | canon fijo + diagnósticos               |
 | [06_parser]       | valores por línea + diagnósticos        |
 | [07_semantica]    | valores verificados + diagnósticos      |
 | [08_codegen]      | columnas llenas (mutación)              |
@@ -82,7 +82,7 @@ un objeto con nombre. Los diagnósticos se acumulan en `09_diagnostico`.
 - **No hace**: aplicar paridad, congelar, interpretar valores.
 - **Reglas**: R29–R46.
 
-### 05_congelacion
+### 05_fijacion
 
 - **Funciones**: `fijarCanon(canon)`, `contarColumnas(canonFijo)`
 - **Entrada**: `string` (canon generalizado)
