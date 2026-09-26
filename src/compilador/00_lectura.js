@@ -28,15 +28,21 @@ export async function leerArchivo(file) {
 }
 
 function normalizarTexto(texto) {
+  const diagnosticos = [];
   let textoNormalizado = texto;
 
   if (textoNormalizado.startsWith(BOM_UTF8)) {
     textoNormalizado = textoNormalizado.slice(BOM_UTF8.length);
+    diagnosticos.push({
+      severity: 'info',
+      code: 'BOM_DETECTADO',
+      params: {},
+    });
   }
-  
+
   textoNormalizado = textoNormalizado
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n');
 
-  return textoNormalizado;
+  return { texto: textoNormalizado, diagnosticos };
 }
