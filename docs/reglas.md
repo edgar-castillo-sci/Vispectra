@@ -36,10 +36,10 @@
 
 ## 5. Run detection y paridad
 
-- **R23.** Un run de `L` comas se captura en `comas`. (La paridad se aplica en `05_congelacion`.)
-- **R24.** Paridad base: índices pares (0,2,4…) → `c`; impares (1,3,5…) → `,`. **(Se aplica en `05_congelacion.js`, no en `02_lexer.js`.)**
+- **R23.** Un run de `L` comas se captura en `comas`. (La paridad se aplica en `05_fijacion`.)
+- **R24.** Paridad base: índices pares (0,2,4…) → `c`; impares (1,3,5…) → `,`. **(Se aplica en `05_fijacion.js`, no en `02_lexer.js`.)**
 - **R25.** Esta paridad asume que el run empieza con decimal. Si empieza con separador, el parser maestro lo detecta.
-- **R26.** La conversión `c,c,c` ocurre solo después de que aparecieron todas las `i` y todas las `n`. **(Se aplica en `05_congelacion.js`.)**
+- **R26.** La conversión `c,c,c` ocurre solo después de que aparecieron todas las `i` y todas las `n`. **(Se aplica en `05_fijacion.js`.)**
 - **R27.** Las comas son invariantes entre líneas, independientemente de la presencia de `i` o `n`. Solo se redefine su uso.
 - **R28.** Alrededor de `n` e `i`, solo puede haber separadores de columna. Recursivamente, las comas laterales se vuelven columnares.
 
@@ -112,15 +112,25 @@
 - **R73.** Si la ambigüedad persiste → error o consulta al usuario.
 - **R74.** Degradación a intervención del usuario en versiones futuras para desambiguación de `c`.
 
-## 13. Muestreo y congelación
+## 13. Muestreo, expansión y fijación
 
 - **R75.** `terciolineas = numlineas / 3`, redondeado hacia arriba.
 - **R76.** Si `numlineas < 3` → `terciolineas = numlineas`.
-- **R77.** Muestreo del tercio inferior (índice > `terciolineas`) para saltar encabezados.
-- **R78.** Congelación del canon **después de la generalización (`04_canon`)**.
-- **R79.** Sugerencia: muestreo adaptativo (empezar con tercio, expandir si hay discrepancias).
+- **R77.** Muestreo aleatorio de `terciolineas` líneas dentro del tercio central `[terciolineas, 2*terciolineas)`. Los tercios extremos se reservan: el primero como preámbulo, el último como residuo.
+- **R78.** Fijación del canon **después de la generalización y la expansión (`04_canon`)**. El canon no cambia durante el parsing.
+- **R79.** El `rng` del muestreo es inyectable para permitir tests reproducibles sin sacrificar aleatoriedad en producción.
 
-## 14. UI híbrida (futuro)
+## 14. Expansión desde el centro
+
+- **R89.** El canon tentativo se construye a partir de las líneas del tercio central.
+- **R90.** El canon se expande desde el centro hacia afuera: se evalúan las líneas inmediatamente anteriores y posteriores al tercio central. Si son compatibles con el canon, se incorporan y la expansión continúa. Si no, se detiene en ese lado.
+- **R91.** La expansión usa `lexear` para obtener la estructura de cada línea y verifica compatibilidad estructural contra el canon tentativo. No invoca `06_parser`, para no crear dependencia hacia adelante.
+- **R92.** El cuerpo de datos es la región contigua `[inicio, fin]` donde el canon se sostiene. Las líneas fuera de ese rango son preámbulo (antes) o residuo (después).
+- **R93.** Los fallos del canon en el tercio central son error (`DIVERGENCIA_CENTRAL`). Los fallos en los extremos definen el borde del cuerpo (`PREAMBULO_DETECTADO`, `RESIDUO_DETECTADO`).
+- **R94.** Si el cuerpo de datos resultante es demasiado pequeño (por ejemplo, menos de `terciolineas` líneas), se emite `LIMITACION_CUERPO_DATOS` (warn).
+- **R95.** Las cotas de expansión avanzan simétricamente: `cota_inferior -= 1` baja hacia 0, `cota_superior += 1` sube hacia `numlineas`. La expansión se detiene cuando alguna cota falla (o cuando ambas fallan, según configuración).
+
+## 15. UI híbrida (futuro)
 
 - **R80.** Si se detectan más de 2 columnas, la UI pregunta al usuario qué significa cada una.
 - **R81.** Roles posibles: longitud de onda, absorbancia, transmitancia, absorbancia adicional, otro parámetro, ignorar.
@@ -129,7 +139,7 @@
 
 **(R80–R83 viven en `10_ui.js` o en `src/ui/`, no dentro del compilador.)**
 
-## 15. Fuera de alcance
+## 16. Fuera de alcance
 
 - **R84.** Notación de miles (`1.234,56`).
 - **R85.** Valores faltantes literales (`NaN`, `---`, `>3.0`).
@@ -143,13 +153,27 @@
 
 | Regla | Cambio |
 |---|---|
-| R24 | Movida a `05_congelacion.js`. |
-| R26 | Movida a `05_congelacion.js`. |
+| R24 | Movida a `05_fijacion.js`. |
+| R26 | Movida a `05_fijacion.js`. |
 | R31 | Detección en `07`, inyección en `08`. |
 | R44 | Doble: canon en `04`, línea en `07`. |
 | R46 y R47 | Fusionadas en R46. |
 | R56 | Añadido "o nada (solo `i` vacío)". |
 | R57–R59 | Precedencia: canon manda; R57–R59 solo para `i`. |
 | R52–R54 | Detección en `06`, inyección en `08`. |
-| R78 | "Después de la generalización", no del muestreo. |
+| R78 | "Después de la generalización y la expansión", no del muestreo. |
 | R80–R83 | Asignadas a UI (`10_ui.js` o `src/ui/`). |
+
+## Correcciones aplicadas respecto a la segunda versión
+
+| Regla | Cambio |
+|---|---|
+| R23, R24, R26 | `05_congelacion` → `05_fijacion`. |
+| R77 | Reescrita: muestreo aleatorio del tercio central, no del inferior. |
+| R78 | Reescrita: fijación después de generalización y expansión. |
+| R79 | Reescrita: `rng` inyectable. |
+| R89–R95 | Añadidas: expansión desde el centro, cuerpo de datos, cotas simétricas. |
+| Sección 13 | Renombrada de "Muestreo y congelación" a "Muestreo, expansión y fijación". |
+| Sección 14 | Nueva: "Expansión desde el centro". |
+| Sección 15 | Renumerada (antes era 14). |
+| Sección 16 | Renumerada (antes era 15). |

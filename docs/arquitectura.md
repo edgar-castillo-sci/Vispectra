@@ -13,25 +13,37 @@ con un diagnóstico claro en lugar de producir datos corruptos en silencio.
 
 Todas las fases devuelven un objeto con nombre. Las fases que pueden
 emitir diagnósticos los incluyen en su salida bajo la clave
-`diagnosticos`. Las fases que no emiten nada (00_lectura, si no
-detecta nada relevante; 08_codegen) también devuelven `diagnosticos`
-por uniformidad, aunque sea un array vacío.
+`diagnosticos`. Las fases que no emiten nada (00_lectura, si no detecta
+nada relevante; 08_codegen) también devuelven `diagnosticos` por
+uniformidad, aunque sea un array vacío.
 
 ## Pipeline
-| [Archivo]         | Producto                                |
-| ---               | ---                                     |
-| [00_lectura]      | texto normalizado                       |
-| [01_muestreo]     | líneas + muestra                        |
-| [02_lexer]        | estructura por línea + diagnósticos     |
-| [03_ir]           | IR ensamblado                           |
-| [04_canon]        | canon generalizado con i + diagnósticos |
-| [05_fijacion]  | canon fijo + diagnósticos               |
-| [06_parser]       | valores por línea + diagnósticos        |
-| [07_semantica]    | valores verificados + diagnósticos      |
-| [08_codegen]      | columnas llenas (mutación)              |
-| [09_diagnostico]  | acumulador de diagnósticos              |
-|                   | [Datos normalizados + diagnósticos]     |
 
+```
+[Archivo]
+    ↓
+[00_lectura]      → texto + diagnósticos
+    ↓
+[01_muestreo]     → líneas, terciolineas, muestra + diagnósticos
+    ↓
+[02_lexer]        → estructura por línea + diagnósticos
+    ↓
+[03_ir]           → IR ensamblado + diagnósticos
+    ↓
+[04_canon]        → canon generalizado + cuerpo {inicio, fin} + diagnósticos
+    ↓
+[05_fijacion]     → canon fijo + diagnósticos
+    ↓
+[06_parser]       → valores por línea + diagnósticos
+    ↓
+[07_semantica]    → valores verificados + diagnósticos
+    ↓
+[08_codegen]      → columnas llenas (mutación)
+    ↓
+[09_diagnostico]  → acumulador de diagnósticos
+    ↓
+[Datos normalizados + diagnósticos]
+```
 
 `main.js` orquesta el pipeline. Cada fase es una función pura (excepto
 `08_codegen`, que muta `columnas` por disciplina explícita) y devuelve
@@ -40,20 +52,24 @@ un objeto con nombre. Los diagnósticos se acumulan en `09_diagnostico`.
 ## Contratos por fase
 
 ### 00_lectura
-- Función: leerArchivo(file)
-- Entrada: File
-- Salida: { texto: string, diagnosticos: [diag] }
-- Hace: leer y normalizar.
-- Diagnósticos posibles: BOM_DETECTADO (info).
-- No hace: partir en líneas, filtrar, interpretar.
+
+- **Función**: `leerArchivo(file)`
+- **Entrada**: `File`
+- **Salida**: `{ texto: string, diagnosticos: [diag] }`
+- **Hace**: leer y normalizar.
+- **Diagnósticos posibles**: `BOM_DETECTADO` (info).
+- **No hace**: partir en líneas, filtrar, interpretar.
+- **Reglas**: — (fase de infraestructura).
 
 ### 01_muestreo
-- Función: muestrear(texto)
-- Entrada: string
-- Salida: { lineas, terciolineas, muestra, diagnosticos: [diag] }
-- Hace: partir en líneas, calcular terciolineas, muestrear.
-- Diagnósticos posibles: MUESTREO (info).
-- No hace: limpiar caracteres, const
+
+- **Función**: `muestrear(texto, rng = Math.random)`
+- **Entrada**: `string`, opcionalmente un generador aleatorio inyectable.
+- **Salida**: `{ lineas: [{indice, contenido}], terciolineas, muestra: [indice], diagnosticos: [diag] }`
+- **Hace**: partir en líneas, calcular `terciolineas`, muestrear aleatoriamente `terciolineas` líneas del tercio central `[terciolineas, 2*terciolineas)`.
+- **Diagnósticos posibles**: `MUESTREO` (info).
+- **No hace**: limpiar caracteres, construir estructura, generalizar.
+- **Reglas**: R75, R76, R77.
 
 ### 02_lexer
 
@@ -61,33 +77,41 @@ un objeto con nombre. Los diagnósticos se acumulan en `09_diagnostico`.
 - **Entrada**: `string` (una línea cruda)
 - **Salida**: `{ estructura: string, diagnosticos: [diag] }`
 - **Hace**: eliminar dígitos y símbolos reservados, clasificar puntos y comas, emitir `estructura` con símbolos `n`, `c`, `,`.
-- **No hace**: aplicar paridad, generalizar, interpretar valores, congelar.
+- **Diagnósticos posibles**: `PUNTO_TRAS_NUMERO` (error), `PUNTOS_CONSECUTIVOS` (error), `SECUENCIA_PUNTOS` (warn), `RUN_COMAS` (info).
+- **No hace**: aplicar paridad, generalizar, interpretar valores, fijar.
 - **Reglas**: R7–R28.
 
 ### 03_ir
-- Función: construirIR(estructuras)
-- Entrada: [{indice, estructura}]
-- Salida: { porLinea, frecuencias, longitudes, diagnosticos: [diag] }
-- Hace: agrupar y contar estructuras.
-- Diagnósticos posibles: ESTRUCTURAS_HETEROGENEAS (warn) si todas las
-  estructuras son distintas y no hay patrón claro.
-- No hace: generalizar, interpretar, validar.
+
+- **Función**: `construirIR(estructuras)`
+- **Entrada**: `[{indice, estructura}]`
+- **Salida**: `{ porLinea, frecuencias, longitudes, diagnosticos: [diag] }`
+- **Hace**: agrupar y contar estructuras, preparar la generalización.
+- **Diagnósticos posibles**: `ESTRUCTURAS_HETEROGENEAS` (warn) si todas las estructuras son distintas y no hay patrón claro.
+- **No hace**: generalizar, interpretar, validar.
+- **Reglas**: — (fase de agregación).
 
 ### 04_canon
 
-- **Función**: `construirCanon(ir)`
-- **Entrada**: IR
-- **Salida**: `{ canon: string, diagnosticos: [diag] }`
-- **Hace**: generalizar posiciones a `i` cuando hay `n` en alguna línea. Aplicar R44 (prohibiciones estructurales) a nivel canon.
-- **No hace**: aplicar paridad, congelar, interpretar valores.
-- **Reglas**: R29–R46.
+- **Función**: `construirCanon(ir, lineas, terciolineas)`
+- **Entrada**: IR, todas las líneas del archivo, tamaño del tercio.
+- **Salida**: `{ canon: string, cuerpo: {inicio, fin}, diagnosticos: [diag] }`
+- **Hace**:
+  - Construir el canon tentativo del tercio central.
+  - Expandir desde el centro hacia afuera mientras el canon se sostenga.
+  - Delimitar el cuerpo de datos: `[inicio, fin]`.
+  - Los fallos en el tercio central son error; los fallos en los extremos definen el borde del cuerpo (preámbulo o residuo).
+- **Diagnósticos posibles**: `PREAMBULO_DETECTADO` (info), `RESIDUO_DETECTADO` (info), `DIVERGENCIA_CENTRAL` (error), `LIMITACION_CUERPO_DATOS` (warn).
+- **No hace**: aplicar paridad, fijar, interpretar valores.
+- **Reglas**: R29–R46, R77 (expandida), R89–R92.
+- **Nota**: la expansión usa `lexear` para obtener la estructura de cada línea y una verificación de compatibilidad estructural contra el canon tentativo. No invoca `06_parser`, para no crear dependencia hacia adelante.
 
 ### 05_fijacion
 
 - **Funciones**: `fijarCanon(canon)`, `contarColumnas(canonFijo)`
 - **Entrada**: `string` (canon generalizado)
 - **Salida**: `{ canonFijo: [token], diagnosticos: [diag] }`
-- **Hace**: aplicar paridad base (R24) y conversión `c,c,c` (R26), congelar el canon como array de tokens. `contarColumnas` cuenta los símbolos de valor (`n`, `c`, `i`) más 1.
+- **Hace**: aplicar paridad base (R24) y conversión `c,c,c` (R26), fijar el canon como array de tokens. `contarColumnas` cuenta los símbolos de valor (`n`, `c`, `i`) más 1.
 - **No hace**: generalizar más, interpretar valores.
 - **Reglas**: R24, R26, R78.
 
@@ -99,6 +123,7 @@ un objeto con nombre. Los diagnósticos se acumulan en `09_diagnostico`.
   - `valores`: `[number | null]`. Los `null` indican ausencia.
   - Si `ok: false`, `valores` no se usa.
 - **Hace**: recorrer `canonFijo` y extraer valores de la línea según R48–R56. Clasificación local de comas (R57–R59) solo cuando el canon dice `i`.
+- **Diagnósticos posibles**: `CANON_MISMATCH` (error), `COMA_INESPERADA` (error).
 - **No hace**: validar, inyectar 0, llenar columnas.
 - **Reglas**: R1–R6, R48–R59.
 
@@ -108,6 +133,7 @@ un objeto con nombre. Los diagnósticos se acumulan en `09_diagnostico`.
 - **Entrada**: `{indice, ok, valores}`, `[token]`
 - **Salida**: `{ indice, ok, valores, diagnosticos }`
 - **Hace**: validar que los valores cumplan el canon. Detectar R44 a nivel línea, R45, R46. Política de ambigüedad (R70–R74).
+- **Diagnósticos posibles**: `PROHIBICION_ESTRUCTURAL` (error), `MEZCLA_NOTACIONES` (warn).
 - **No hace**: interpretar, inyectar 0, llenar columnas.
 - **Reglas**: R30, R31, R44–R46, R70–R74.
 
@@ -131,6 +157,7 @@ un objeto con nombre. Los diagnósticos se acumulan en `09_diagnostico`.
 - **Reglas**: R60–R69 (definen qué diagnósticos se emiten, no cómo se acumulan).
 
 ## Estructura del acumulador de diagnósticos
+
 ```js
 // 09_diagnostico.js
 export function crearLog() {
@@ -159,89 +186,115 @@ parámetros. La traducción a texto humano ocurre en la capa de UI, vía
 `i18n.js` y `locales/`.
 
 ## Capas fuera del compilador
+
 ### main.js
-Orquesta el pipeline. No implementa lógica. Recoge los diagnósticos de cada
-fase y los acumula en el log. Guarda los resultados intermedios en variables
-sueltas (no en un objeto de estado global).
+
+Orquesta el pipeline. No implementa lógica. Recoge los diagnósticos de
+cada fase con la auxiliar `recolectar` y los acumula en el log. Guarda
+los resultados intermedios en variables sueltas (no en un objeto de
+estado global).
 
 ### ui.js
-Captura archivos, llama a main.js, muestra resultados. Implementa la capa
-híbrida (R80–R83): cuando el compilador detecta más de 2 columnas, la UI
-pregunta al usuario qué significa cada una. Esta capa no vive dentro del
-compilador; consume sus resultados y actúa.
+
+Captura archivos, llama a `main.js`, muestra resultados. Implementa la
+capa híbrida (R80–R83): cuando el compilador detecta más de 2 columnas,
+la UI pregunta al usuario qué significa cada una. Esta capa no vive
+dentro del compilador; consume sus resultados y actúa.
 
 ### i18n.js
+
 Traduce códigos de diagnóstico a strings localizados. Consume
-`locales/{es,en}.js`. No vive en el compilador. El idioma base es es.
+`locales/{es,en}.js`. No vive en el compilador. El idioma base es `es`.
 
 ### plot.js
-Grafica las columnas normalizadas. Consume columnas y, si la UI asignó
+
+Grafica las columnas normalizadas. Consume `columnas` y, si la UI asignó
 roles, los usa para etiquetar ejes y series.
 
 ## Invariantes del sistema
-El punto es siempre decimal, nunca separador de columna.
 
-La coma es el único carácter que puede ser valor o estructura.
-
-El número de comas es constante entre líneas de un mismo archivo.
-
-El canon se fija después de `04_canon` y no cambia durante el parsing.
-
-Cada símbolo del canon consume exactamente un token, un separador, o nada
-(solo i vacío).
-
-Los diagnósticos son códigos + parámetros, nunca strings localizados.
-
-Solo `08_codegen` muta columnas.
+- El punto es siempre decimal, nunca separador de columna.
+- La coma es el único carácter que puede ser valor o estructura.
+- El número de comas es constante entre líneas de un mismo archivo.
+- El canon se infiere del tercio central y se expande hacia afuera hasta
+  que falla. Los extremos pueden no cumplirlo (preámbulo o residuo).
+- El cuerpo de datos es la región contigua donde el canon se sostiene.
+- El canon se fija después de `04_canon` y no cambia durante el parsing.
+- Cada símbolo del canon consume exactamente un token, un separador, o
+  nada (solo `i` vacío).
+- Los diagnósticos son códigos + parámetros, nunca strings localizados.
+- Solo `08_codegen` muta `columnas`.
 
 ## Decisiones de diseño
+
 ### ¿Por qué un pipeline de fases?
-Cada fase es testeable por separado. Los errores se localizan en la fase que
-los produce. El pegamento entre fases vive en `main.js` y es trivial.
+
+Cada fase es testeable por separado. Los errores se localizan en la fase
+que los produce. El pegamento entre fases vive en `main.js` y es trivial.
 
 ### ¿Por qué el canon se fija?
+
 Para que el parser sea determinista. Un canon que cambia entre líneas es
 impredecible y propenso a errores silenciosos. La fase de generalización
-(04_canon) corre sobre la muestra; una vez fijada, se aplica a todas las
-líneas.
+(`04_canon`) corre sobre la muestra; una vez fijada, se aplica a todas
+las líneas.
 
 ### ¿Por qué `i` como ancla?
-Porque la paridad global no basta cuando hay slots vacíos o runs con fase
-ambigua. `i` fija la fase localmente: la coma adyacente a un i es
+
+Porque la paridad global no basta cuando hay slots vacíos o runs con
+fase ambigua. `i` fija la fase localmente: la coma adyacente a un `i` es
 separadora por definición, y de ahí se propaga la paridad.
 
 ### ¿Por qué códigos de diagnóstico en lugar de strings?
+
 Para que el compilador sea agnóstico de idioma. La UI traduce. Añadir un
 idioma es añadir un archivo en `locales/`, no tocar el núcleo.
 
 ### ¿Por qué mutar columnas en lugar de devolver nuevas?
+
 Eficiencia y simplicidad. Mutar un array de arrays es O(1) por línea;
-devolver nuevos es O(n) por línea. La disciplina está en que solo
+devolver nuevos es O(n) por línea. La disciplina está en que **solo**
 `08_codegen` muta. Documentado en el contrato de la fase.
 
 ### ¿Por qué el log es un acumulador inyectado y no un estado global?
-Las fases son puras: reciben entrada, devuelven salida. Los diagnósticos van
-en la salida (diagnosticos: [...]). main.js los acumula. Así una fase se
-puede testear sin construir un log, y el log no contamina el contrato.
+
+Las fases son puras: reciben entrada, devuelven salida. Los diagnósticos
+van en la salida (`diagnosticos: [...]`). `main.js` los acumula. Así una
+fase se puede testear sin construir un log, y el log no contamina el
+contrato.
 
 ### ¿Por qué nombres en español para funciones y variables?
+
 El flujo mental del proyecto es en español. Los nombres de archivo siguen
 convenciones técnicas (`06_parser.js`, `07_semantica.js`) pero el código
-interno se lee como español: interpretarLinea, verificar, inyectar,
-canonFijo.
+interno se lee como español: `interpretarLinea`, `verificar`, `inyectar`,
+`canonFijo`.
+
+### ¿Por qué muestreo aleatorio?
+
+Porque da una idea inicial de la estructura sin comprometerse con un
+patrón. El canon final es determinista porque se construye evaluando
+todas las líneas contra el canon tentativo, no porque el muestreo lo sea.
+El `rng` es inyectable para permitir tests reproducibles sin sacrificar
+aleatoriedad en producción.
+
+### ¿Por qué expansión desde el centro?
+
+Porque el tercio central es donde con mayor probabilidad solo hay datos.
+Expandir hacia afuera mientras el canon se sostenga delimita el cuerpo de
+datos empíricamente: donde falla, ahí está el preámbulo o el residuo. No
+necesita un umbral fijo ni asumir cuántas líneas de encabezado hay.
 
 ### ¿Por qué no notación de miles?
+
 Fuera de alcance (R84). Se puede añadir como capa previa si hace falta.
 Rompe el conteo de comas y requiere una fase de normalización antes del
 lexer.
 
-Fuera de alcance
-R84: notación de miles (1.234,56).
+## Fuera de alcance
 
-R85: valores faltantes literales (NaN, ---, >3.0).
-
-R86: filas partidas en varias líneas.
-
-R87: unidades pegadas a números (250nm).
-
-R88: comentarios al final de línea.
+- **R84**: notación de miles (`1.234,56`).
+- **R85**: valores faltantes literales (`NaN`, `---`, `>3.0`).
+- **R86**: filas partidas en varias líneas.
+- **R87**: unidades pegadas a números (`250nm`).
+- **R88**: comentarios al final de línea.
