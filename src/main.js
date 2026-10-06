@@ -86,10 +86,14 @@ export async function compilar(file) {
   const { porLinea, frecuencias, longitudes, diagnosticos: diagIR } = construirIR(estructuras);
   recolectar(diagIR, log, { nombre: file.name });
 
-  // --- Fase 04: canon ---
-  const { canon, diagnosticos: diagCanon } = construirCanon({ porLinea, frecuencias, longitudes });
+  // --- Fase 04: canon + expansión ---
+  const {
+    canon,
+    cuerpo,
+    diagnosticos: diagCanon,
+  } = construirCanon({ porLinea, frecuencias, longitudes }, lineas, terciolineas);
   recolectar(diagCanon, log, { nombre: file.name });
-
+  
   // --- Fase 05: fijación ---
   const { canonFijo, diagnosticos: diagFijo } = fijarCanon(canon);
   recolectar(diagFijo, log, { nombre: file.name });
@@ -111,7 +115,7 @@ export async function compilar(file) {
     inyectar(verificada.valores, columnas);
   }
 
-  return { columnas, canonFijo, log };
+    return { columnas, canonFijo, cuerpo, log };
 }
 
 // ------------------------------------------------------------
@@ -122,11 +126,12 @@ initUI(async (archivos, salida) => {
 
   for (const archivo of archivos) {
     try {
-      const { columnas, canonFijo, log } = await compilar(archivo);
+      const { columnas, canonFijo, cuerpo, log } = await compilar(archivo);
 
       salida.textContent += `✓ ${archivo.name}\n`;
       salida.textContent += `  columnas: ${columnas.length}\n`;
       salida.textContent += `  canon: ${canonFijo.join('')}\n`;
+      salida.textContent += `  cuerpo: [${cuerpo.inicio}, ${cuerpo.fin}]\n`;
 
       const errores = log.porSeveridad('error');
       const avisos = log.porSeveridad('warn');

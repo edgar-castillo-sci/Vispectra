@@ -1,9 +1,22 @@
 // ============================================================
 // FASE 07 — SEMÁNTICA (Validación)
 // ============================================================
-// Recibe: los valores parseados de una línea, las columnas,
-//         el canon fijo, y el índice de línea.
-// Devuelve: nada (modifica las columnas) o un error.
+// Función: verificar(interpretada, canonFijo)
+//
+// Recibe: {indice, ok, valores} y el canon fijo (array de tokens).
+// Devuelve: {
+//   indice: number,
+//   ok: boolean,
+//   valores: [number | null],
+//   diagnosticos: [diag]
+// }
+//
+// Diagnósticos posibles:
+//   - PROHIBICION_ESTRUCTURAL (error)
+//   - MEZCLA_NOTACIONES (warn)
+//
+// NO muta las columnas. La inyección es responsabilidad exclusiva
+// de 08_codegen.
 //
 // Hace:
 //   - Valida que los valores cumplan el canon.

@@ -1,28 +1,40 @@
 // ============================================================
 // FASE 08 — CODEGEN (Llenado de columnas)
 // ============================================================
-// Recibe: el número de columnas (num_column) y los valores
-//         validados (con null donde falta dato).
-// Devuelve: las columnas llenas.
+// Funciones: crearColumnas(numColumn), inyectar(valores, columnas)
+//
+// crearColumnas(numColumn)
+//   Recibe: número de columnas.
+//   Devuelve: array de arrays vacíos (columnas sin valores).
+//
+// inyectar(valores, columnas)
+//   Recibe: [number | null], [[number]].
+//   Devuelve: nada (muta columnas).
 //
 // Hace:
-//   - Crea num_column listas (column0, column1, ..., columnN).
-//   - R31: si i no tiene valor (null) → inyecta 0 a la columna.
+//   - crearColumnas: crea numColumn listas vacías.
+//   - inyectar: convierte null a 0, avanza el índice de columna solo
+//     cuando se produce un valor, y empuja el valor en la columna
+//     correspondiente.
+//
+// Reglas:
+//   - R31: i sin valor (null) → inyecta 0.
 //   - R52: c + separador distinto de ',' (null) → inyecta 0.
 //   - R53: i → si el parser devolvió null → inyecta 0.
-//   - R54: si el parser devolvió null por doble separador →
-//          inyecta 0 en la columna intermedia.
+//   - R54: doble separador → inyecta 0 en la columna intermedia.
 //   - R55: el índice de columna avanza solo cuando se produce un valor.
-//   - R56: cada símbolo de canon consume un token, un separador,
-//          o nada (solo i vacío).
+//   - R56: cada símbolo de canon consume un token, un separador, o
+//     nada (solo i vacío).
 //
 // NO hace:
-//   - No parsea (eso es 06_parser).
+//   - No interpreta (eso es 06_parser).
 //   - No valida (eso es 07_semantica).
-//   - No emite logs (eso es 09_diagnostico).
+//
+// Contrato de mutación:
+//   Esta fase es la ÚNICA que muta `columnas`. Ninguna otra fase
+//   toca la estructura. La política de valores faltantes (0 por
+//   defecto) se decide aquí.
 //
 // Notas:
-//   - num_column = num_noalf + 1 (definido en 05_fijacion).
-//   - La política de valores faltantes (0, NaN, vacío) se decide aquí.
-//     Por defecto: 0 (según R31, R52, R53, R54).
+//   - numColumn = contarColumnas(canonFijo), definido en 05_fijacion.
 // ============================================================

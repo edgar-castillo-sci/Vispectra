@@ -1,9 +1,20 @@
 // ============================================================
 // FASE 06 — PARSER MAESTRO
 // ============================================================
-// Recibe: una línea cruda (string) y el canon fijo (array).
-// Devuelve: { ok: true, valores: [...] } o { ok: false, error: '...' }.
-//           Los valores pueden incluir null cuando falta un dato.
+// Función: interpretarLinea(linea, canonFijo)
+//
+// Recibe: {indice, contenido} y el canon fijo (array de tokens).
+// Devuelve: {
+//   indice: number,
+//   ok: boolean,
+//   valores: [number | null],   // null indica ausencia
+//   diagnosticos: [diag]
+// }
+// Si ok: false, valores no se usa.
+//
+// Diagnósticos posibles:
+//   - CANON_MISMATCH (error)
+//   - COMA_INESPERADA (error)
 //
 // Hace:
 //   - R48: canon indica qué buscar y en qué orden, izquierda a derecha.
