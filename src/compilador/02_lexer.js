@@ -48,3 +48,4 @@
 //   - R84: notación de miles (1.234,56) → no soportado.
 //   - R87: unidades pegadas a números (250nm) → no soportado.
 // ============================================================
+// TODO: implementar.

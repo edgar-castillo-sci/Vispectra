@@ -63,3 +63,5 @@
 //   - R87: unidades pegadas a números → no soportado.
 //   - R88: comentarios al final de línea → no soportado.
 // ============================================================
+
+// TODO: implementar.

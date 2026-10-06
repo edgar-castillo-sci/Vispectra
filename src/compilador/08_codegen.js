@@ -38,3 +38,5 @@
 // Notas:
 //   - numColumn = contarColumnas(canonFijo), definido en 05_fijacion.
 // ============================================================
+
+// TODO: implementar.

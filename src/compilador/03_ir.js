@@ -29,3 +29,5 @@
 //   - R9, R10, R11 ya se aplicaron en 02_lexer; aquí solo se agrupan.
 //   - Este IR es intermedio: aún no es el canon fijo.
 // ============================================================
+
+// TODO: implementar.

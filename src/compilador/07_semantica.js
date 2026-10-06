@@ -50,3 +50,5 @@
 // Notas:
 //   - R72: el modo (estricto/permisivo) se decide en la configuración.
 // ============================================================
+
+// TODO: implementar.

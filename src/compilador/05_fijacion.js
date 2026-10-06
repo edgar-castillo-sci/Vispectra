@@ -24,3 +24,5 @@
 //   - Si el canon cambia, hay que re-fijar (no debería pasar).
 // ============================================================
 
+
+// TODO: implementar.

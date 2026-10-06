@@ -90,3 +90,5 @@
 //   - R26: la conversión c,c,c se difiere a 05_fijacion.
 //   - R27: las comas son invariantes; solo se redefine su uso.
 // ============================================================
+
+// TODO: implementar.
