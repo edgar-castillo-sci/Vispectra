@@ -75,13 +75,13 @@ que hace que el proyecto sea más que un parser.
 
 **Implementado:**
 - Fase 00 — lectura y normalización
-- Fase 01 — muestreo del tercio central
 - Fase 09 — acumulador de diagnósticos
 - Orquestador (`main.js`)
 - Especificación completa del parser (R1–R95)
 - Arquitectura del pipeline documentada
 
 **En desarrollo:**
+- Fase 01 — muestreo del tercio central
 - Fases 02–08 del compilador
 
 **Planificado:**

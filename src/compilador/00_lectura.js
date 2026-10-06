@@ -1,5 +1,5 @@
 // ============================================================
-// FASE 00 — LECTURA (Terminado)
+// FASE 00 — LECTURA
 // ============================================================
 // Recibe: un objeto File (del input o del drag & drop).
 // Devuelve: { texto: string, diagnosticos: [diag] }
