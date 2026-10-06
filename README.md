@@ -129,6 +129,17 @@ locales/
 - Gold, E. M. (1967). *Language identification in the limit*.
   Information and Control, 10(5), 447–474.
 
+## Cómo citar
+
+Si usas Vispectra en un trabajo académico, por favor cita:
+
+> Hernández Castillo, E. R. (2026). *Vispectra: v0.1.0-alpha — Design
+> and Specification* (v0.1.0-alpha) [Software]. Zenodo.
+> https://doi.org/10.5281/zenodo.23177822
+
+El DOI conceptual siempre apunta a la última versión publicada. Los DOI
+de versión específicos se generan con cada release.
+
 ## Licencia
 
 MIT. Ver [LICENSE](LICENSE).
