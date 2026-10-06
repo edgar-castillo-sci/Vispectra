@@ -207,7 +207,7 @@ justifica. No están descartados.
 
 ## Publicación y DOI
 
-El DOI de Zenodo en vez de un hito, es un trámite que se realiza en el primer
+El DOI de Zenodo, más que un hito, es un trámite que se realiza en el primer
 release de GitHub (`v0.1.0`). Una vez obtenido:
 
 - Se añade la sección "Cómo citar" al `README.md`.
@@ -232,4 +232,4 @@ no tienen fechas asignadas. La prioridad es la calidad del compilador, no
  la velocidad de entrega.
 
 El autor puede trabajar en varias áreas en paralelo. El roadmap solo describe
-hacia dónde va el proyecto..
+hacia dónde va el proyecto.
