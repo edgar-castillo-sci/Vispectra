@@ -1,1 +1,0 @@
-americano puro, europeo, mixto, slot vacío, run, i anclando fase

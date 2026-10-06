@@ -1,12 +1,23 @@
 {
   "name": "vispectra",
   "version": "0.0.1",
-  "description": "Compilador y visualizador de espectros UV-Vis",
+  "description": "Compilador y visualizador de espectros (UV-Vis, XRD, XPS, Raman, IR)",
   "type": "module",
   "private": true,
   "license": "MIT",
   "author": "Edgar Ramón Hernández Castillo",
-  "keywords": ["uv-vis", "spectroscopy", "spectra", "compiler", "parser", "visualization"],
+  "keywords": [
+    "spectroscopy",
+    "spectra",
+    "uv-vis",
+    "xrd",
+    "xps",
+    "raman",
+    "ir",
+    "compiler",
+    "parser",
+    "visualization"
+  ],
   "scripts": {
     "dev": "npx serve .",
     "test": "node --test"
