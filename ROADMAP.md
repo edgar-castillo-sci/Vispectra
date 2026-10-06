@@ -161,8 +161,8 @@ documentado.
 - [ ] Tests de regresión
 
 **Publicación:**
-- [ ] Primer release en GitHub (`v0.1.0`)
-- [ ] DOI de Zenodo (embargo)
+- [x] Primer release en GitHub (`v0.1.0-alpha`)
+- [x] DOI de Zenodo (`https://doi.org/10.5281/zenodo.23177822`)
 - [ ] DOI conceptual actualizado en README y `package.json`
 - [ ] Versión estable `v1.0.0` publicada en Zenodo sin embargo
 
