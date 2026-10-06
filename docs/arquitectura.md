@@ -2,20 +2,21 @@
 
 ## Visión general
 
-Vispectra lee archivos UV-Vis sucios —con dialectos distintos, encabezados
-variables, separadores mezclados— y los convierte en columnas numéricas
-limpias, listas para graficar y publicar.
+Vispectra lee archivos de espectroscopía —UV-Vis, XRD, XPS, Raman, IR—
+sucios, con dialectos distintos, encabezados variables y separadores
+mezclados, y los convierte en columnas numéricas limpias, listas para
+graficar y publicar.
 
 Lo hace en fases independientes, cada una con una responsabilidad clara,
 comunicadas por contratos explícitos. El compilador no adivina: infiere
 estructura, valida contra un contrato, y cuando no puede decidir, falla
 con un diagnóstico claro en lugar de producir datos corruptos en silencio.
 
-Todas las fases devuelven un objeto con nombre. Las fases que pueden
-emitir diagnósticos los incluyen en su salida bajo la clave
-`diagnosticos`. Las fases que no emiten nada (00_lectura, si no detecta
-nada relevante; 08_codegen) también devuelven `diagnosticos` por
-uniformidad, aunque sea un array vacío.
+Todas las fases devuelven un objeto con nombre, excepto `08_codegen`,
+que muta `columnas` directamente y no devuelve nada. Las fases que
+pueden emitir diagnósticos los incluyen en su salida bajo la clave
+`diagnosticos`; las que no emiten nada devuelven `diagnosticos: []`
+por uniformidad.
 
 ## Pipeline
 

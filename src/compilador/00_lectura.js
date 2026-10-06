@@ -2,8 +2,9 @@
 // FASE 00 — LECTURA (Terminado)
 // ============================================================
 // Recibe: un objeto File (del input o del drag & drop).
-// Devuelve: el contenido del archivo como string UTF-8,
-//           con saltos de línea normalizados y sin BOM.
+// Devuelve: { texto: string, diagnosticos: [diag] }
+//   - texto: contenido normalizado, sin BOM, saltos \n.
+//   - diagnosticos: BOM_DETECTADO (info) si se detectó BOM.
 //
 // Hace:
 //   - Leer el archivo como texto.

@@ -115,7 +115,7 @@ export async function compilar(file) {
     inyectar(verificada.valores, columnas);
   }
 
-    return { columnas, canonFijo, cuerpo, log };
+  return { columnas, canonFijo, cuerpo, log };
 }
 
 // ------------------------------------------------------------

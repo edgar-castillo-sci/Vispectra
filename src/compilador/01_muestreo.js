@@ -34,3 +34,5 @@
 //   - R78 (fijación) ocurre después de 04_canon, no aquí.
 //   - R79: el rng es inyectable para permitir tests reproducibles.
 // ============================================================
+
+// TODO: implementar.
