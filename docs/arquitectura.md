@@ -104,7 +104,7 @@ un objeto con nombre. Los diagnósticos se acumulan en `09_diagnostico`.
   - Los fallos en el tercio central son error; los fallos en los extremos definen el borde del cuerpo (preámbulo o residuo).
 - **Diagnósticos posibles**: `PREAMBULO_DETECTADO` (info), `RESIDUO_DETECTADO` (info), `DIVERGENCIA_CENTRAL` (error), `LIMITACION_CUERPO_DATOS` (warn).
 - **No hace**: aplicar paridad, fijar, interpretar valores.
-- **Reglas**: R29–R46, R77 (expandida), R89–R92.
+- **Reglas**: R29–R46, R77 (expandida), R89–R95.
 - **Nota**: la expansión usa `lexear` para obtener la estructura de cada línea y una verificación de compatibilidad estructural contra el canon tentativo. No invoca `06_parser`, para no crear dependencia hacia adelante.
 
 ### 05_fijacion

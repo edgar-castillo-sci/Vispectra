@@ -21,6 +21,7 @@ serie de preguntas encadenadas.
 
 ¿Y si en lugar de esperar un separador específico, cualquier carácter no
 reservado pudiera ser un dato?
+
 ¿Y si todo lo ajeno al número fuera un carácter, y el número fuera lo que 
 queda cuando se elimina lo ajeno? ¿Y si cada dato se pudiera describir 
 por sus características decimales, por la presencia de puntos y comas?

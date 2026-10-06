@@ -9,7 +9,7 @@
 //         aparecieron todas las i y todas las n.
 //   - R24: aplica paridad base a las runs de comas:
 //         índices pares (0,2,4…) → c; impares (1,3,5…) → ','.
-//   - R78: congela el canon después de la generalización (04_canon).
+//   - R78: fija el canon después de la generalización (04_canon).
 //   - Convierte la cadena de canon en un array de tokens
 //     recorrible por el parser maestro.
 //

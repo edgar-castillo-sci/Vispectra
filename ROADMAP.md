@@ -14,10 +14,10 @@ la primera implementación, no el límite del proyecto.
 
 Última actualización: 2026-09-30.
 
-- **Implementado**: fases 00 (lectura), 01 (muestreo), 09 (diagnóstico),
-  orquestador (`main.js`), especificación completa (R1–R95), arquitectura
-  documentada.
-- **En desarrollo**: fases 02–08 del compilador.
+- **Implementado**: fases 00 (lectura), 09 (diagnóstico),
+  orquestador (`main.js`), especificación completa (R1–R95),
+  arquitectura documentada.
+- **En desarrollo**: fase 01 (muestreo), fases 02–08 del compilador.
 - **No operativo**: Vispectra aún no parsea archivos.
 
 ## Cómo leer este roadmap
@@ -54,7 +54,7 @@ UV-Vis simples, y que aguante archivos sucios.
 
 **Pipeline básico:**
 - [x] Fase 00 — lectura y normalización
-- [x] Fase 01 — muestreo aleatorio del tercio central
+- [ ] Fase 01 — muestreo aleatorio del tercio central
 - [x] Fase 09 — acumulador de diagnósticos
 - [x] Orquestador (`main.js`)
 - [ ] Fase 02 — lexer (clasificación de puntos y comas)
@@ -229,7 +229,7 @@ publicada. Los DOI de versión específicos se generan con cada release.
 
 Vispectra es un proyecto de un solo autor en desarrollo activo. Los hitos
 no tienen fechas asignadas. La prioridad es la calidad del compilador, no
- la velocidad de entrega.
+la velocidad de entrega.
 
 El autor puede trabajar en varias áreas en paralelo. El roadmap solo describe
 hacia dónde va el proyecto.

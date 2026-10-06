@@ -17,7 +17,7 @@
 //       ↓
 //   [04_canon]        → canon generalizado con i + diagnósticos
 //       ↓
-//   [05_fijacion]  → canon fijo + diagnósticos
+//   [05_fijacion] → canon fijo + diagnósticos
 //       ↓
 //   [06_parser]       → valores por línea + diagnósticos
 //       ↓
@@ -93,7 +93,7 @@ export async function compilar(file) {
     diagnosticos: diagCanon,
   } = construirCanon({ porLinea, frecuencias, longitudes }, lineas, terciolineas);
   recolectar(diagCanon, log, { nombre: file.name });
-  
+
   // --- Fase 05: fijación ---
   const { canonFijo, diagnosticos: diagFijo } = fijarCanon(canon);
   recolectar(diagFijo, log, { nombre: file.name });
