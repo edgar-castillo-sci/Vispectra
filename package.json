@@ -9,10 +9,10 @@
   "homepage": "https://doi.org/10.5281/zenodo.23177822",
   "keywords": [
     "spectroscopy",
-    "spectra",
     "compiler",
     "parser",
-    "visualization"
+    "visualization",
+    "grammatical inference"
   ],
   "scripts": {
     "dev": "npx serve .",
