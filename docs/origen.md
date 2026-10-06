@@ -20,7 +20,7 @@ diera luz sobre por qué el enfoque ingenuo no escala. Entonces surgió una
 serie de preguntas encadenadas.
 
 ¿Y si en lugar de esperar un separador específico, cualquier carácter no
-reservado a los datos espectrales pudiera ser un dato sobre la estructura interna?
+reservado pudiera ser un dato?
 ¿Y si todo lo ajeno al número fuera un carácter, y el número fuera lo que 
 queda cuando se elimina lo ajeno? ¿Y si cada dato se pudiera describir 
 por sus características decimales, por la presencia de puntos y comas?
@@ -33,8 +33,7 @@ propia gramática.
 
 ## La estructura del problema
 
-El diseño no vino de golpe.
-Al comparar líneas de un mismo archivo, las estructuras se repetían.
+El diseño no vino de golpe: al comparar líneas de un mismo archivo, las estructuras se repetían.
 Diferían cuando faltaba un número, pero existía por lógica un patrón detrás del ruido.
 De ahí surgió la **canonicalización**: si todas las filas representan el
 mismo tipo de datos (mismo número de columnas, por ejemplo), 

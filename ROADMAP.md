@@ -8,7 +8,7 @@ sucios de cualquier técnica y los convierta en columnas limpias, sin
 depender de servidores ni de servicios externos.
 
 El núcleo del compilador es agnóstico de la técnica. UV-Vis es tan solo
- la primera implementación, no el límite del proyecto.
+la primera implementación, no el límite del proyecto.
 
 ## Estado actual
 
