@@ -2,7 +2,7 @@
 // FASE 07 — SEMÁNTICA (Validación)
 // ============================================================
 // Recibe: los valores parseados de una línea, las columnas,
-//         el canon congelado, y el índice de línea.
+//         el canon fijo, y el índice de línea.
 // Devuelve: nada (modifica las columnas) o un error.
 //
 // Hace:

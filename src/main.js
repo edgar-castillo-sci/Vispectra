@@ -90,7 +90,7 @@ export async function compilar(file) {
   const { canon, diagnosticos: diagCanon } = construirCanon({ porLinea, frecuencias, longitudes });
   recolectar(diagCanon, log, { nombre: file.name });
 
-  // --- Fase 05: congelación ---
+  // --- Fase 05: fijación ---
   const { canonFijo, diagnosticos: diagFijo } = fijarCanon(canon);
   recolectar(diagFijo, log, { nombre: file.name });
 

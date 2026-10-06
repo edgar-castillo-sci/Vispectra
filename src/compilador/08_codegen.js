@@ -22,7 +22,7 @@
 //   - No emite logs (eso es 09_diagnostico).
 //
 // Notas:
-//   - num_column = num_noalf + 1 (definido en 04_canon).
+//   - num_column = num_noalf + 1 (definido en 05_fijacion).
 //   - La política de valores faltantes (0, NaN, vacío) se decide aquí.
 //     Por defecto: 0 (según R31, R52, R53, R54).
 // ============================================================

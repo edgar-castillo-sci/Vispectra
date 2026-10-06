@@ -1,8 +1,8 @@
 // ============================================================
-// FASE 05 — CONGELACIÓN
+// FASE 05 — FIJACIÓN
 // ============================================================
 // Recibe: el canon generalizado de 04_canon.
-// Devuelve: el canon congelado como array de tokens.
+// Devuelve: el canon fijo como array de tokens.
 //
 // Hace:
 //   - R26: aplica la conversión c,c,c solo después de que
@@ -20,6 +20,7 @@
 //   - No aplica la corrección de paridad que hace 06_parser (R25).
 //
 // Notas:
-//   - El canon congelado es inmutable: no cambia entre líneas.
-//   - Si el canon cambia, hay que re-congelar (no debería pasar).
+//   - El canon fijo es inmutable: no cambia entre líneas.
+//   - Si el canon cambia, hay que re-fijar (no debería pasar).
 // ============================================================
+

@@ -29,7 +29,7 @@
 //
 // Run detection:
 //   - R23: run de L comas se captura en `comas`.
-//         (La paridad y conversión se aplican en 05_congelacion.)
+//         (La paridad y conversión se aplican en 05_fijacion.)
 //
 // Notas:
 //   - R25: la paridad asume que la run empieza con decimal;
@@ -38,9 +38,9 @@
 //   - R28: alrededor de n e i, solo separadores de columna.
 //
 // NO hace:
-//   - No aplica paridad (eso es 05_congelacion, R24, R26).
+//   - No aplica paridad (eso es 05_fijacion, R24, R26).
 //   - No generaliza con i (eso es 04_canon).
-//   - No congela (eso es 05_congelacion).
+//   - No fija (eso es 05_fijacion).
 //   - No parsea valores (eso es 06_parser).
 //   - No valida columnas (eso es 07_semantica).
 //

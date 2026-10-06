@@ -17,6 +17,6 @@
 //   - No generaliza nada.
 //
 // Notas:
-//   - R78 (congelación) ocurre después de 04_canon, no aquí.
+//   - R78 (fijación) ocurre después de 04_canon, no aquí.
 //   - R79: muestreo adaptativo queda como mejora futura.
 // ============================================================

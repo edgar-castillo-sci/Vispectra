@@ -36,12 +36,12 @@
 //         (Fusiona las antiguas R46 y R47.)
 //
 // NO hace:
-//   - No aplica paridad ni conversión c,c,c (eso es 05_congelacion, R24, R26).
-//   - No congela (eso es 05_congelacion).
+//   - No aplica paridad ni conversión c,c,c (eso es 05_fijacion, R24, R26).
+//   - No fija (eso es 05_fijacion).
 //   - No parsea valores.
 //   - No valida columnas reales.
 //
 // Notas:
-//   - R26: la conversión c,c,c se difiere a 05_congelacion.
+//   - R26: la conversión c,c,c se difiere a 05_fijacion.
 //   - R27: las comas son invariantes; solo se redefine su uso.
 // ============================================================

@@ -1,7 +1,7 @@
 // ============================================================
 // FASE 06 — PARSER MAESTRO
 // ============================================================
-// Recibe: una línea cruda (string) y el canon congelado (array).
+// Recibe: una línea cruda (string) y el canon fijo (array).
 // Devuelve: { ok: true, valores: [...] } o { ok: false, error: '...' }.
 //           Los valores pueden incluir null cuando falta un dato.
 //
