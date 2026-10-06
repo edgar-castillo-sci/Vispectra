@@ -2,6 +2,9 @@
 
 Compilador de formatos espectroscópicos. Multiplataforma, local, sin servidor.
 
+![Estado](https://img.shields.io/badge/estado-alpha-orange)
+![Licencia](https://img.shields.io/badge/licencia-MIT-blue)
+
 Vispectra es dos cosas a la vez: una herramienta para el espectroscopista
 que necesita leer archivos sucios, y un caso de estudio sobre inferencia
 gramatical a partir de presentaciones positivas. La primera es el uso; la
@@ -68,7 +71,7 @@ que hace que el proyecto sea más que un parser.
 
 ## Estado
 
-Diseño y desarrollo temprano.
+**Alpha.** Diseño y desarrollo temprano.
 
 **Implementado:**
 - Fase 00 — lectura y normalización
