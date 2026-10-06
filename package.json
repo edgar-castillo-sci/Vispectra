@@ -6,14 +6,10 @@
   "private": true,
   "license": "MIT",
   "author": "Edgar Ramón Hernández Castillo",
+  "homepage": "https://doi.org/10.5281/zenodo.23177822",
   "keywords": [
     "spectroscopy",
     "spectra",
-    "uv-vis",
-    "xrd",
-    "xps",
-    "raman",
-    "ir",
     "compiler",
     "parser",
     "visualization"
