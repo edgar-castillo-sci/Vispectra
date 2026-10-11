@@ -52,3 +52,17 @@
 // ============================================================
 
 // TODO: implementar.
+
+//stub
+export function verificar(interpretada, canonFijo) {
+  return {
+    indice: interpretada.indice,
+    ok: false,
+    valores: [],
+    diagnosticos: [{
+      severity: 'warn',
+      code: 'FASE_NO_IMPLEMENTADA',
+      params: { fase: '07_semantica', indice: interpretada.indice },
+    }],
+  };
+}

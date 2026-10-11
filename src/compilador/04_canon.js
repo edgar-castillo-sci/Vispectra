@@ -92,3 +92,16 @@
 // ============================================================
 
 // TODO: implementar.
+
+//stub
+export function construirCanon(ir, lineas, bloqueCentral) {
+  return {
+    canon: '',
+    cuerpo: { inicio: 0, fin: 0 },
+    diagnosticos: [{
+      severity: 'warn',
+      code: 'FASE_NO_IMPLEMENTADA',
+      params: { fase: '04_canon' },
+    }],
+  };
+}

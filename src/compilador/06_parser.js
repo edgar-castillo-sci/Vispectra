@@ -65,3 +65,18 @@
 // ============================================================
 
 // TODO: implementar.
+
+//stub
+
+export function interpretarLinea(linea, canonFijo) {
+  return {
+    indice: linea.indice,
+    ok: false,
+    valores: [],
+    diagnosticos: [{
+      severity: 'warn',
+      code: 'FASE_NO_IMPLEMENTADA',
+      params: { fase: '06_parser', indice: linea.indice },
+    }],
+  };
+}

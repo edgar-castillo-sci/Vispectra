@@ -9,7 +9,7 @@
 //       ↓
 //   [00_lectura]      → texto + diagnósticos
 //       ↓
-//   [01_muestreo]     → líneas, terciolineas, muestra + diagnósticos
+//   [01_muestreo]     → líneas, bloqueCentral, muestra + diagnósticos
 //       ↓
 //   [02_lexer]        → estructura por línea + diagnósticos
 //       ↓
@@ -17,7 +17,7 @@
 //       ↓
 //   [04_canon]        → canon generalizado con i + diagnósticos
 //       ↓
-//   [05_fijacion] → canon fijo + diagnósticos
+//   [05_fijacion]     → canon fijo + diagnósticos
 //       ↓
 //   [06_parser]       → valores por línea + diagnósticos
 //       ↓
@@ -71,7 +71,7 @@ export async function compilar(file) {
   recolectar(diagLectura, log, { nombre: file.name });
 
   // --- Fase 01: muestreo ---
-  const { lineas, terciolineas, muestra, diagnosticos: diagMuestreo } = muestrear(texto);
+  const { lineas, bloqueCentral, muestra, diagnosticos: diagMuestreo } = muestrear(texto);
   recolectar(diagMuestreo, log, { nombre: file.name });
 
   // --- Fase 02: lexer (solo sobre la muestra) ---
@@ -91,7 +91,7 @@ export async function compilar(file) {
     canon,
     cuerpo,
     diagnosticos: diagCanon,
-  } = construirCanon({ porLinea, frecuencias, longitudes }, lineas, terciolineas);
+  } = construirCanon({ porLinea, frecuencias, longitudes }, lineas, bloqueCentral);
   recolectar(diagCanon, log, { nombre: file.name });
 
   // --- Fase 05: fijación ---

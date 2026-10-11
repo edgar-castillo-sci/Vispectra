@@ -40,3 +40,11 @@
 // ============================================================
 
 // TODO: implementar.
+//stub
+export function crearColumnas(numColumn) {
+  return Array.from({ length: numColumn }, () => []);
+}
+
+export function inyectar(valores, columnas) {
+  // No-op mientras 08 no esté implementada.
+}

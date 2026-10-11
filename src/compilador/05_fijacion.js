@@ -25,3 +25,19 @@
 // ============================================================
 
 // TODO: implementar.
+
+//stub
+export function fijarCanon(canon) {
+  return {
+    canonFijo: [],
+    diagnosticos: [{
+      severity: 'warn',
+      code: 'FASE_NO_IMPLEMENTADA',
+      params: { fase: '05_fijacion' },
+    }],
+  };
+}
+
+export function contarColumnas(canonFijo) {
+  return 0;
+}

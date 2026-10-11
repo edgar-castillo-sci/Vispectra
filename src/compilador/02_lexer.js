@@ -49,3 +49,15 @@
 //   - R87: unidades pegadas a números (250nm) → no soportado.
 // ============================================================
 // TODO: implementar.
+
+// stub
+export function lexear(linea) {
+  return {
+    estructura: '',
+    diagnosticos: [{
+      severity: 'warn',
+      code: 'FASE_NO_IMPLEMENTADA',
+      params: { fase: '02_lexer' },
+    }],
+  };
+}

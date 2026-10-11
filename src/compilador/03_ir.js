@@ -31,3 +31,17 @@
 // ============================================================
 
 // TODO: implementar.
+
+//stub
+export function construirIR(estructuras) {
+  return {
+    porLinea: [],
+    frecuencias: {},
+    longitudes: [],
+    diagnosticos: [{
+      severity: 'warn',
+      code: 'FASE_NO_IMPLEMENTADA',
+      params: { fase: '03_ir' },
+    }],
+  };
+}
