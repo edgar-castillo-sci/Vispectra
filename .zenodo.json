@@ -1,0 +1,36 @@
+{
+  "title": "Vispectra: A compiler for spectroscopic file formats",
+  "description": "Vispectra is a cross-platform, browser-based spectra plotter. At its core, it is a compiler that infers the grammar of spectroscopic files (UV-Vis, XRD, XPS, Raman, IR) from a sample of their data, builds a structural contract (the *canon*), and applies it to the rest. This approach addresses the problem of reading messy, heterogeneous instrument files and relates to the positive-only grammatical inference problem (Gold, 1967).\n\nThis version (v0.1.0-alpha) includes the complete parser specification, the documented pipeline architecture, and phases 00 (reading) and 09 (diagnostics) implemented. The compiler does not yet parse files: phases 01–08 are under development.",
+  "creators": [
+    {
+      "name": "Castillo, Edgar R. H.",
+      "affiliation": "Independent Researcher",
+      "orcid": "0009-0006-4268-3323",
+      "type": "Author"
+    }
+  ],
+  "keywords": [
+    "spectroscopy",
+    "uv-vis",
+    "xrd",
+    "xps",
+    "raman",
+    "ir",
+    "compiler",
+    "parser",
+    "grammatical inference"
+  ],
+  "license": "mit",
+  "upload_type": "software",
+  "access_right": "open",
+  "language": "eng",
+  "version": "v0.1.0-alpha",
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/edgar-castillo-sci/Vispectra",
+      "relation": "isSupplementTo",
+      "scheme": "url",
+      "resource_type": "software"
+    }
+  ]
+}

@@ -1,149 +1,109 @@
 # Vispectra
 
-Compilador de formatos espectroscópicos. Multiplataforma, local, sin servidor.
+A compiler for spectroscopic file formats. Cross-platform, local, serverless.
 
-![Estado](https://img.shields.io/badge/estado-alpha-orange)
-![Licencia](https://img.shields.io/badge/licencia-MIT-blue)
+![Status](https://img.shields.io/badge/status-alpha-orange)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
-Vispectra es dos cosas a la vez: una herramienta para el espectroscopista
-que necesita leer archivos sucios, y un caso de estudio sobre inferencia
-gramatical a partir de presentaciones positivas. La primera es el uso; la
-segunda es el problema que aparece cuando se intenta resolver la primera
-con rigor.
+Vispectra is two things at once: a tool for the spectroscopist who needs to read messy files, and a case study on grammatical inference from positive presentations. The first is the use case; the second is the problem that arises when trying to solve the first with rigor.
 
-## Descripción
+## Description
 
-Vispectra lee archivos de espectroscopía tal como salen del instrumento
-—o de la fusión de varios— y los convierte en columnas numéricas limpias.
+Vispectra reads spectroscopy files exactly as they come from the instrument — or from merging several of them — and converts them into clean numerical columns.
 
-La arquitectura no es la de un lector de espectros convencional: es la de
-un compilador que infiere la gramática del archivo a partir de una muestra
-de sus datos, construye un contrato estructural (el *canon*) y lo aplica
-al resto. El punto de partida es que el archivo es la fuente de verdad, y
-el parser debe aprender a leerlo, no al revés.
+The architecture is not that of a conventional spectra reader: it is that of a compiler that infers the file's grammar from a sample of its data, builds a structural contract (the *canon*), and applies it to the rest. The starting premise is that the file is the source of truth, and the parser must learn to read it, not the other way around.
 
-Corre íntegramente en el navegador, sin backend, sin subida de archivos,
-sin telemetría. Funciona en cualquier sistema operativo con un navegador
-moderno, y una vez cargado puede operar sin conexión.
+It runs entirely in the browser, with no backend, no file uploads, and no telemetry. It works on any operating system with a modern browser, and once loaded, it can operate offline.
 
-## Arquitectura
+## Architecture
 
-El parser es un pipeline de fases independientes, comunicadas por
-contratos explícitos:
+The parser is a pipeline of independent phases, communicating through explicit contracts:
 
 ```
-[00_lectura]      → texto normalizado
-[01_muestreo]     → líneas + muestra aleatoria del tercio central
-[02_lexer]        → estructura por línea
-[03_ir]           → representación intermedia
-[04_canon]        → inferencia del canon + expansión desde el centro
-[05_fijacion]     → canon fijo
-[06_parser]       → valores por línea
-[07_semantica]    → verificación
-[08_codegen]      → columnas limpias
-[09_diagnostico]  → acumulador de diagnósticos
+[00_reading]      → normalized text
+[01_sampling]     → lines + random sample from the central block
+[02_lexer]        → per-line structure
+[03_ir]           → intermediate representation
+[04_canon]        → canon inference + center-out expansion
+[05_fixation]     → fixed canon
+[06_parser]       → parsed values per line
+[07_semantics]    → verification
+[08_codegen]      → clean columns
+[09_diagnostics]  → diagnostics accumulator
 ```
 
-Cada fase es una función pura que recibe datos y devuelve datos. La única
-excepción es `08_codegen`, que muta las columnas por disciplina explícita.
-El compilador no adivina: cuando no puede decidir, falla con un diagnóstico
-tipado en lugar de producir datos corruptos en silencio.
+Each phase is a pure function that receives data and returns data. The only exception is `08_codegen`, which mutates the columns by explicit design. The compiler does not guess: when it cannot decide, it fails with a typed diagnostic instead of silently producing corrupt data.
 
-El núcleo es agnóstico de la técnica. UV-Vis es la primera implementación;
-XRD, XPS, Raman e IR añaden únicamente rangos de validación y operaciones
-posteriores al parsing.
+The core is technique-agnostic. UV-Vis is the first implementation; XRD, XPS, Raman, and IR only add validation ranges and post-parsing operations.
 
-## El problema
+## The Problem
 
-Los archivos de espectroscopía son heterogéneos por naturaleza. Cada
-instrumento, software y versión exporta con su propio dialecto: coma o
-punto decimal, tabulador o espacio, encabezados de extensión variable,
-valores faltantes representados por separadores vacíos.
+Spectroscopy files are heterogeneous by nature. Every instrument, software, and version exports with its own dialect: comma or dot decimals, tabs or spaces, headers of variable length, missing values disguised as empty separators.
 
-La mayoría de las herramientas asumen un formato fijo. Vispectra infiere
-la estructura a partir de los datos. Lo que empieza como un problema de
-parsing se convierte, al formalizarlo, en un caso de inferencia
-gramatical: la identificación de gramáticas a partir de presentaciones
-positivas, demostrada imposible en el caso general por Gold (1967).
-Vispectra no resuelve el problema general; lo restringe a un dominio
-tratable mediante sesgos inductivos. Pero la conexión es real, y es lo
-que hace que el proyecto sea más que un parser.
+Most tools assume a fixed format. Vispectra infers the structure from the data. What begins as a parsing problem becomes, upon formalization, a case of grammatical inference: the identification of grammars from positive presentations, proven impossible in the general case by Gold (1967). Vispectra does not solve the general problem; it restricts it to a tractable domain through inductive biases. But the connection is real, and it is what makes the project more than just a parser.
 
-## Estado
+## Status
 
-**Alpha.** Diseño y desarrollo temprano.
+**Alpha.** Early design and development.
 
-**Implementado:**
-- Fase 00 — lectura y normalización
-- Fase 09 — acumulador de diagnósticos
-- Orquestador (`main.js`)
-- Especificación completa del parser (R1–R95)
-- Arquitectura del pipeline documentada
+**Implemented:**
+- Phase 00 — reading and normalization
+- Phase 02 — lexer (point and comma classification)
+- Phase 09 — diagnostics accumulator
+- Orchestrator (`main.js`)
+- Complete parser specification (R1–R95)
+- Documented pipeline architecture
 
-**En desarrollo:**
-- Fase 01 — muestreo del tercio central
-- Fases 02–08 del compilador
+**In development:**
+- Phase 01 — central block sampling
+- Phases 03–08 of the compiler
 
-**Planificado:**
-- Visualización
-- UI híbrida (asignación de roles de columnas)
-- Soporte para XRD, XPS, Raman, IR
-- Internacionalización (español, inglés)
+**Planned:**
+- Visualization
+- Hybrid UI (column role assignment)
+- Support for XRD, XPS, Raman, IR
+- Internationalization (English, Spanish)
 
-El compilador **aún no parsea archivos**. Esta sección se actualizará con
-cada release.
+The compiler **does not yet parse files**. This section will be updated with each release.
 
-## Uso
+## Usage
 
-El compilador no está operativo todavía. Por ahora, el proyecto puede
-explorarse leyendo la documentación en `docs/`.
+The compiler is not operational yet. For now, the project can be explored by reading the documentation in `docs/`.
 
-## Estructura
+## Structure
 
 ```
 src/
-├── compilador/     Parser por fases (00–09)
-├── i18n.js         Internacionalización
-├── main.js         Orquestador
-├── plot.js         Graficador
-└── ui.js           Interfaz
+├── compiler/       Phase-based parser (00–09)
+├── i18n.js         Internationalization
+├── main.js         Orchestrator
+├── plot.js         Plotter
+└── ui.js           Interface
 docs/
-├── origen.md       Historia del diseño
-├── arquitectura.md Pipeline y contratos
-├── reglas.md       Especificación del parser (R1–R95)
-└── ejemplos.md     Casos de prueba trabajados
+├── origin.md       Design history (in Spanish)
+├── architecture.md Pipeline and contracts
+├── rules.md        Parser specification (R1–R95)
+└── examples.md     Worked test cases
 locales/
-├── es.js           Idioma base
-└── en.js
+├── en.js           Base language (planned)
+└── es.js           Spanish
 ```
 
-## Documentación
+## Documentation
 
-- [Origen](docs/origen.md) — historia del diseño
-- [Arquitectura](docs/arquitectura.md) — pipeline y contratos entre fases
-- [Reglas](docs/reglas.md) — especificación del parser (R1–R95)
-- [Roadmap](ROADMAP.md) — áreas de trabajo y releases previstos
+- [Origin](docs/origen.md) — history of the design *(in Spanish)*
+- [Architecture](docs/architecture.md) — pipeline and contracts between phases
+- [Rules](docs/rules.md) — complete parser specification (R1–R95)
+- [Roadmap](ROADMAP.md) — work areas and planned releases
 
-## Referencias
+## References
 
-- Gold, E. M. (1967). *Language identification in the limit*.
-  Information and Control, 10(5), 447–474.
+- Gold, E. M. (1967). Language identification in the limit. *Information and Control*, 10(5), 447–474. https://doi.org/10.1016/S0019-9958(67)91165-5
 
-## Cómo citar
+## License
 
-Si usas Vispectra en un trabajo académico, por favor cita:
+MIT. See [LICENSE](LICENSE).
 
-> Hernández Castillo, E. R. (2026). *Vispectra: v0.1.0-alpha — Design
-> and Specification* (v0.1.0-alpha) [Software]. Zenodo.
-> https://doi.org/10.5281/zenodo.23177822
+## Author
 
-El DOI conceptual siempre apunta a la última versión publicada. Los DOI
-de versión específicos se generan con cada release.
-
-## Licencia
-
-MIT. Ver [LICENSE](LICENSE).
-
-## Autor
-
-Edgar Ramón Hernández Castillo · [ORCID 0009-0006-4268-3323](https://orcid.org/0009-0006-4268-3323)
+Castillo, Edgar R. H. · [ORCID 0009-0006-4268-3323](https://orcid.org/0009-0006-4268-3323)

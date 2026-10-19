@@ -1,235 +1,202 @@
-# Roadmap de Vispectra
+# Vispectra Roadmap
 
-## Visión
+## Vision
 
-Convertir Vispectra en un compilador de formatos espectroscópicos de
-referencia: una herramienta local, multiplataforma, que lea archivos
-sucios de cualquier técnica y los convierta en columnas limpias, sin
-depender de servidores ni de servicios externos.
+To turn Vispectra into a reference compiler for spectroscopic file formats: a local, cross-platform tool that reads messy files from any technique and converts them into clean columns, without relying on servers or external services.
 
-El núcleo del compilador es agnóstico de la técnica. UV-Vis es tan solo
-la primera implementación, no el límite del proyecto.
+The compiler core is technique-agnostic. UV-Vis is just the first implementation, not the limit of the project.
 
-## Estado actual
+## Current Status
 
-Última actualización: 2026-09-30.
+Last updated: 2026-10-06.
 
-- **Implementado**: fases 00 (lectura), 09 (diagnóstico),
-  orquestador (`main.js`), especificación completa (R1–R95),
-  arquitectura documentada.
-- **En desarrollo**: fase 01 (muestreo), fases 02–08 del compilador.
-- **No operativo**: Vispectra aún no parsea archivos.
+- **Implemented**: phases 00 (reading), 02 (lexer), 09 (diagnostics), orchestrator (`main.js`), complete specification (R1–R95), documented architecture.
+- **In development**: phase 01 (sampling), phases 03–08 of the compiler.
+- **Not operational**: Vispectra does not parse files yet.
 
-## Cómo leer este roadmap
+## How to read this roadmap
 
-Este roadmap está organizado por **áreas temáticas**, no por versiones
-lineales. Cada área agrupa un conjunto de trabajo relacionado y tiene su
-propia checklist.
+This roadmap is organized by **thematic areas**, not linear versions. Each area groups a related set of work and has its own checklist.
 
-El autor puede trabajar en varias áreas en paralelo según la motivación o
-la necesidad. No hay un orden estricto entre áreas. Las dependencias se
-indican explícitamente cuando existen: por ejemplo, la visualización
-editorial asume que la visualización básica funciona.
+The author can work on multiple areas in parallel depending on motivation or need. There is no strict order between areas. Dependencies are explicitly indicated where they exist: for example, editorial visualization assumes that basic visualization works.
 
-Las **versiones públicas** (`v0.1`, `v0.2`, ...) se publican cuando un
-conjunto coherente de funcionalidades está listo, aunque otras áreas
-sigan en exploración. No marcan fases internas de desarrollo; marcan
-releases de GitHub y archivos de Zenodo.
+**Public releases** (`v0.1`, `v0.2`, ...) are published when a coherent set of features is ready, even if other areas are still in exploration. They do not mark internal development phases; they mark GitHub releases and Zenodo archives.
 
-Las tallas de esfuerzo son orientativas:
+Effort sizes are indicative:
 
-- **Pequeño**: días de trabajo.
-- **Mediano**: semanas de trabajo.
-- **Grande**: meses de trabajo.
+- **Small**: days of work.
+- **Medium**: weeks of work.
+- **Large**: months of work.
 
-No hay fechas. Los hitos se completan cuando están listos.
+There are no dates. Milestones are completed when they are ready.
 
-## Áreas de trabajo
+## Work Areas
 
-### Área 1 — Núcleo del compilador
-**Esfuerzo: grande**
+### Area 1 — Compiler Core
+**Effort: large**
 
-El objetivo es que el pipeline funcione de punta a punta con archivos
-UV-Vis simples, y que aguante archivos sucios.
+The goal is for the pipeline to work end-to-end with simple UV-Vis files, and to handle messy files.
 
-**Pipeline básico:**
-- [x] Fase 00 — lectura y normalización
-- [ ] Fase 01 — muestreo aleatorio del tercio central
-- [x] Fase 09 — acumulador de diagnósticos
-- [x] Orquestador (`main.js`)
-- [ ] Fase 02 — lexer (clasificación de puntos y comas)
-- [ ] Fase 03 — IR (representación intermedia)
-- [ ] Fase 04 — canon (inferencia + expansión desde el centro)
-- [ ] Fase 05 — fijación (paridad, conversión `c,c,c`)
-- [ ] Fase 06 — parser maestro (interpretación de líneas)
-- [ ] Fase 07 — semántica (verificación)
-- [ ] Fase 08 — codegen (columnas limpias)
+**Basic pipeline:**
+- [x] Phase 00 — reading and normalization
+- [ ] Phase 01 — random sampling of the central block
+- [x] Phase 02 — lexer (point and comma classification)
+- [ ] Phase 03 — IR (intermediate representation)
+- [ ] Phase 04 — canon (inference + center-out expansion)
+- [ ] Phase 05 — fixation (parity, `c,c,c` conversion)
+- [ ] Phase 06 — master parser (line interpretation)
+- [ ] Phase 07 — semantics (verification)
+- [ ] Phase 08 — codegen (clean columns)
+- [x] Phase 09 — diagnostics accumulator
+- [x] Orchestrator (`main.js`)
 
-**Robustez:**
-- [ ] Soporte de preámbulo y residuo (cuerpo de datos delimitado)
-- [ ] Soporte de runs de comas con `i` como ancla
-- [ ] Soporte de slots vacíos
-- [ ] Diagnósticos completos (códigos R60–R69)
+**Robustness:**
+- [ ] Support for preamble and residue (delimited data body)
+- [ ] Support for comma runs with `i` as anchor
+- [ ] Support for empty slots
+- [ ] Complete diagnostics (codes R60–R69)
 
-**Validación:**
-- [ ] Tests del pipeline completo
-- [ ] Tests con casos: americano puro, europeo, mixto, run, slot vacío
-- [ ] Primer archivo UV-Vis parseado correctamente
-- [ ] Documentación de casos límite en `docs/ejemplos.md`
+**Validation:**
+- [ ] Full pipeline tests
+- [ ] Tests with cases: pure American, pure European, mixed, run, empty slot
+- [ ] First UV-Vis file successfully parsed
+- [ ] Documentation of edge cases in `docs/examples.md`
 
-**Criterio de cierre del área**: el parser maneja los cinco casos de
-prueba documentados sin intervención manual, con archivos UV-Vis reales.
+**Area closure criteria**: the parser handles the five documented test cases without manual intervention, using real UV-Vis files.
 
-### Área 2 — UI y visualización
-**Esfuerzo: grande**
+### Area 2 — UI and Visualization
+**Effort: large**
 
-El objetivo es que el usuario pueda interactuar con Vispectra sin tocar
-la consola, ver sus espectros y exportarlos.
+The goal is for the user to interact with Vispectra without touching the console, view their spectra, and export them.
 
-**UI mínima:**
-- [ ] Zona de drop funcional
-- [ ] Procesamiento de archivos múltiples
-- [ ] Panel de resultados: columnas detectadas, canon, diagnósticos
-- [ ] Manejo de errores visible para el usuario
+**Minimal UI:**
+- [ ] Functional drop zone
+- [ ] Multiple file processing
+- [ ] Results panel: detected columns, canon, diagnostics
+- [ ] Visible error handling for the user
 
-**Visualización básica** *(depende de UI mínima)*:
-- [ ] `plot.js` funcional con Canvas o SVG
-- [ ] Ejes etiquetados con nombres genéricos (`columna 0`, `columna 1`)
-- [ ] Zoom y paneo básico
-- [ ] Exportación a PNG (resolución de pantalla)
+**Basic visualization** *(depends on minimal UI)*:
+- [ ] Functional `plot.js` with Canvas or SVG
+- [ ] Axes labeled with generic names (`column 0`, `column 1`)
+- [ ] Basic zoom and pan
+- [ ] PNG export (screen resolution)
 
-**UI híbrida** *(depende de visualización básica)*:
-- [ ] Detección de más de 2 columnas
-- [ ] Modal de asignación de roles (longitud de onda, absorbancia, etc.)
-- [ ] Operaciones básicas: normalización, suavizado
-- [ ] Modo estricto / permisivo para diagnósticos
+**Hybrid UI** *(depends on basic visualization)*:
+- [ ] Detection of more than 2 columns
+- [ ] Role assignment modal (wavelength, absorbance, etc.)
+- [ ] Basic operations: normalization, smoothing
+- [ ] Strict / permissive mode for diagnostics
 
-**Visualización editorial** *(depende de UI híbrida; esfuerzo: grande)*:
-- [ ] Tipografía y colores configurables
-- [ ] Exportación a SVG y PDF vectorial
-- [ ] Anotaciones (picos, etiquetas, regiones)
-- [ ] Múltiples espectros superpuestos
-- [ ] Plantillas de estilo (paper, presentación, tesis)
+**Editorial visualization** *(depends on hybrid UI; effort: large)*:
+- [ ] Configurable typography and colors
+- [ ] SVG and vector PDF export
+- [ ] Annotations (peaks, labels, regions)
+- [ ] Multiple overlaid spectra
+- [ ] Style templates (paper, presentation, thesis)
 
-**Criterio de cierre del área**: un gráfico exportado es aceptable para
-una publicación científica sin retoques externos, y el usuario puede
-asignar roles a las columnas desde la interfaz.
+**Area closure criteria**: an exported plot is acceptable for a scientific publication without external retouching, and the user can assign roles to columns from the interface.
 
-### Área 3 — Específico de técnica
-**Esfuerzo: grande**
+### Area 3 — Technique-Specific
+**Effort: large**
 
-El objetivo es que UV-Vis esté completamente pulido, y luego extender el
-compilador a otras técnicas sin reescribir el núcleo.
+The goal is for UV-Vis to be completely polished, and then to extend the compiler to other techniques without rewriting the core.
 
-**UV-Vis pulido:**
-- [ ] Validación de rangos UV-Vis (190–1100 nm, absorbancia 0–4)
-- [ ] Operaciones típicas: línea base, suavizado, detección de picos
-- [ ] Exportación a CSV limpio
-- [ ] Validación con archivos de instrumentos reales (distintas marcas)
-- [ ] Documentación de limitaciones específicas de UV-Vis
+**UV-Vis polished:**
+- [ ] UV-Vis validation ranges (190–1100 nm, absorbance 0–4)
+- [ ] Typical operations: baseline, smoothing, peak detection
+- [ ] Clean CSV export
+- [ ] Validation with real instrument files (different brands)
+- [ ] Documentation of UV-Vis specific limitations
 
-**Multi-técnica** *(depende de UV-Vis pulido; esfuerzo: grande)*:
-- [ ] Capa de configuración por técnica
-- [ ] XRD: rangos propios (2θ, intensidad)
-- [ ] Raman: rangos propios (número de onda, intensidad)
-- [ ] IR: rangos propios
-- [ ] XPS: rangos propios (energía de binding)
+**Multi-technique** *(depends on polished UV-Vis; effort: large)*:
+- [ ] Technique configuration layer
+- [ ] XRD: specific ranges (2θ, intensity)
+- [ ] Raman: specific ranges (wavenumber, intensity)
+- [ ] IR: specific ranges
+- [ ] XPS: specific ranges (binding energy)
 
-**Criterio de cierre del área**: Vispectra maneja UV-Vis de forma completa
-y confiable, y al menos dos técnicas distintas se parsean y visualizan
-con la misma arquitectura.
+**Area closure criteria**: Vispectra handles UV-Vis completely and reliably, and at least two different techniques are parsed and visualized with the same architecture.
 
-### Área 4 — Infraestructura
-**Esfuerzo: mediano**
+### Area 4 — Infrastructure
+**Effort: medium**
 
-El objetivo es que Vispectra sea usable por terceros, citable y
-documentado.
+The goal is for Vispectra to be usable by third parties, citable, and documented.
 
-**Internacionalización:**
-- [ ] `locales/es.js` completo (todos los códigos de diagnóstico)
-- [ ] `locales/en.js` completo
-- [ ] Detección automática de idioma del navegador
-- [ ] Selector manual de idioma en la UI
+**Internationalization:**
+- [ ] Complete `locales/en.js` (all diagnostic codes)
+- [ ] Complete `locales/es.js`
+- [ ] Automatic browser language detection
+- [ ] Manual language selector in the UI
 
-**API y exportación:**
-- [ ] API pública documentada
-- [ ] Exportación a formatos estándar (CSV limpio, JSON)
+**API and export:**
+- [ ] Documented public API
+- [ ] Export to standard formats (clean CSV, JSON)
 
-**Documentación:**
-- [ ] Documentación completa para usuarios finales
-- [ ] `docs/origen.md` (historia del diseño)
-- [ ] Tests de regresión
+**Documentation:**
+- [ ] Complete documentation for end users
+- [x] `docs/origen.md` (design history)
+- [ ] Regression tests
 
-**Publicación:**
-- [x] Primer release en GitHub (`v0.1.0-alpha`)
-- [x] DOI de Zenodo (`https://doi.org/10.5281/zenodo.23177822`)
-- [ ] DOI conceptual actualizado en README y `package.json`
-- [ ] Versión estable `v1.0.0` publicada en Zenodo sin embargo
+**Publication:**
+- [x] First GitHub release (`v0.1.0-alpha`)
+- [x] Zenodo DOI (`10.5281/zenodo.23177822`)
+- [ ] Conceptual DOI updated in README and `package.json`
+- [ ] Stable version `v1.0.0` published in Zenodo without embargo
 
-**Criterio de cierre del área**: Vispectra es usable por terceros sin
-asistencia del autor, con documentación completa y DOI citable.
+**Area closure criteria**: Vispectra is usable by third parties without the author's assistance, with complete documentation and a citable DOI.
 
-## Releases públicos
+## Public Releases
 
-Las versiones se publican cuando un conjunto coherente de funcionalidades
-está listo. La numeración sigue [SemVer](https://semver.org/lang/es/).
+Versions are published when a coherent set of features is ready. Numbering follows [SemVer](https://semver.org/).
 
-Releases previstos:
+Planned releases:
 
-| Versión | Contenido mínimo | Áreas involucradas |
+| Version | Minimum Content | Areas Involved |
 | --- | --- | --- |
-| `v0.1.0` | Pipeline completo, UV-Vis simple parseado | Área 1 (parcial) |
-| `v0.2.0` | Robustez del parser, casos sucios | Área 1 (completa) |
-| `v0.3.0` | UI mínima, i18n español | Área 2 (parcial), Área 4 (parcial) |
-| `v0.4.0` | Visualización básica | Área 2 (parcial) |
-| `v0.5.0` | UI híbrida | Área 2 (parcial) |
-| `v0.6.0` | UV-Vis pulido | Área 3 (parcial) |
-| `v0.7.0` | i18n completo | Área 4 (parcial) |
-| `v1.0.0` | UV-Vis estable, API pública, DOI | Todas las áreas |
-| `v2.0.0` | Visualización editorial | Área 2 (completa) |
-| `v3.0.0` | Multi-técnica | Área 3 (completa) |
+| `v0.1.0` | Complete pipeline, simple UV-Vis parsed | Area 1 (partial) |
+| `v0.2.0` | Parser robustness, messy cases | Area 1 (complete) |
+| `v0.3.0` | Minimal UI, Spanish i18n | Area 2 (partial), Area 4 (partial) |
+| `v0.4.0` | Basic visualization | Area 2 (partial) |
+| `v0.5.0` | Hybrid UI | Area 2 (partial) |
+| `v0.6.0` | Polished UV-Vis | Area 3 (partial) |
+| `v0.7.0` | Complete i18n | Area 4 (partial) |
+| `v1.0.0` | Stable UV-Vis, public API, DOI | All areas |
+| `v2.0.0` | Editorial visualization | Area 2 (complete) |
+| `v3.0.0` | Multi-technique | Area 3 (complete) |
 
-Los releases son **cortes en el tiempo**, no fases de desarrollo. Un
-release puede publicarse aunque algunas áreas sigan en exploración.
+Releases are **snapshots in time**, not development phases. A release can be published even if some areas are still in exploration.
 
-## Fuera de alcance (por ahora)
+## Out of scope (for now)
 
-- Notación de miles (`1.234,56`).
-- Valores faltantes literales (`NaN`, `---`, `>3.0`).
-- Filas partidas en varias líneas.
-- Unidades pegadas a números (`250nm`).
-- Comentarios al final de línea.
-- Procesamiento de datasets masivos (>1M puntos).
-- Versión de escritorio con procesamiento nativo.
+- Thousands separator notation (`1,234.56`).
+- Literal missing values (`NaN`, `---`, `>3.0`).
+- Rows split across multiple lines.
+- Units attached to numbers (`250nm`).
+- Comments at the end of lines.
+- Processing of massive datasets (>1M points).
+- Desktop version with native processing.
 
-Estos puntos pueden añadirse en versiones posteriores si la demanda lo
-justifica. No están descartados.
+These points can be added in later versions if demand justifies it. They are not discarded.
 
-## Publicación y DOI
+## Publication and DOI
 
-El DOI de Zenodo, más que un hito, es un trámite que se realiza en el primer
-release de GitHub (`v0.1.0`). Una vez obtenido:
+The Zenodo DOI is not a milestone, but a procedure performed at the first GitHub release (`v0.1.0`). Once obtained:
 
-- Se añade la sección "Cómo citar" al `README.md`.
-- Se actualiza el `package.json` con el DOI.
-- Se documenta en `docs/origen.md`.
+- The "How to cite" section is added to `README.md`.
+- The `package.json` is updated with the DOI.
+- It is documented in `docs/origen.md`.
 
-El DOI conceptual de Zenodo siempre apuntará a la última versión
-publicada. Los DOI de versión específicos se generan con cada release.
+The Zenodo conceptual DOI will always point to the latest published version. Specific version DOIs are generated with each release.
 
-## Cómo seguir el progreso
+## How to follow progress
 
-- **Issues de GitHub**: cada ítem de las áreas se desglosa en issues.
-- **Milestones de GitHub**: cada release tiene su milestone asociado.
-- **Releases**: cada versión se publica como release etiquetado.
-- **Zenodo**: cada release se archiva automáticamente vía la integración
-  con GitHub, generando un DOI de versión.
+- **GitHub Issues**: each item in the areas is broken down into issues.
+- **GitHub Milestones**: each release has its associated milestone.
+- **Releases**: each version is published as a tagged release.
+- **Zenodo**: each release is automatically archived via GitHub integration, generating a version DOI.
 
-## Notas sobre el alcance
+## Notes on scope
 
-Vispectra es un proyecto de un solo autor en desarrollo activo. Los hitos
-no tienen fechas asignadas. La prioridad es la calidad del compilador, no
-la velocidad de entrega.
+Vispectra is a single-author project in active development. Milestones have no assigned dates. The priority is the quality of the compiler, not the speed of delivery.
 
-El autor puede trabajar en varias áreas en paralelo. El roadmap solo describe
-hacia dónde va el proyecto.
+The author can work on multiple areas in parallel. The roadmap only describes where the project is heading.
