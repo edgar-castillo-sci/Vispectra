@@ -50,126 +50,99 @@
 //   - R87: unidades pegadas a números (250nm) → no soportado.
 // ============================================================
 
-export function lexear(linea) {
-  const diagnosticos = [];
-  const caracteres = limpiar(linea);
+export function lex(line) {
+  const diagnostics = [];
+  const characters = limpiar(line);
 
   // --- R15: '..' en la línea original ---
-  // Si la línea original contiene dos puntos consecutivos, es error
-  // seguro: número con dos decimales o número vacío entre puntos.
-  // Se revisa la línea original, no `caracteres`, porque tras la
-  // limpieza se pierde la información de qué había entre los puntos.
-  const tienePuntosConsecutivos = linea.includes('..');
+  const hasConsecutiveDots = line.includes('..');
 
-  if (tienePuntosConsecutivos) {
-    diagnosticos.push({
+  if (hasConsecutiveDots) {
+    diagnostics.push({
       severity: 'error',
-      code: 'PUNTOS_CONSECUTIVOS',
+      code: 'CONSECUTIVE_DOTS',
       params: {},
     });
   }
 
   // --- R14: secuencia pura de puntos ---
-  // Toda la cadena son puntos (2 o más) y no había '..' en la
-  // línea original. Se lee con paridad, pero se advierte.
-  if (/^\.{2,}$/.test(caracteres) && !tienePuntosConsecutivos) {
-    diagnosticos.push({
+  if (/^\.{2,}$/.test(characters) && !hasConsecutiveDots) {
+    diagnostics.push({
       severity: 'warn',
-      code: 'SECUENCIA_PUNTOS',
-      params: { longitud: caracteres.length },
+      code: 'DOT_SEQUENCE',
+      params: { length: characters.length },
     });
-    const estructura = procesarPuntosConParidad(caracteres);
-    return { estructura, diagnosticos };
+    const structure = procesarPuntosConParidad(characters);
+    return { structure, diagnostics };
   }
 
-  const estructura = procesar(caracteres, diagnosticos);
-  return { estructura, diagnosticos };
+  const structure = procesar(characters, diagnostics);
+  return { structure, diagnostics };
 }
 
-// ------------------------------------------------------------
-// R7: eliminar dígitos, e, E, +, -, y letras.
-//     NO eliminar espacios ni tabs.
-// ------------------------------------------------------------
-function limpiar(linea) {
-  return linea.replace(/[0-9eE+\-a-zA-Z]/g, '');
+function limpiar(line) {
+  return line.replace(/[0-9eE+\-a-zA-Z]/g, '');
 }
 
-// ------------------------------------------------------------
-// R14: una secuencia pura de puntos se lee con el mismo
-// algoritmo de paridad que las comas: índices pares → 'n',
-// impares → ','.
-// ------------------------------------------------------------
 function procesarPuntosConParidad(puntos) {
-  const salida = [];
+  const output = [];
   for (let i = 0; i < puntos.length; i++) {
-    salida.push(i % 2 === 0 ? 'n' : ',');
+    output.push(i % 2 === 0 ? 'n' : ',');
   }
-  return salida.join('');
+  return output.join('');
 }
 
-// ------------------------------------------------------------
-// Recorrer `caracteres` de izquierda a derecha y emitir
-// `estructura` con símbolos n, c, ,.
-// ------------------------------------------------------------
-function procesar(caracteres, diagnosticos) {
-  const salida = [];
+function procesar(characters, diagnostics) {
+  const output = [];
   let i = 0;
 
-  while (i < caracteres.length) {
-    const c = caracteres[i];
-    const fei = salida.length > 0 ? salida[salida.length - 1] : null;
-    const sc = i + 1 < caracteres.length ? caracteres[i + 1] : null;
+  while (i < characters.length) {
+    const c = characters[i];
+    const fei = output.length > 0 ? output[output.length - 1] : null;
+    const sc = i + 1 < characters.length ? characters[i + 1] : null;
 
     if (c === '.') {
       if (fei === 'n' || fei === 'c') {
-        // R12: punto tras número → error
-        diagnosticos.push({
+        diagnostics.push({
           severity: 'error',
-          code: 'PUNTO_TRAS_NUMERO',
-          params: { posicion: i },
+          code: 'DOT_AFTER_NUMBER',
+          params: { position: i },
         });
       } else {
-        // R13: emitir 'n'
-        salida.push('n');
+        output.push('n');
       }
       i++;
     } else if (c === ',') {
       if (fei === 'n' || fei === 'c') {
-        // R17: coma separadora
-        salida.push(',');
+        output.push(',');
         i++;
       } else if ((fei === ',' || fei === null) && (sc === ',' || sc === null)) {
-        // R18: run detection
-        const inicio = i;
-        while (i < caracteres.length && caracteres[i] === ',') {
-          salida.push(',');
+        const start = i;
+        while (i < characters.length && characters[i] === ',') {
+          output.push(',');
           i++;
         }
-        const longitud = i - inicio;
-        diagnosticos.push({
+        const length = i - start;
+        diagnostics.push({
           severity: 'info',
-          code: 'RUN_COMAS',
-          params: { longitud, posicion: inicio },
+          code: 'COMMA_RUN',
+          params: { length, position: start },
         });
       } else if (fei === ',' && sc !== ',' && sc !== null) {
-        // R19: cierre de run, separadora
-        salida.push(',');
+        output.push(',');
         i++;
       } else if (fei === ',' || fei === null) {
-        // R20 extendida: coma decimal (cubre también fei=null, sc≠coma)
-        salida.push('c');
+        output.push('c');
         i++;
       } else {
-        // Fallback (no debería ocurrir)
-        salida.push(',');
+        output.push(',');
         i++;
       }
     } else {
-      // Otro separador: espacio, tab, ;, |, ", _, %, etc.
-      salida.push(',');
+      output.push(',');
       i++;
     }
   }
 
-  return salida.join('');
+  return output.join('');
 }

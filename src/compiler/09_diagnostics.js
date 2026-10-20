@@ -55,29 +55,12 @@
 //   - El acumulador es mutable por diseño: se pasa a lo largo del
 //     pipeline y las fases (o main.js) agregan entradas.
 // ============================================================
-
-export function crearLog() {
-  const entradas = [];
-
+export function createLog() {
+  const entries = [];
   return {
-    // Añade un diagnóstico al acumulador.
-    agregar(diagnostico) {
-      entradas.push(diagnostico);
-    },
-
-    // Devuelve todos los diagnósticos acumulados, en orden de inserción.
-    todos() {
-      return entradas;
-    },
-
-    // Devuelve los diagnósticos de una severidad específica.
-    porSeveridad(severidad) {
-      return entradas.filter(e => e.severity === severidad);
-    },
-
-    // Devuelve true si hay al menos un diagnóstico de severidad 'error'.
-    hayErrores() {
-      return entradas.some(e => e.severity === 'error');
-    },
+    add(d) { entries.push(d); },
+    all() { return entries; },
+    bySeverity(s) { return entries.filter(e => e.severity === s); },
+    hasErrors() { return entries.some(e => e.severity === 'error'); },
   };
 }

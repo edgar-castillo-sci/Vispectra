@@ -45,53 +45,43 @@
 //   - R79: el rng es inyectable para permitir tests reproducibles.
 // ============================================================
 
-export function muestrear(texto, rng = Math.random) {
-  const diagnosticos = [];
+export function sample(text, rng = Math.random) {
+  const diagnostics = [];
 
-  // --- R9: partir el texto en líneas ---
-  const lineas = texto
+  const lines = text
     .split('\n')
-    .map((contenido, indice) => ({ indice, contenido }));
+    .map((content, index) => ({ index, content }));
 
-  const numlineas = lineas.length;
+  const numlines = lines.length;
 
-  // --- R75: bloque central como intervalo semiabierto [inicio, fin) ---
-  // El Math.max garantiza al menos una línea en el bloque cuando el
-  // archivo no está vacío. El Math.min protege contra pasarse del
-  // final. No se necesitan casos especiales para archivos pequeños.
-  const inicio = Math.round(numlineas / 3);
-  const fin = Math.min(
-    numlineas,
-    Math.max(inicio + 1, Math.round(2 * numlineas / 3))
+  const start = Math.round(numlines / 3);
+  const end = Math.min(
+    numlines,
+    Math.max(start + 1, Math.round(2 * numlines / 3))
   );
-  const bloqueCentral = { inicio, fin };
+  const centralBlock = { start, end };
 
-  // --- R77: muestrear dentro del bloque central ---
-  const indicesCentrales = [];
-  for (let i = inicio; i < fin; i++) {
-    indicesCentrales.push(i);
+  const centralIndices = [];
+  for (let i = start; i < end; i++) {
+    centralIndices.push(i);
   }
 
-  const muestra = muestrearSinRepeticion(
-    indicesCentrales,
-    indicesCentrales.length,
-    rng
-  );
-  muestra.sort((a, b) => a - b);
+  const sampleIndices = muestrearSinRepeticion(centralIndices, centralIndices.length, rng);
+  sampleIndices.sort((a, b) => a - b);
 
-  // --- Diagnóstico ---
-  diagnosticos.push({
+  diagnostics.push({
     severity: 'info',
-    code: 'MUESTREO',
+    code: 'SAMPLING',
     params: {
-      total: numlineas,
-      bloqueCentral: `${inicio}-${fin}`,
-      muestreadas: muestra.length,
+      total: numlines,
+      centralBlock: `${start}-${end}`,
+      sampled: sampleIndices.length,
     },
   });
 
-  return { lineas, bloqueCentral, muestra, diagnosticos };
+  return { lines, centralBlock, sample: sampleIndices, diagnostics };
 }
+
 
 // ------------------------------------------------------------
 // Auxiliar local: muestrea k elementos de `array` sin repetición,

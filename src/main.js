@@ -1,146 +1,115 @@
 // ============================================================
-// VISPECTRA — ORQUESTADOR
+// VISPECTRA — ORCHESTRATOR
 // ============================================================
-// No implementa lógica del compilador. Solo llama a las fases
-// en orden y pasa los datos entre ellas.
-//
-// Pipeline:
-//   [Archivo]
-//       ↓
-//   [00_lectura]      → texto + diagnósticos
-//       ↓
-//   [01_muestreo]     → líneas, bloqueCentral, muestra + diagnósticos
-//       ↓
-//   [02_lexer]        → estructura por línea + diagnósticos
-//       ↓
-//   [03_ir]           → IR ensamblado + diagnósticos
-//       ↓
-//   [04_canon]        → canon generalizado con i + diagnósticos
-//       ↓
-//   [05_fijacion]     → canon fijo + diagnósticos
-//       ↓
-//   [06_parser]       → valores por línea + diagnósticos
-//       ↓
-//   [07_semantica]    → valores verificados + diagnósticos
-//       ↓
-//   [08_codegen]      → columnas llenas (mutación)
-//       ↓
-//   [09_diagnostico]  → acumulador de diagnósticos
-//       ↓
-//   [Datos normalizados + diagnósticos]
-//
-// NO hace:
-//   - No lee archivos.
-//   - No interpreta.
-//   - No verifica.
-//   - Solo orquesta.
+// Does not implement compiler logic. It only calls the phases
+// in order and passes data between them.
 // ============================================================
 
 import { initUI } from './ui.js';
 
-import { leerArchivo } from './compilador/00_lectura.js';
-import { muestrear } from './compilador/01_muestreo.js';
-import { lexear } from './compilador/02_lexer.js';
-import { construirIR } from './compilador/03_ir.js';
-import { construirCanon } from './compilador/04_canon.js';
-import { fijarCanon, contarColumnas } from './compilador/05_fijacion.js';
-import { interpretarLinea } from './compilador/06_parser.js';
-import { verificar } from './compilador/07_semantica.js';
-import { crearColumnas, inyectar } from './compilador/08_codegen.js';
-import { crearLog } from './compilador/09_diagnostico.js';
+import { readFile } from './compiler/00_reading.js';
+import { sample } from './compiler/01_sampling.js';
+import { lex } from './compiler/02_lexer.js';
+import { buildIR } from './compiler/03_ir.js';
+import { buildCanon } from './compiler/04_canon.js';
+import { fixCanon, countColumns } from './compiler/05_fixation.js';
+import { parseLine } from './compiler/06_parser.js';
+import { verify } from './compiler/07_semantics.js';
+import { createColumns, inject } from './compiler/08_codegen.js';
+import { createLog } from './compiler/09_diagnostics.js';
 
 // ------------------------------------------------------------
-// Auxiliar local: recolecta diagnósticos en el log,
-// añadiendo el contexto común (nombre del archivo, índice, etc.)
-// a los params de cada diagnóstico.
+// Local helper: collects diagnostics into the log,
+// adding common context (file name, index, etc.)
+// to the params of each diagnostic.
 // ------------------------------------------------------------
-function recolectar(diagnosticos, log, contexto = {}) {
-  for (const d of diagnosticos) {
-    log.agregar({ ...d, params: { ...d.params, ...contexto } });
+function collect(diagnostics, log, context = {}) {
+  for (const d of diagnostics) {
+    log.add({ ...d, params: { ...d.params, ...context } });
   }
 }
 
 // ------------------------------------------------------------
-// compilar(file) → { columnas, canonFijo, log }
+// compile(file) → { columns, fixedCanon, body, log }
 // ------------------------------------------------------------
-export async function compilar(file) {
-  const log = crearLog();
+export async function compile(file) {
+  const log = createLog();
 
-  // --- Fase 00: lectura ---
-  const { texto, diagnosticos: diagLectura } = await leerArchivo(file);
-  recolectar(diagLectura, log, { nombre: file.name });
+  // --- Phase 00: reading ---
+  const { text, diagnostics: readDiag } = await readFile(file);
+  collect(readDiag, log, { fileName: file.name });
 
-  // --- Fase 01: muestreo ---
-  const { lineas, bloqueCentral, muestra, diagnosticos: diagMuestreo } = muestrear(texto);
-  recolectar(diagMuestreo, log, { nombre: file.name });
+  // --- Phase 01: sampling ---
+  const { lines, centralBlock, sample: sampleIndices, diagnostics: samplingDiag } = sample(text);
+  collect(samplingDiag, log, { fileName: file.name });
 
-  // --- Fase 02: lexer (solo sobre la muestra) ---
-  const estructuras = [];
-  for (const idx of muestra) {
-    const { estructura, diagnosticos } = lexear(lineas[idx].contenido);
-    recolectar(diagnosticos, log, { nombre: file.name, indice: idx });
-    estructuras.push({ indice: idx, estructura });
+  // --- Phase 02: lexer (only on the sample) ---
+  const structures = [];
+  for (const idx of sampleIndices) {
+    const { structure, diagnostics } = lex(lines[idx].content);
+    collect(diagnostics, log, { fileName: file.name, index: idx });
+    structures.push({ index: idx, structure });
   }
 
-  // --- Fase 03: IR ---
-  const { porLinea, frecuencias, longitudes, diagnosticos: diagIR } = construirIR(estructuras);
-  recolectar(diagIR, log, { nombre: file.name });
+  // --- Phase 03: IR ---
+  const { perLine, frequencies, lengths, diagnostics: irDiag } = buildIR(structures);
+  collect(irDiag, log, { fileName: file.name });
 
-  // --- Fase 04: canon + expansión ---
+  // --- Phase 04: canon + expansion ---
   const {
     canon,
-    cuerpo,
-    diagnosticos: diagCanon,
-  } = construirCanon({ porLinea, frecuencias, longitudes }, lineas, bloqueCentral);
-  recolectar(diagCanon, log, { nombre: file.name });
+    body,
+    diagnostics: canonDiag,
+  } = buildCanon({ perLine, frequencies, lengths }, lines, centralBlock);
+  collect(canonDiag, log, { fileName: file.name });
 
-  // --- Fase 05: fijación ---
-  const { canonFijo, diagnosticos: diagFijo } = fijarCanon(canon);
-  recolectar(diagFijo, log, { nombre: file.name });
+  // --- Phase 05: fixation ---
+  const { fixedCanon, diagnostics: fixationDiag } = fixCanon(canon);
+  collect(fixationDiag, log, { fileName: file.name });
 
-  // --- Preparación de columnas ---
-  const numColumn = contarColumnas(canonFijo);
-  const columnas = crearColumnas(numColumn);
+  // --- Column preparation ---
+  const numColumn = countColumns(fixedCanon);
+  const columns = createColumns(numColumn);
 
-  // --- Fases 06–08: interpretar, verificar, inyectar ---
-  for (let i = 0; i < lineas.length; i++) {
-    const interpretada = interpretarLinea(lineas[i], canonFijo);
-    recolectar(interpretada.diagnosticos, log, { nombre: file.name, indice: i });
-    if (!interpretada.ok) continue;
+  // --- Phases 06–08: parse, verify, inject ---
+  for (let i = 0; i < lines.length; i++) {
+    const parsed = parseLine(lines[i], fixedCanon);
+    collect(parsed.diagnostics, log, { fileName: file.name, index: i });
+    if (!parsed.ok) continue;
 
-    const verificada = verificar(interpretada, canonFijo);
-    recolectar(verificada.diagnosticos, log, { nombre: file.name, indice: i });
-    if (!verificada.ok) continue;
+    const verified = verify(parsed, fixedCanon);
+    collect(verified.diagnostics, log, { fileName: file.name, index: i });
+    if (!verified.ok) continue;
 
-    inyectar(verificada.valores, columnas);
+    inject(verified.values, columns);
   }
 
-  return { columnas, canonFijo, cuerpo, log };
+  return { columns, fixedCanon, body, log };
 }
 
 // ------------------------------------------------------------
-// Punto de entrada: conecta la UI con el compilador.
+// Entry point: connects the UI with the compiler.
 // ------------------------------------------------------------
 initUI(async (archivos, salida) => {
   salida.textContent = '';
 
   for (const archivo of archivos) {
     try {
-      const { columnas, canonFijo, cuerpo, log } = await compilar(archivo);
+      const { columns, fixedCanon, body, log } = await compile(archivo);
 
       salida.textContent += `✓ ${archivo.name}\n`;
-      salida.textContent += `  columnas: ${columnas.length}\n`;
-      salida.textContent += `  canon: ${canonFijo.join('')}\n`;
-      salida.textContent += `  cuerpo: [${cuerpo.inicio}, ${cuerpo.fin}]\n`;
+      salida.textContent += `  columns: ${columns.length}\n`;
+      salida.textContent += `  canon: ${fixedCanon.join('')}\n`;
+      salida.textContent += `  body: [${body.start}, ${body.end}]\n`;
 
-      const errores = log.porSeveridad('error');
-      const avisos = log.porSeveridad('warn');
+      const errors = log.bySeverity('error');
+      const warnings = log.bySeverity('warn');
 
-      if (errores.length > 0) {
-        salida.textContent += `  errores: ${errores.length}\n`;
+      if (errors.length > 0) {
+        salida.textContent += `  errors: ${errors.length}\n`;
       }
-      if (avisos.length > 0) {
-        salida.textContent += `  avisos: ${avisos.length}\n`;
+      if (warnings.length > 0) {
+        salida.textContent += `  warnings: ${warnings.length}\n`;
       }
     } catch (err) {
       salida.textContent += `✗ ${archivo.name}: ${err.message}\n`;

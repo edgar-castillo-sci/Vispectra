@@ -54,15 +54,11 @@
 // TODO: implementar.
 
 //stub
-export function verificar(interpretada, canonFijo) {
+export function verify(parsed, fixedCanon) {
   return {
-    indice: interpretada.indice,
+    index: parsed.index,
     ok: false,
-    valores: [],
-    diagnosticos: [{
-      severity: 'warn',
-      code: 'FASE_NO_IMPLEMENTADA',
-      params: { fase: '07_semantica', indice: interpretada.indice },
-    }],
+    values: [],
+    diagnostics: [{ severity: 'warn', code: 'NOT_IMPLEMENTED', params: { phase: '07_semantics', index: parsed.index } }],
   };
 }

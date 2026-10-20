@@ -67,16 +67,11 @@
 // TODO: implementar.
 
 //stub
-
-export function interpretarLinea(linea, canonFijo) {
+export function parseLine(line, fixedCanon) {
   return {
-    indice: linea.indice,
+    index: line.index,
     ok: false,
-    valores: [],
-    diagnosticos: [{
-      severity: 'warn',
-      code: 'FASE_NO_IMPLEMENTADA',
-      params: { fase: '06_parser', indice: linea.indice },
-    }],
+    values: [],
+    diagnostics: [{ severity: 'warn', code: 'NOT_IMPLEMENTED', params: { phase: '06_parser', index: line.index } }],
   };
 }

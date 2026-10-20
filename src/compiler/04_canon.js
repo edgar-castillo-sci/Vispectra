@@ -94,14 +94,10 @@
 // TODO: implementar.
 
 //stub
-export function construirCanon(ir, lineas, bloqueCentral) {
+export function buildCanon(ir, lines, centralBlock) {
   return {
     canon: '',
-    cuerpo: { inicio: 0, fin: 0 },
-    diagnosticos: [{
-      severity: 'warn',
-      code: 'FASE_NO_IMPLEMENTADA',
-      params: { fase: '04_canon' },
-    }],
+    body: { start: 0, end: 0 },
+    diagnostics: [{ severity: 'warn', code: 'NOT_IMPLEMENTED', params: { phase: '04_canon' } }],
   };
 }
