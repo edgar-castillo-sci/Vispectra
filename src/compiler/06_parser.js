@@ -11,54 +11,45 @@ export function parseLine(line, fixedCanon) {
   const { index, content } = line;
   const values = [];
   const diagnostics = [];
+  let i = 0;
 
-  // For this simplified implementation, we will split the line by spaces/tabs.
-  // A fully robust parser would use a state machine, but for UV-Vis data
-  // with 'n,i' canon, splitting by whitespace works perfectly.
-  const tokens = content.trim().split(/\s+/).filter(t => t.length > 0);
-
-  let tokenIndex = 0;
-
-  for (let i = 0; i < fixedCanon.length; i++) {
-    const type = fixedCanon[i];
+  for (let col = 0; col < fixedCanon.length; col++) {
+    const type = fixedCanon[col];
 
     if (type === ',') {
-      // Column separator: we just skip it (it's implicit in the split)
+      while (i < content.length && !/[0-9]/.test(content[i]) && content[i] !== '+' && content[i] !== '-') {
+        i++;
+      }
       continue;
     }
 
-    if (type === 'n') {
-      const token = tokens[tokenIndex];
-      if (!token) {
-        values.push(null);
-        diagnostics.push({ severity: 'error', code: 'MISSING_VALUE', params: { index, col: i } });
-      } else {
-        const val = parseFloat(token);
-        if (isNaN(val)) {
-          values.push(null);
-          diagnostics.push({ severity: 'error', code: 'INVALID_NUMBER', params: { index, col: i, token } });
-        } else {
-          values.push(val);
-        }
-        tokenIndex++;
-      }
+    if (i >= content.length) {
+      values.push(null);
+      continue;
     }
 
-    else if (type === 'i') {
-      const token = tokens[tokenIndex];
-      if (!token) {
-        // Empty slot, valid for 'i'
-        values.push(null);
-      } else {
-        const val = parseFloat(token);
-        if (isNaN(val)) {
-          values.push(null);
-          diagnostics.push({ severity: 'warn', code: 'INVALID_ANCHOR_VALUE', params: { index, col: i, token } });
+    if (/[0-9]/.test(content[i]) || content[i] === '+' || content[i] === '-') {
+      let start = i;
+      while (i < content.length) {
+        // ¡AQUÍ TAMBIÉN ARREGLADO! \-
+        if (/[0-9eE\+\-]/.test(content[i])) {
+          i++;
+        } else if (content[i] === '.' || content[i] === ',') {
+          if (i + 1 < content.length && /[0-9]/.test(content[i + 1])) {
+            i++;
+          } else {
+            break;
+          }
         } else {
-          values.push(val);
-          tokenIndex++; // Only advance if we consumed a number
+          break;
         }
       }
+      const raw = content.slice(start, i);
+      const normalized = raw.replace(',', '.');
+      const val = parseFloat(normalized);
+      values.push(isNaN(val) ? null : val);
+    } else {
+      values.push(null);
     }
   }
 

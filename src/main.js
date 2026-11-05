@@ -55,6 +55,14 @@ export async function compile(file) {
   const { perLine, frequencies, lengths, diagnostics: irDiag } = buildIR(structures);
   collect(irDiag, log, { fileName: file.name });
 
+  // DEBUG: Verify what the lexer is seeing
+  console.log("Frecuencias IR:", frequencies);
+
+  // If the first structure is a single 'n', something is very wrong with the lexer.
+  if (Object.keys(frequencies).length > 0) {
+    console.log("Ejemplo de estructura (primera línea de la muestra):", structures[0].structure);
+  }
+
   // --- Phase 04: canon + expansion ---
   const {
     canon,
@@ -72,7 +80,6 @@ export async function compile(file) {
   const columns = createColumns(numColumn);
 
   // --- Phases 06–08: parse, verify, inject ---
-  // IMPORTANT: We only iterate over the data body, not the whole file.
   for (let i = body.start; i < body.end; i++) {
     const parsed = parseLine(lines[i], fixedCanon);
     collect(parsed.diagnostics, log, { fileName: file.name, index: i });
