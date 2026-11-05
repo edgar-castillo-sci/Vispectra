@@ -3,7 +3,7 @@
 A compiler for spectroscopic file formats. Cross-platform, local, serverless.
 
 ![Status](https://img.shields.io/badge/status-alpha-orange)
-![License](https://img.shields.io/badge/license-MIT-blue)
+![License](https://img.shields.io/badge/license-AGPL--3.0-blue)
 
 Vispectra is two things at once: a tool for the spectroscopist who needs to read messy files, and a case study on grammatical inference from positive presentations. The first is the use case; the second is the problem that arises when trying to solve the first with rigor.
 
@@ -102,7 +102,7 @@ locales/
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+AGPL-3.0. See [LICENSE](LICENSE).
 
 ## Author
 

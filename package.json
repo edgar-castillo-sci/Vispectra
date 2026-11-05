@@ -4,8 +4,8 @@
   "description": "Compilador y visualizador de espectros (UV-Vis, XRD, XPS, Raman, IR)",
   "type": "module",
   "private": true,
-  "license": "MIT",
-  "author": "Edgar Ramón Hernández Castillo",
+  "license": "AGPL-3.0",
+  "author": "Edgar Castillo",
   "homepage": "https://doi.org/10.5281/zenodo.23177822",
   "keywords": [
     "spectroscopy",
