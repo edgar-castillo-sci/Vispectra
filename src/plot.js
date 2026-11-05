@@ -1,25 +1,20 @@
-// ============================================================
-// PLOTTER — Spectrum Visualization (Multi-series)
-// ============================================================
-
-export function drawPlot(columns) {
+export function drawPlot(columns, xIndex = 0, yIndices = [1]) {
   const canvas = document.getElementById('spectrumCanvas');
   const ctx = canvas.getContext('2d');
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Necesitamos al menos una columna X y una Y
-  if (!columns || columns.length < 2 || columns[0].length === 0) {
-    return;
-  }
+  if (!columns || !columns[xIndex] || columns[xIndex].length === 0) return;
+  if (!yIndices || yIndices.length === 0) return;
 
-  const xData = columns[0];
-  const ySeries = columns.slice(1); // Todas las columnas a partir de la 1 son series Y
+  const xData = columns[xIndex];
+  const ySeries = yIndices.map(i => columns[i]).filter(col => col !== undefined);
+
+  if (ySeries.length === 0) return;
 
   const minX = Math.min(...xData);
   const maxX = Math.max(...xData);
 
-  // Encontrar el máximo y mínimo global de todas las series Y
   let minY = Infinity;
   let maxY = -Infinity;
   for (const series of ySeries) {
@@ -29,17 +24,15 @@ export function drawPlot(columns) {
     }
   }
 
-  const margin = 40;
+  const margin = 50;
   const plotWidth = canvas.width - (margin * 2);
   const plotHeight = canvas.height - (margin * 2);
 
   const mapX = (x) => margin + ((x - minX) / (maxX - minX)) * plotWidth;
   const mapY = (y) => canvas.height - margin - ((y - minY) / (maxY - minY)) * plotHeight;
 
-  // Colores para las distintas series
   const colors = ['#0066cc', '#cc0000', '#009933', '#ff9900', '#6600cc'];
 
-  // Dibujar cada serie Y
   ySeries.forEach((yData, index) => {
     ctx.beginPath();
     ctx.strokeStyle = colors[index % colors.length];
@@ -49,16 +42,13 @@ export function drawPlot(columns) {
       const px = mapX(xData[i]);
       const py = mapY(yData[i]);
 
-      if (i === 0) {
-        ctx.moveTo(px, py);
-      } else {
-        ctx.lineTo(px, py);
-      }
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
     }
     ctx.stroke();
   });
 
-  // Ejes
+  // Ejes y etiquetas
   ctx.strokeStyle = '#333';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -67,11 +57,10 @@ export function drawPlot(columns) {
   ctx.lineTo(canvas.width - margin, canvas.height - margin);
   ctx.stroke();
 
-  // Etiquetas
   ctx.fillStyle = '#333';
   ctx.font = '12px sans-serif';
-  ctx.fillText(minX.toFixed(1), margin, canvas.height - margin + 20);
-  ctx.fillText(maxX.toFixed(1), canvas.width - margin - 30, canvas.height - margin + 20);
-  ctx.fillText(maxY.toFixed(2), margin - 30, margin + 5);
-  ctx.fillText(minY.toFixed(2), margin - 30, canvas.height - margin);
+  ctx.fillText(`X: ${minX.toFixed(1)}`, margin, canvas.height - margin + 20);
+  ctx.fillText(`${maxX.toFixed(1)}`, canvas.width - margin - 30, canvas.height - margin + 20);
+  ctx.fillText(`Y: ${maxY.toFixed(2)}`, 5, margin + 5);
+  ctx.fillText(`${minY.toFixed(2)}`, 5, canvas.height - margin);
 }

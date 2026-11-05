@@ -5,20 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="css/estilos.css">
     <title>Vispectra</title>
+    <style>
+        .container { display: flex; gap: 2rem; margin-top: 1rem; }
+        .sidebar { width: 300px; }
+        .main-plot { flex-grow: 1; }
+        .role-selector { margin-bottom: 1rem; padding: 0.5rem; background: #f0f0f0; border-radius: 4px; }
+        .role-selector label { display: block; font-size: 0.9rem; margin-bottom: 0.2rem; }
+        select { width: 100%; padding: 0.3rem; margin-bottom: 0.5rem; }
+    </style>
 </head>
 <body>
 
-<div id="zonaDrop" style="border:2px dashed #999;padding:2rem;text-align:center;border-radius:8px;">
-  Arrastra tus espectros aquí
+<h1>Vispectra</h1>
+
+<div id="zonaDrop" style="border:2px dashed #999;padding:2rem;text-align:center;border-radius:8px; cursor: pointer;">
+  Arrastra tus espectros aquí o haz clic para buscar
 </div>
 
-<p>o</p>
+<input type="file" id="entradaArchivos" multiple accept=".txt,.csv,.tsv,.dat,.asc,.xlsx,text/plain,text/csv" style="display: none;">
 
-<input type="file" id="entradaArchivos" multiple>
-<button id="botonProcesar">Procesar</button>
-<button id="botonExportar" disabled>Exportar PNG</button>
-<div id="salida">Esperando archivos...</div>
-<canvas id="spectrumCanvas" width="800" height="400" style="border: 1px solid #ccc; margin-top: 1rem; background: white;"></canvas>
+<div class="container">
+    <div class="sidebar">
+        <button id="botonProcesar" style="width: 100%; margin-bottom: 1rem;">Procesar</button>
+        
+        <div id="rolePanel" style="display: none;">
+            <h3>Asignación de Roles</h3>
+            <p style="font-size: 0.8rem; color: #666;">El compilador detectó varias columnas. Dinos qué representan:</p>
+            
+            <div class="role-selector">
+                <label for="selectX">Eje X (Independiente):</label>
+                <select id="selectX"></select>
+            </div>
+
+            <div class="role-selector">
+                <label for="selectY">Series Y (Dependientes):</label>
+                <div id="checkboxesY"></div>
+            </div>
+            
+            <button id="botonGraficar" style="width: 100%; background: #009933;">Actualizar Gráfico</button>
+        </div>
+
+        <div id="salida" style="margin-top: 1.5rem; padding: 1rem; font-family: monospace; font-size: 0.85rem; background: #fff; border: 1px solid #ddd; border-radius: 8px; white-space: pre-wrap;">Esperando archivos...</div>
+    </div>
+
+    <div class="main-plot">
+        <canvas id="spectrumCanvas" width="800" height="500" style="border: 1px solid #ccc; background: white; width: 100%;"></canvas>
+    </div>
+</div>
 
 <script type="module" src="src/main.js"></script>
 

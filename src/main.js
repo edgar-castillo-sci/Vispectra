@@ -4,8 +4,8 @@
 // Does not implement compiler logic. It only calls the phases
 // in order and passes data between them.
 // ============================================================
-
 import { initUI } from './ui.js';
+import { drawPlot } from './plot.js'; // <-- IMPORTANTE
 
 import { readFile } from './compiler/00_reading.js';
 import { sample } from './compiler/01_sampling.js';
@@ -17,34 +17,22 @@ import { parseLine } from './compiler/06_parser.js';
 import { verify } from './compiler/07_semantics.js';
 import { createColumns, inject } from './compiler/08_codegen.js';
 import { createLog } from './compiler/09_diagnostics.js';
-import { drawPlot } from './plot.js';
 
-// ------------------------------------------------------------
-// Local helper: collects diagnostics into the log,
-// adding common context (file name, index, etc.)
-// to the params of each diagnostic.
-// ------------------------------------------------------------
 function collect(diagnostics, log, context = {}) {
   for (const d of diagnostics) {
     log.add({ ...d, params: { ...d.params, ...context } });
   }
 }
 
-// ------------------------------------------------------------
-// compile(file) → { columns, fixedCanon, body, log }
-// ------------------------------------------------------------
 export async function compile(file) {
   const log = createLog();
 
-  // --- Phase 00: reading ---
   const { text, diagnostics: readDiag } = await readFile(file);
   collect(readDiag, log, { fileName: file.name });
 
-  // --- Phase 01: sampling ---
   const { lines, centralBlock, sample: sampleIndices, diagnostics: samplingDiag } = sample(text);
   collect(samplingDiag, log, { fileName: file.name });
 
-  // --- Phase 02: lexer (only on the sample) ---
   const structures = [];
   for (const idx of sampleIndices) {
     const { structure, diagnostics } = lex(lines[idx].content);
@@ -52,35 +40,18 @@ export async function compile(file) {
     structures.push({ index: idx, structure });
   }
 
-  // --- Phase 03: IR ---
   const { perLine, frequencies, lengths, diagnostics: irDiag } = buildIR(structures);
   collect(irDiag, log, { fileName: file.name });
 
-  // DEBUG: Verify what the lexer is seeing
-  console.log("Frecuencias IR:", frequencies);
-
-  // If the first structure is a single 'n', something is very wrong with the lexer.
-  if (Object.keys(frequencies).length > 0) {
-    console.log("Ejemplo de estructura (primera línea de la muestra):", structures[0].structure);
-  }
-
-  // --- Phase 04: canon + expansion ---
-  const {
-    canon,
-    body,
-    diagnostics: canonDiag,
-  } = buildCanon({ perLine, frequencies, lengths }, lines, centralBlock);
+  const { canon, body, diagnostics: canonDiag } = buildCanon({ perLine, frequencies, lengths }, lines, centralBlock);
   collect(canonDiag, log, { fileName: file.name });
 
-  // --- Phase 05: fixation ---
   const { fixedCanon, diagnostics: fixationDiag } = fixCanon(canon);
   collect(fixationDiag, log, { fileName: file.name });
 
-  // --- Column preparation ---
   const numColumn = countColumns(fixedCanon);
   const columns = createColumns(numColumn);
 
-  // --- Phases 06–08: parse, verify, inject ---
   for (let i = body.start; i < body.end; i++) {
     const parsed = parseLine(lines[i], fixedCanon);
     collect(parsed.diagnostics, log, { fileName: file.name, index: i });
@@ -93,23 +64,14 @@ export async function compile(file) {
     inject(verified.values, columns);
   }
 
-  // Debug: Print the first 5 values of each column to verify data extraction
-  console.log("Primeros 5 valores de la columna 0:", columns[0]?.slice(0, 5));
-  console.log("Primeros 5 valores de la columna 1:", columns[1]?.slice(0, 5));
-
-  drawPlot(columns);
-
-return { columns, fixedCanon, body, log };
-
+  return { columns, fixedCanon, body, log };
 }
 
-// ------------------------------------------------------------
-// Entry point: connects the UI with the compiler.
-// ------------------------------------------------------------
-initUI(async (archivos, salida) => {
-  salida.textContent = '';
-
-  for (const archivo of archivos) {
+// Inicializar la UI pasando las dos funciones
+initUI(
+  // Función de Procesar
+  async (archivo, salida) => {
+    salida.textContent = '';
     try {
       const { columns, fixedCanon, body, log } = await compile(archivo);
 
@@ -121,14 +83,17 @@ initUI(async (archivos, salida) => {
       const errors = log.bySeverity('error');
       const warnings = log.bySeverity('warn');
 
-      if (errors.length > 0) {
-        salida.textContent += `  errors: ${errors.length}\n`;
-      }
-      if (warnings.length > 0) {
-        salida.textContent += `  warnings: ${warnings.length}\n`;
-      }
+      if (errors.length > 0) salida.textContent += `  errors: ${errors.length}\n`;
+      if (warnings.length > 0) salida.textContent += `  warnings: ${warnings.length}\n`;
+
+      return { columns }; // Devolvemos las columnas a la UI
     } catch (err) {
       salida.textContent += `✗ ${archivo.name}: ${err.message}\n`;
+      return null;
     }
+  },
+  // Función de Graficar
+  (columns, xIndex, yIndices) => {
+    drawPlot(columns, xIndex, yIndices);
   }
-});
+);
