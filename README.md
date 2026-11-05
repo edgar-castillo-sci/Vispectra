@@ -1,109 +1,76 @@
 # Vispectra
 
-A compiler for spectroscopic file formats. Cross-platform, local, serverless.
+## Abstract
 
-![Status](https://img.shields.io/badge/status-alpha-orange)
-![License](https://img.shields.io/badge/license-AGPL--3.0-blue)
+Vispectra is a compiler for spectroscopic file formats (UV-Vis, XRD, XPS, Raman, IR). It is designed to ingest heterogeneous, unformatted instrument outputs and transform them into strict numerical matrices. 
 
-Vispectra is two things at once: a tool for the spectroscopist who needs to read messy files, and a case study on grammatical inference from positive presentations. The first is the use case; the second is the problem that arises when trying to solve the first with rigor.
+Rather than relying on hardcoded parsers for specific proprietary formats, Vispectra infers the grammatical structure of the file from a statistical sample of its contents. It operates entirely client-side within a web browser, ensuring zero telemetry, no backend dependencies, and complete data privacy.
 
-## Description
+## Theoretical Background
 
-Vispectra reads spectroscopy files exactly as they come from the instrument — or from merging several of them — and converts them into clean numerical columns.
+Reading an unknown file format without prior specification is equivalent to the **identification of grammars from positive presentations**. In 1967, E. M. Gold demonstrated that this problem is formally impossible to solve in the general case using only positive examples.
 
-The architecture is not that of a conventional spectra reader: it is that of a compiler that infers the file's grammar from a sample of its data, builds a structural contract (the *canon*), and applies it to the rest. The starting premise is that the file is the source of truth, and the parser must learn to read it, not the other way around.
+Vispectra does not attempt to solve the general problem. Instead, it restricts the domain to spectroscopic data and applies **inductive biases** (heuristics) to make the problem tractable:
+1.  **Central Block Sampling:** It assumes that preambles and residues occupy the extremes of the file, while the central block contains the raw data.
+2.  **Canonicalization:** It extracts a structural contract (the *canon*) by comparing line structures (e.g., `n,n` vs `n,,`).
+3.  **The Anchor (`i`):** It uses a wildcard symbol to represent positions that admit either a value or an empty slot, resolving structural ambiguities.
 
-It runs entirely in the browser, with no backend, no file uploads, and no telemetry. It works on any operating system with a modern browser, and once loaded, it can operate offline.
+When the compiler cannot decide on a valid structure, it fails explicitly by emitting typed diagnostics rather than silently producing corrupt data.
 
-## Architecture
+## System Architecture
 
-The parser is a pipeline of independent phases, communicating through explicit contracts:
-
-```
-[00_reading]      → normalized text
-[01_sampling]     → lines + random sample from the central block
-[02_lexer]        → per-line structure
-[03_ir]           → intermediate representation
-[04_canon]        → canon inference + center-out expansion
-[05_fixation]     → fixed canon
-[06_parser]       → parsed values per line
-[07_semantics]    → verification
-[08_codegen]      → clean columns
-[09_diagnostics]  → diagnostics accumulator
-```
-
-Each phase is a pure function that receives data and returns data. The only exception is `08_codegen`, which mutates the columns by explicit design. The compiler does not guess: when it cannot decide, it fails with a typed diagnostic instead of silently producing corrupt data.
-
-The core is technique-agnostic. UV-Vis is the first implementation; XRD, XPS, Raman, and IR only add validation ranges and post-parsing operations.
-
-## The Problem
-
-Spectroscopy files are heterogeneous by nature. Every instrument, software, and version exports with its own dialect: comma or dot decimals, tabs or spaces, headers of variable length, missing values disguised as empty separators.
-
-Most tools assume a fixed format. Vispectra infers the structure from the data. What begins as a parsing problem becomes, upon formalization, a case of grammatical inference: the identification of grammars from positive presentations, proven impossible in the general case by Gold (1967). Vispectra does not solve the general problem; it restricts it to a tractable domain through inductive biases. But the connection is real, and it is what makes the project more than just a parser.
-
-## Status
-
-**Alpha.** Early design and development.
-
-**Implemented:**
-- Phase 00 — reading and normalization
-- Phase 02 — lexer (point and comma classification)
-- Phase 09 — diagnostics accumulator
-- Orchestrator (`main.js`)
-- Complete parser specification (R1–R95)
-- Documented pipeline architecture
-
-**In development:**
-- Phase 01 — central block sampling
-- Phases 03–08 of the compiler
-
-**Planned:**
-- Visualization
-- Hybrid UI (column role assignment)
-- Support for XRD, XPS, Raman, IR
-- Internationalization (English, Spanish)
-
-The compiler **does not yet parse files**. This section will be updated with each release.
-
-## Usage
-
-The compiler is not operational yet. For now, the project can be explored by reading the documentation in `docs/`.
-
-## Structure
+The compiler is structured as a pipeline of independent, pure functions. Each phase communicates through explicit data contracts and immutable data structures, with the sole exception of `08_codegen`, which mutates the final column arrays for performance.
 
 ```
-src/
-├── compiler/       Phase-based parser (00–09)
-├── i18n.js         Internationalization
-├── main.js         Orchestrator
-├── plot.js         Plotter
-└── ui.js           Interface
-docs/
-├── origin.md       Design history (in Spanish)
-├── architecture.md Pipeline and contracts
-├── rules.md        Parser specification (R1–R95)
-└── examples.md     Worked test cases
-locales/
-├── en.js           Base language (planned)
-└── es.js           Spanish
+[00_reading]      → text normalization and BOM handling
+[01_sampling]     → extraction of the central block and random sampling
+[02_lexer]        → structural classification of tokens (n, c, ,)
+[03_ir]           → intermediate representation and frequency analysis
+[04_canon]        → grammar inference and center-out expansion
+[05_fixation]     → tokenization and comma parity resolution
+[06_parser]       → line-by-line extraction using the fixed canon
+[07_semantics]    → structural validation and ambiguity resolution
+[08_codegen]      → column population (null-to-zero injection)
+[09_diagnostics]  → centralized diagnostic accumulator
 ```
 
-## Documentation
+## Implementation Status
 
-- [Origin](docs/origen.md) — history of the design *(in Spanish)*
-- [Architecture](docs/architecture.md) — pipeline and contracts between phases
-- [Rules](docs/rules.md) — complete parser specification (R1–R95)
-- [Roadmap](ROADMAP.md) — work areas and planned releases
+**Current Version:** `v0.1.1-alpha` (Pre-release)
+
+*   **Implemented:** Phases 00, 01, 02, 03, and 09.
+*   **In Development (Stubs):** Phases 04, 05, 06, 07, and 08.
+*   **Status:** The pipeline runs end-to-end and correctly parses the sampled structures of real spectroscopic files, but it does not yet output final numerical columns.
+
+## Usage & Deployment
+
+The compiler is designed to run locally. To start the development environment:
+
+```bash
+git clone https://github.com/edgar-castillo-sci/Vispectra.git
+cd Vispectra
+npm run dev
+```
+Access the local server in your browser and drop a spectroscopic file into the interface.
+
+## License and Open Science
+
+Vispectra is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+
+This license was chosen to ensure that any modifications to the compiler—including those used to provide network services—remain open-source. The AGPL-3.0 protects the scientific core from proprietary forks. For commercial or proprietary integration, dual-licensing negotiations are available by contacting the author.
 
 ## References
 
-- Gold, E. M. (1967). Language identification in the limit. *Information and Control*, 10(5), 447–474. https://doi.org/10.1016/S0019-9958(67)91165-5
+- Gold, E. M. (1967). *Language identification in the limit*. Information and Control, 10(5), 447–474. https://doi.org/10.1016/S0019-9958(67)91165-5
 
-## License
+## Citation
 
-AGPL-3.0. See [LICENSE](LICENSE).
+If you use Vispectra in academic research, please cite the archived release:
+
+> Castillo, E. (2026). *Vispectra: A compiler for spectroscopic file formats* (v0.1.0-alpha) [Software]. Zenodo. https://doi.org/10.5281/zenodo.23177822
 
 ## Author
 
-Castillo, Edgar R. H. · [ORCID 0009-0006-4268-3323](https://orcid.org/0009-0006-4268-3323)
+**Edgar Castillo**  
+Independent Researcher  
+[ORCID: 0009-0006-4268-3323](https://orcid.org/0009-0006-4268-3323)
