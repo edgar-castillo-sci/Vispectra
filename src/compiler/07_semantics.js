@@ -52,13 +52,8 @@
 // ============================================================
 
 // TODO: implementar.
-
-//stub
 export function verify(parsed, fixedCanon) {
-  return {
-    index: parsed.index,
-    ok: false,
-    values: [],
-    diagnostics: [{ severity: 'warn', code: 'NOT_IMPLEMENTED', params: { phase: '07_semantics', index: parsed.index } }],
-  };
+  // For now, we trust the parser. We just pass the values through.
+  // In the future, this will validate physical ranges (e.g., absorbance 0-4).
+  return parsed;
 }

@@ -72,7 +72,8 @@ export async function compile(file) {
   const columns = createColumns(numColumn);
 
   // --- Phases 06–08: parse, verify, inject ---
-  for (let i = 0; i < lines.length; i++) {
+  // IMPORTANT: We only iterate over the data body, not the whole file.
+  for (let i = body.start; i < body.end; i++) {
     const parsed = parseLine(lines[i], fixedCanon);
     collect(parsed.diagnostics, log, { fileName: file.name, index: i });
     if (!parsed.ok) continue;
@@ -83,6 +84,10 @@ export async function compile(file) {
 
     inject(verified.values, columns);
   }
+
+  // Debug: Print the first 5 values of each column to verify data extraction
+  console.log("Primeros 5 valores de la columna 0:", columns[0]?.slice(0, 5));
+  console.log("Primeros 5 valores de la columna 1:", columns[1]?.slice(0, 5));
 
   return { columns, fixedCanon, body, log };
 }
