@@ -17,6 +17,7 @@ import { parseLine } from './compiler/06_parser.js';
 import { verify } from './compiler/07_semantics.js';
 import { createColumns, inject } from './compiler/08_codegen.js';
 import { createLog } from './compiler/09_diagnostics.js';
+import { drawPlot } from './plot.js';
 
 // ------------------------------------------------------------
 // Local helper: collects diagnostics into the log,
@@ -96,7 +97,10 @@ export async function compile(file) {
   console.log("Primeros 5 valores de la columna 0:", columns[0]?.slice(0, 5));
   console.log("Primeros 5 valores de la columna 1:", columns[1]?.slice(0, 5));
 
-  return { columns, fixedCanon, body, log };
+  drawPlot(columns);
+
+return { columns, fixedCanon, body, log };
+
 }
 
 // ------------------------------------------------------------

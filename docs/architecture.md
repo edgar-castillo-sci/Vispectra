@@ -244,6 +244,53 @@ Because the central block is where there is most likely only data. Expanding out
 
 Out of scope (R84). It can be added as a previous layer if needed. It breaks comma counting and requires a normalization phase before the lexer.
 
+## Data Processing and Batch Execution (Planned)
+
+### Philosophy: Exploration vs. Production
+
+Vispectra recognizes two distinct modes of interaction for the scientist:
+1.  **Exploration (UI-driven):** Interactive visualization, manual parameter tweaking, and visual inspection of individual files.
+2.  **Production (Script-driven):** Batch processing of entire directories using a predefined, reproducible configuration file.
+
+The UI is for exploration; the script is for producing publication-ready data. A scientist should not have to manually click through 50 menus to process 50 spectra. They define the treatment once, attach the configuration file, and execute.
+
+### Phase 10: Data Treatment Engine
+
+After the compiler finishes its pipeline (Phases 00–09), the resulting `columns` array is passed to a **Data Treatment Engine** (planned for a future version).
+
+This engine will perform mathematical operations on the raw numerical data, guided entirely by a configuration file provided by the user.
+
+#### Supported Operations (Planned)
+-   **Smoothing:** Moving average, Savitzky-Golay filters.
+-   **Baseline Correction:** Linear interpolation based on user-defined anchor points.
+-   **Normalization:** Maximum peak, min-max scaling, or vector normalization.
+-   **Technique-Specific:** Peak detection (Raman/XRD), derivative spectroscopy (UV-Vis).
+
+#### Configuration Format: YAML / JSON
+
+The engine will consume a declarative configuration file (likely `.yaml` or `.json`), which acts as a machine-readable "Materials and Methods" section. 
+
+Example of a planned UV-Vis configuration (`treatment.yaml`):
+```yaml
+technique: UV-Vis
+operations:
+  - type: baseline_correction
+    method: linear
+    anchors: [350, 800] # Wavelengths where absorbance should be zero
+  - type: smoothing
+    method: savitzky_golay
+    window: 11
+    polynomial_order: 2
+  - type: normalization
+    method: max_peak
+```
+
+#### Batch Processing
+The UI will allow the user to drop an entire folder of spectroscopic files alongside the configuration file. Vispectra will compile every file, apply the identical treatment script to all of them, and offer a unified export (e.g., a clean CSV containing all processed spectra).
+
+#### Zero-Dependency Constraint
+To maintain the browser-native, local-first philosophy, all mathematical operations (smoothing, baseline, etc.) and the YAML parser must be implemented in Vanilla JavaScript without external heavy libraries (like TensorFlow.js or math.js). Only lightweight, auditable code is permitted.
+
 ## Out of Scope
 
 - **R84**: thousands notation (`1.234,56`).

@@ -1,20 +1,77 @@
 // ============================================================
-// plot — Graficador de espectros
+// PLOTTER — Spectrum Visualization (Multi-series)
 // ============================================================
-// Consume: columnas normalizadas producidas por 08_codegen,
-//          y opcionalmente los roles asignados en ui.js.
-// Produce: un gráfico interactivo en el navegador.
-//
-// Hace (planificado):
-//   - Renderizar el espectro con Canvas o SVG.
-//   - Etiquetar ejes según los roles asignados.
-//   - Zoom y paneo básico.
-//   - Exportación a PNG (resolución de pantalla).
-//
-// NO hace:
-//   - No parsea archivos.
-//   - No valida datos.
-//   - No decide roles de columnas (eso es ui.js).
-//
-// Estado: pendiente. Se implementará en la fase v0.4 del ROADMAP.
-// ============================================================
+
+export function drawPlot(columns) {
+  const canvas = document.getElementById('spectrumCanvas');
+  const ctx = canvas.getContext('2d');
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Necesitamos al menos una columna X y una Y
+  if (!columns || columns.length < 2 || columns[0].length === 0) {
+    return;
+  }
+
+  const xData = columns[0];
+  const ySeries = columns.slice(1); // Todas las columnas a partir de la 1 son series Y
+
+  const minX = Math.min(...xData);
+  const maxX = Math.max(...xData);
+
+  // Encontrar el máximo y mínimo global de todas las series Y
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const series of ySeries) {
+    for (const val of series) {
+      if (val < minY) minY = val;
+      if (val > maxY) maxY = val;
+    }
+  }
+
+  const margin = 40;
+  const plotWidth = canvas.width - (margin * 2);
+  const plotHeight = canvas.height - (margin * 2);
+
+  const mapX = (x) => margin + ((x - minX) / (maxX - minX)) * plotWidth;
+  const mapY = (y) => canvas.height - margin - ((y - minY) / (maxY - minY)) * plotHeight;
+
+  // Colores para las distintas series
+  const colors = ['#0066cc', '#cc0000', '#009933', '#ff9900', '#6600cc'];
+
+  // Dibujar cada serie Y
+  ySeries.forEach((yData, index) => {
+    ctx.beginPath();
+    ctx.strokeStyle = colors[index % colors.length];
+    ctx.lineWidth = 1.5;
+
+    for (let i = 0; i < xData.length; i++) {
+      const px = mapX(xData[i]);
+      const py = mapY(yData[i]);
+
+      if (i === 0) {
+        ctx.moveTo(px, py);
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+    ctx.stroke();
+  });
+
+  // Ejes
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(margin, margin);
+  ctx.lineTo(margin, canvas.height - margin);
+  ctx.lineTo(canvas.width - margin, canvas.height - margin);
+  ctx.stroke();
+
+  // Etiquetas
+  ctx.fillStyle = '#333';
+  ctx.font = '12px sans-serif';
+  ctx.fillText(minX.toFixed(1), margin, canvas.height - margin + 20);
+  ctx.fillText(maxX.toFixed(1), canvas.width - margin - 30, canvas.height - margin + 20);
+  ctx.fillText(maxY.toFixed(2), margin - 30, margin + 5);
+  ctx.fillText(minY.toFixed(2), margin - 30, canvas.height - margin);
+}
