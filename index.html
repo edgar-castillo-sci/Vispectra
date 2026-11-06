@@ -5,51 +5,91 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="css/estilos.css">
     <title>Vispectra</title>
+
+    <!-- Librerías para exportación (solo se descargan la primera vez) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/svg2pdf.js/2.2.0/svg2pdf.min.js"></script>
+
     <style>
-        .container { display: flex; gap: 2rem; margin-top: 1rem; }
-        .sidebar { width: 300px; }
-        .main-plot { flex-grow: 1; }
-        .role-selector { margin-bottom: 1rem; padding: 0.5rem; background: #f0f0f0; border-radius: 4px; }
-        .role-selector label { display: block; font-size: 0.9rem; margin-bottom: 0.2rem; }
-        select { width: 100%; padding: 0.3rem; margin-bottom: 0.5rem; }
+        body { font-family: system-ui, -apple-system, sans-serif; max-width: 1200px; margin: 2rem auto; padding: 0 1rem; background: #fafafa; color: #222; }
+        h1 { color: #0066cc; border-bottom: 2px solid #0066cc; padding-bottom: 0.5rem; }
+        .container { display: flex; gap: 2rem; margin-top: 1.5rem; align-items: flex-start; flex-wrap: wrap; }
+        .sidebar { width: 320px; flex-shrink: 0; }
+        .main-plot { flex-grow: 1; min-width: 300px; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        #zonaDrop { border: 2px dashed #999; padding: 1.5rem; text-align: center; border-radius: 8px; cursor: pointer; background: white; transition: all 0.2s; margin-bottom: 1rem; }
+        #zonaDrop:hover { border-color: #0066cc; background: #f0f7ff; }
+        button { padding: 0.5rem 1rem; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; width: 100%; margin-bottom: 0.5rem; }
+        button:hover { background: #0052a3; }
+
+        .export-group { display: flex; gap: 0.5rem; margin-top: 1rem; margin-bottom: 0.5rem; }
+        .export-group select { flex-grow: 1; padding: 0.5rem; border-radius: 4px; border: 1px solid #ccc; }
+        .export-group button { width: auto; margin-bottom: 0; background: #444; }
+
+        .role-selector { margin-bottom: 1rem; padding: 0.8rem; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; }
+        .role-selector label { display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 0.4rem; }
+        select { width: 100%; padding: 0.4rem; border-radius: 4px; border: 1px solid #ccc; }
+        .auto-plot-toggle { margin-bottom: 1rem; padding: 0.8rem; background: #e3f2fd; border-radius: 6px; border: 1px solid #bbdefb; }
+        .auto-plot-toggle label { display: flex; align-items: center; cursor: pointer; font-weight: bold; }
+        .auto-plot-toggle input { margin-right: 0.5rem; width: 1.2rem; height: 1.2rem; }
+        #salida { margin-top: 1.5rem; padding: 1rem; background: #fff; border: 1px solid #ddd; border-radius: 8px; min-height: 100px; font-family: monospace; font-size: 0.85rem; white-space: pre-wrap; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); }
+
+        #spectrumSvg { display: block; width: 100%; height: auto; aspect-ratio: 8 / 5; background: white; }
     </style>
 </head>
 <body>
 
 <h1>Vispectra</h1>
 
-<div id="zonaDrop" style="border:2px dashed #999;padding:2rem;text-align:center;border-radius:8px; cursor: pointer;">
+<div id="zonaDrop">
   Arrastra tus espectros aquí o haz clic para buscar
 </div>
-
 <input type="file" id="entradaArchivos" multiple accept=".txt,.csv,.tsv,.dat,.asc,.xlsx,text/plain,text/csv" style="display: none;">
 
 <div class="container">
     <div class="sidebar">
-        <button id="botonProcesar" style="width: 100%; margin-bottom: 1rem;">Procesar</button>
-        
-        <div id="rolePanel" style="display: none;">
-            <h3>Asignación de Roles</h3>
-            <p style="font-size: 0.8rem; color: #666;">El compilador detectó varias columnas. Dinos qué representan:</p>
-            
+        <button id="botonProcesar">Procesar Archivo</button>
+
+        <div id="rolePanel" style="display: none; margin-top: 1.5rem;">
+            <h3 style="margin-top: 0; font-size: 1.1rem;">Asignación de Roles</h3>
+
+            <div class="auto-plot-toggle">
+                <label>
+                    <input type="checkbox" id="toggleAutoPlot" checked>
+                    Auto-graficar
+                </label>
+            </div>
+
             <div class="role-selector">
                 <label for="selectX">Eje X (Independiente):</label>
                 <select id="selectX"></select>
             </div>
 
             <div class="role-selector">
-                <label for="selectY">Series Y (Dependientes):</label>
+                <label>Series Y (Dependientes):</label>
                 <div id="checkboxesY"></div>
             </div>
-            
-            <button id="botonGraficar" style="width: 100%; background: #009933;">Actualizar Gráfico</button>
+
+            <button id="botonGraficar" style="display: none; background: #009933;">Actualizar Gráfico</button>
+
+            <div class="export-group">
+                <select id="selectFormat">
+                    <option value="svg">SVG (Vector)</option>
+                    <option value="png">PNG (Alta Res)</option>
+                    <option value="jpeg">JPEG</option>
+                    <option value="pdf">PDF (Vector)</option>
+                </select>
+                <button id="botonExportar">Exportar Gráfico</button>
+            </div>
+
+            <!-- NUEVO BOTÓN PARA EXPORTAR DATOS -->
+            <button id="botonExportCsv" style="background: #555;">Exportar Datos (CSV)</button>
         </div>
 
-        <div id="salida" style="margin-top: 1.5rem; padding: 1rem; font-family: monospace; font-size: 0.85rem; background: #fff; border: 1px solid #ddd; border-radius: 8px; white-space: pre-wrap;">Esperando archivos...</div>
+        <div id="salida">Esperando archivos...</div>
     </div>
 
     <div class="main-plot">
-        <canvas id="spectrumCanvas" width="800" height="500" style="border: 1px solid #ccc; background: white; width: 100%;"></canvas>
+        <svg id="spectrumSvg" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
 </div>
 
