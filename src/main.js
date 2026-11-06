@@ -1,11 +1,6 @@
-// ============================================================
-// VISPECTRA — ORCHESTRATOR
-// ============================================================
-// Does not implement compiler logic. It only calls the phases
-// in order and passes data between them.
-// ============================================================
 import { initUI } from './ui.js';
-import { drawPlot } from './plot.js'; // <-- IMPORTANTE
+import { drawPlot } from './plot.js';
+import { smoothMovingAverage } from './processor.js'; // <-- IMPORTANTE
 
 import { readFile } from './compiler/00_reading.js';
 import { sample } from './compiler/01_sampling.js';
@@ -26,7 +21,6 @@ function collect(diagnostics, log, context = {}) {
 
 export async function compile(file) {
   const log = createLog();
-
   const { text, diagnostics: readDiag } = await readFile(file);
   collect(readDiag, log, { fileName: file.name });
 
@@ -67,33 +61,40 @@ export async function compile(file) {
   return { columns, fixedCanon, body, log };
 }
 
-// Inicializar la UI pasando las dos funciones
+// Inicializar la UI
 initUI(
-  // Función de Procesar
+  // Procesar
   async (archivo, salida) => {
     salida.textContent = '';
     try {
       const { columns, fixedCanon, body, log } = await compile(archivo);
-
       salida.textContent += `✓ ${archivo.name}\n`;
       salida.textContent += `  columns: ${columns.length}\n`;
       salida.textContent += `  canon: ${fixedCanon.join('')}\n`;
       salida.textContent += `  body: [${body.start}, ${body.end}]\n`;
-
-      const errors = log.bySeverity('error');
-      const warnings = log.bySeverity('warn');
-
-      if (errors.length > 0) salida.textContent += `  errors: ${errors.length}\n`;
-      if (warnings.length > 0) salida.textContent += `  warnings: ${warnings.length}\n`;
-
-      return { columns }; // Devolvemos las columnas a la UI
+      return { columns };
     } catch (err) {
       salida.textContent += `✗ ${archivo.name}: ${err.message}\n`;
       return null;
     }
   },
-  // Función de Graficar
+    // Función de Graficar
   (columns, xIndex, yIndices) => {
-    drawPlot(columns, xIndex, yIndices);
+    try {
+      const processedColumns = columns.map(col => [...col]);
+      yIndices.forEach(idx => {
+        // Solo suavizamos si hay más de 5 puntos
+        if (columns[idx] && columns[idx].length > 5) {
+          processedColumns[idx] = smoothMovingAverage(columns[idx], 5);
+        }
+      });
+
+      console.log("Datos que recibe el plotter (X):", processedColumns[xIndex]?.slice(0, 5));
+      console.log("Datos que recibe el plotter (Y):", processedColumns[yIndices[0]]?.slice(0, 5));
+
+      drawPlot(processedColumns, xIndex, yIndices);
+    } catch (error) {
+      console.error("Error al graficar:", error);
+    }
   }
 );

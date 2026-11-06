@@ -4,28 +4,28 @@ export function drawPlot(columns, xIndex = 0, yIndices = [1]) {
   const svg = document.getElementById('spectrumSvg');
   if (!svg) return;
 
-  // Limpiar SVG de forma segura (evita problemas de compatibilidad)
-  while (svg.firstChild) {
-    svg.removeChild(svg.firstChild);
-  }
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
 
   if (!columns || !columns[xIndex] || columns[xIndex].length === 0) return;
   if (!yIndices || yIndices.length === 0) return;
 
   const xData = columns[xIndex];
-  const ySeries = yIndices.map(i => columns[i]).filter(col => col !== undefined);
+  const ySeries = yIndices.map(i => columns[i]).filter(col => col !== undefined && col !== null);
   if (ySeries.length === 0) return;
 
-  const minX = Math.min(...xData);
-  const maxX = Math.max(...xData);
-  let minY = Infinity;
-  let maxY = -Infinity;
-  for (const series of ySeries) {
-    for (const val of series) {
-      if (val < minY) minY = val;
-      if (val > maxY) maxY = val;
-    }
-  }
+  // 1. FORZAR CONVERSIÓN A NÚMERO Y FILTRAR VÁLIDOS (Evita NaNs y strings)
+  const validX = xData.map(Number).filter(Number.isFinite);
+  if (validX.length === 0) return;
+
+  const allY = ySeries.flat().map(Number).filter(Number.isFinite);
+  if (allY.length === 0) return;
+
+  const minX = Math.min(...validX);
+  const maxX = Math.max(...validX);
+  const minY = Math.min(...allY);
+  const maxY = Math.max(...allY);
+
+
 
   const width = 800;
   const height = 500;
@@ -36,8 +36,8 @@ export function drawPlot(columns, xIndex = 0, yIndices = [1]) {
   const mapX = (x) => margin.left + ((x - minX) / (maxX - minX)) * plotWidth;
   const mapY = (y) => margin.top + plotHeight - ((y - minY) / (maxY - minY)) * plotHeight;
 
+  // --- Ejes ---
   const axisGroup = document.createElementNS(SVG_NS, 'g');
-
   const xAxis = document.createElementNS(SVG_NS, 'line');
   xAxis.setAttribute('x1', margin.left);
   xAxis.setAttribute('y1', height - margin.bottom);
@@ -58,15 +58,31 @@ export function drawPlot(columns, xIndex = 0, yIndices = [1]) {
   axisGroup.appendChild(yAxis);
   svg.appendChild(axisGroup);
 
+  // --- Líneas ---
   const colors = ['#000000', '#cc0000', '#0055cc', '#009933', '#6600cc'];
 
   ySeries.forEach((yData, index) => {
     let pathData = '';
+
+    // Iterar sobre los datos originales
     for (let i = 0; i < xData.length; i++) {
-      const px = mapX(xData[i]);
-      const py = mapY(yData[i]);
-      pathData += (i === 0 ? 'M' : 'L') + ` ${px.toFixed(2)} ${py.toFixed(2)} `;
+      const valX = Number(xData[i]);
+      const valY = Number(yData[i]);
+
+      // Ignorar si alguno no es un número válido
+      if (!Number.isFinite(valX) || !Number.isFinite(valY)) continue;
+
+      const px = mapX(valX);
+      const py = mapY(valY);
+
+      if (pathData === '') {
+        pathData += `M ${px.toFixed(2)} ${py.toFixed(2)}`;
+      } else {
+        pathData += ` L ${px.toFixed(2)} ${py.toFixed(2)}`;
+      }
     }
+
+    if (pathData === '') return;
 
     const path = document.createElementNS(SVG_NS, 'path');
     path.setAttribute('d', pathData);
@@ -77,6 +93,7 @@ export function drawPlot(columns, xIndex = 0, yIndices = [1]) {
     svg.appendChild(path);
   });
 
+  // --- Etiquetas ---
   const addLabel = (text, x, y, anchor) => {
     const el = document.createElementNS(SVG_NS, 'text');
     el.setAttribute('x', x);

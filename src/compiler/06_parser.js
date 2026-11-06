@@ -1,12 +1,3 @@
-// ============================================================
-// PHASE 06 — MASTER PARSER
-// ============================================================
-// Function: parseLine(line, fixedCanon)
-//
-// Input: {index, content}, [token]
-// Output: { index, ok, values, diagnostics }
-// ============================================================
-
 export function parseLine(line, fixedCanon) {
   const { index, content } = line;
   const values = [];
@@ -23,6 +14,11 @@ export function parseLine(line, fixedCanon) {
       continue;
     }
 
+    // Saltar espacios/tabs antes del valor
+    while (i < content.length && /[ \t]/.test(content[i])) {
+      i++;
+    }
+
     if (i >= content.length) {
       values.push(null);
       continue;
@@ -31,7 +27,6 @@ export function parseLine(line, fixedCanon) {
     if (/[0-9]/.test(content[i]) || content[i] === '+' || content[i] === '-') {
       let start = i;
       while (i < content.length) {
-        // ¡AQUÍ TAMBIÉN ARREGLADO! \-
         if (/[0-9eE\+\-]/.test(content[i])) {
           i++;
         } else if (content[i] === '.' || content[i] === ',') {

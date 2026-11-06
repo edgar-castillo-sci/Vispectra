@@ -1,12 +1,3 @@
-// ============================================================
-// PHASE 02 — LEXER
-// ============================================================
-// Function: lex(line)
-//
-// Input: string (a raw line)
-// Output: { structure: string, diagnostics: [diag] }
-// ============================================================
-
 export function lex(line) {
   const structure = [];
   const diagnostics = [];
@@ -15,43 +6,44 @@ export function lex(line) {
   while (i < line.length) {
     const char = line[i];
 
-    // 1. Is it a number? (starts with digit, +, or -)
     if (/[0-9]/.test(char) || char === '+' || char === '-') {
       let hasComma = false;
       let hasDot = false;
-
       while (i < line.length) {
         const inner = line[i];
-        // ¡AQUÍ ESTÁ EL ARREGLO! El guion está escapado: \-
         if (/[0-9eE\+\-]/.test(inner)) {
           i++;
         } else if (inner === '.' || inner === ',') {
-          // It's a decimal ONLY if it's between digits (R57)
           if (i + 1 < line.length && /[0-9]/.test(line[i + 1])) {
             if (inner === ',') hasComma = true;
             if (inner === '.') hasDot = true;
             i++;
           } else {
-            break; // It's a separator, not part of the number
+            break;
           }
         } else {
-          break; // It's a separator
+          break;
         }
       }
-
-      if (hasComma && !hasDot) {
-        structure.push('c');
-      } else {
-        structure.push('n');
-      }
+      structure.push(hasComma && !hasDot ? 'c' : 'n');
     }
-    // 2. Letters and spaces are ignored
-    else if (/[a-zA-Z\s]/.test(char)) {
+    // ¡EL ARREGLO! Los espacios y tabs son separadores
+    else if (/[ \t]/.test(char)) {
+      // Solo añadimos una coma si la última estructura no era ya una coma
+      if (structure.length > 0 && structure[structure.length - 1] !== ',') {
+        structure.push(',');
+      }
       i++;
     }
-    // 3. Any other character is a column separator
+    // Letras (se ignoran)
+    else if (/[a-zA-Z]/.test(char)) {
+      i++;
+    }
+    // Cualquier otra cosa es separador
     else {
-      structure.push(',');
+      if (structure.length > 0 && structure[structure.length - 1] !== ',') {
+        structure.push(',');
+      }
       i++;
     }
   }
