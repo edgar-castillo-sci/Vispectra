@@ -1,12 +1,24 @@
-// ============================================================
-// LOCALES — ENGLISH
-// ============================================================
-// Same codes as locales/es.js, translated to English.
-//
-// Estado: pendiente. Se poblará junto con locales/es.js cuando
-// el compilador emita diagnósticos reales.
-// ============================================================
-
 export default {
-  // Vacío por ahora.
+  "app_title": "Vispectra",
+  "drop_zone": "Drag your spectra here or click to browse",
+  "btn_process": "Process File",
+  "role_title": "Role Assignment",
+  "auto_plot": "Auto-plot",
+  "auto_plot_warn": "Disable if the file is too large to prevent lag.",
+  "select_x": "X-Axis (Independent):",
+  "select_y": "Y-Series (Dependent):",
+  "btn_update_plot": "Update Plot",
+  "math_op": "Mathematical Operation:",
+  "math_none": "None (Raw Data)",
+  "math_smooth": "Gaussian Smoothing",
+  "math_derivative": "First Derivative",
+  "math_minmax": "Normalize (Min-Max)",
+  "math_max": "Normalize (Maximum)",
+  "window_size": "Window size:",
+  "btn_export_graph": "Export Graph",
+  "btn_export_csv": "Export Data (CSV)",
+  "status_waiting": "Waiting for files...",
+  "status_processing": "Processing...",
+  "alert_select_y": "Select at least one Y column to export.",
+  "col_prefix": "Column"
 };

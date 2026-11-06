@@ -1,22 +1,24 @@
-// ============================================================
-// LOCALES — ESPAÑOL (idioma base)
-// ============================================================
-// Mapa de códigos de diagnóstico a strings localizados.
-//
-// Formato:
-//   {
-//     CODIGO_DIAGNOSTICO: "Mensaje con {parametros} interpolables.",
-//     ...
-//   }
-//
-// Los códigos son los emitidos por las fases del compilador
-// (ver docs/arquitectura.md). La interpolación de `{param}`
-// la realiza i18n.js.
-//
-// Estado: pendiente. Se poblará cuando las fases 02–08 emitan
-// diagnósticos reales.
-// ============================================================
-
 export default {
-  // Vacío por ahora.
+  "app_title": "Vispectra",
+  "drop_zone": "Arrastra tus espectros aquí o haz clic para buscar",
+  "btn_process": "Procesar Archivo",
+  "role_title": "Asignación de Roles",
+  "auto_plot": "Auto-graficar",
+  "auto_plot_warn": "Desactívalo si el archivo es muy pesado para evitar ralentizaciones.",
+  "select_x": "Eje X (Independiente):",
+  "select_y": "Series Y (Dependientes):",
+  "btn_update_plot": "Actualizar Gráfico",
+  "math_op": "Operación Matemática:",
+  "math_none": "Ninguna (Datos Crudos)",
+  "math_smooth": "Suavizado (Gaussiano)",
+  "math_derivative": "Primera Derivada",
+  "math_minmax": "Normalizar (Min-Max)",
+  "math_max": "Normalizar (Máximo)",
+  "window_size": "Ventana:",
+  "btn_export_graph": "Exportar Gráfico",
+  "btn_export_csv": "Exportar Datos (CSV)",
+  "status_waiting": "Esperando archivos...",
+  "status_processing": "Procesando...",
+  "alert_select_y": "Selecciona al menos una columna Y para exportar.",
+  "col_prefix": "Columna"
 };

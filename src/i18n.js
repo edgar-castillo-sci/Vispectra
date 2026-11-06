@@ -1,29 +1,28 @@
-// ============================================================
-// i18n — Internacionalización
-// ============================================================
-// Función: t(code, params)
-//
-// Recibe: un código de diagnóstico (string) y un objeto de
-//         parámetros para interpolación.
-// Devuelve: el string localizado correspondiente.
-//
-// Hace:
-//   - Busca `code` en `locales/{idiomaActual}.js`.
-//   - Interpola `{param}` con los valores de `params`.
-//   - Si el código no existe en el locale, devuelve el código
-//     crudo (falla visible, no silenciosa).
-//
-// NO hace:
-//   - No traduce fuera de los diccionarios de locales/.
-//   - No formatea fechas, números ni plurales.
-//   - No vive dentro del compilador; lo consume la UI.
-//
-// Estado: pendiente. Se implementará junto con el primer
-// diagnóstico real del compilador.
-// ============================================================
+import en from '../locales/en.js';
+import es from '../locales/es.js';
 
-export function t(code, params = {}) {
-  // TODO: implementar
-  return code;
+const locales = { en, es };
+let currentLang = 'en'; // Inglés por defecto
+
+export function setLanguage(lang) {
+  if (locales[lang]) {
+    currentLang = lang;
+    translateDOM();
+  }
 }
 
+export function getLanguage() {
+  return currentLang;
+}
+
+export function t(key) {
+  return locales[currentLang][key] || key;
+}
+
+export function translateDOM() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const translation = t(key);
+    el.textContent = translation;
+  });
+}

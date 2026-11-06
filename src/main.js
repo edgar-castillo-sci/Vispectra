@@ -1,6 +1,7 @@
 import { initUI } from './ui.js';
 import { drawPlot } from './plot.js';
-import { smoothMovingAverage } from './processor.js'; // <-- IMPORTANTE
+import { smoothGaussian, derivative, normalizeMinMax, normalizeMax } from './processor.js';
+import { translateDOM } from './i18n.js';
 
 import { readFile } from './compiler/00_reading.js';
 import { sample } from './compiler/01_sampling.js';
@@ -14,9 +15,7 @@ import { createColumns, inject } from './compiler/08_codegen.js';
 import { createLog } from './compiler/09_diagnostics.js';
 
 function collect(diagnostics, log, context = {}) {
-  for (const d of diagnostics) {
-    log.add({ ...d, params: { ...d.params, ...context } });
-  }
+  for (const d of diagnostics) log.add({ ...d, params: { ...d.params, ...context } });
 }
 
 export async function compile(file) {
@@ -61,40 +60,46 @@ export async function compile(file) {
   return { columns, fixedCanon, body, log };
 }
 
-// Inicializar la UI
+// 1. Inicializar los textos estáticos en el idioma por defecto
+translateDOM();
+
+// 2. Iniciar la interfaz
 initUI(
-  // Procesar
   async (archivo, salida) => {
     salida.textContent = '';
     try {
-      const { columns, fixedCanon, body, log } = await compile(archivo);
-      salida.textContent += `✓ ${archivo.name}\n`;
-      salida.textContent += `  columns: ${columns.length}\n`;
-      salida.textContent += `  canon: ${fixedCanon.join('')}\n`;
-      salida.textContent += `  body: [${body.start}, ${body.end}]\n`;
+      const { columns, fixedCanon, body } = await compile(archivo);
+      salida.textContent += `✓ ${archivo.name}\n  columns: ${columns.length}\n  canon: ${fixedCanon.join('')}\n  body: [${body.start}, ${body.end}]\n`;
       return { columns };
     } catch (err) {
       salida.textContent += `✗ ${archivo.name}: ${err.message}\n`;
       return null;
     }
   },
-    // Función de Graficar
-  (columns, xIndex, yIndices) => {
+  (columns, xIndex, yIndices, mathOptions) => {
     try {
       const processedColumns = columns.map(col => [...col]);
-      yIndices.forEach(idx => {
-        // Solo suavizamos si hay más de 5 puntos
-        if (columns[idx] && columns[idx].length > 5) {
-          processedColumns[idx] = smoothMovingAverage(columns[idx], 5);
-        }
-      });
+      const xData = processedColumns[xIndex];
 
-      console.log("Datos que recibe el plotter (X):", processedColumns[xIndex]?.slice(0, 5));
-      console.log("Datos que recibe el plotter (Y):", processedColumns[yIndices[0]]?.slice(0, 5));
+      yIndices.forEach(idx => {
+        let processedY = [...columns[idx]];
+
+        if (mathOptions.type === 'smooth') {
+          processedY = smoothGaussian(processedY, mathOptions.window);
+        } else if (mathOptions.type === 'derivative') {
+          processedY = derivative(xData, processedY);
+        } else if (mathOptions.type === 'minmax') {
+          processedY = normalizeMinMax(processedY);
+        } else if (mathOptions.type === 'max') {
+          processedY = normalizeMax(processedY);
+        }
+
+        processedColumns[idx] = processedY;
+      });
 
       drawPlot(processedColumns, xIndex, yIndices);
     } catch (error) {
-      console.error("Error al graficar:", error);
+      console.error("Error en el procesamiento matemático:", error);
     }
   }
 );
