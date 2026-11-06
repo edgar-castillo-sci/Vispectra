@@ -1,0 +1,252 @@
+/* ============================================================
+   VISPECTRA — ESTILOS GLOBALES
+   ============================================================ */
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  background: #fafafa;
+  color: #222;
+  line-height: 1.6;
+}
+
+/* --- Cabecera y Selector de Idioma --- */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #0066cc;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+h1 {
+  color: #0066cc;
+  margin: 0;
+}
+
+.lang-selector {
+  padding: 0.3rem;
+  font-size: 0.9rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  max-width: 130px;
+  background: white;
+}
+
+/* --- Layout Principal --- */
+.container {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.sidebar {
+  width: 340px;
+  flex-shrink: 0;
+}
+
+.main-plot {
+  flex-grow: 1;
+  min-width: 300px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* --- Zona de Carga --- */
+#zonaDrop {
+  border: 2px dashed #999;
+  padding: 1.5rem;
+  text-align: center;
+  border-radius: 8px;
+  cursor: pointer;
+  background: white;
+  transition: all 0.2s;
+  margin-bottom: 1rem;
+}
+
+#zonaDrop:hover {
+  border-color: #0066cc;
+  background: #f0f7ff;
+}
+
+/* --- Botones --- */
+button {
+  padding: 0.5rem 1rem;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  width: 100%;
+  margin-bottom: 0.5rem;
+  transition: background 0.2s;
+}
+
+button:hover {
+  background: #0052a3;
+}
+
+button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.btn-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.btn-row button {
+  margin-bottom: 0;
+}
+
+/* --- Selectores y Controles --- */
+select {
+  width: 100%;
+  padding: 0.4rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background-color: white;
+}
+
+input[type="range"] {
+  width: 100%;
+  margin-top: 0.3rem;
+}
+
+input[type="number"] {
+  padding: 0.2rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.role-selector {
+  margin-bottom: 1rem;
+  padding: 0.8rem;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+}
+
+.role-selector label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: bold;
+  margin-bottom: 0.4rem;
+}
+
+/* --- Panel de Auto-graficado --- */
+.auto-plot-toggle {
+  margin-bottom: 1rem;
+  padding: 0.8rem;
+  background: #e3f2fd;
+  border-radius: 6px;
+  border: 1px solid #bbdefb;
+}
+
+.auto-plot-toggle label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.auto-plot-toggle input {
+  margin-right: 0.5rem;
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+/* --- Pipeline Matemático --- */
+.pipeline-step {
+  background: #fff3e0;
+  border: 1px solid #ffe0b2;
+  padding: 0.8rem;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  position: relative;
+}
+
+.pipeline-step .btn-remove {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: #cc0000;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pipeline-step .btn-remove:hover {
+  background: #990000;
+}
+
+.pipeline-step select {
+  margin-bottom: 0.5rem;
+  width: calc(100% - 25px); /* Deja espacio para el botón de borrar */
+}
+
+/* --- Caja de Salida y Gráfico --- */
+#salida {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  min-height: 100px;
+  font-family: monospace;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+}
+
+#spectrumSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 8 / 5;
+  background: white;
+}
+
+/* --- Exportación --- */
+.export-group {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.export-group select {
+  flex-grow: 1;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.export-group button {
+  width: auto;
+  margin-bottom: 0;
+  background: #444;
+}
+
+.export-group button:hover {
+  background: #222;
+}}

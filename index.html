@@ -3,46 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="css/estilos.css">
+    <link rel="stylesheet" href="css/styles.css">
     <title>Vispectra</title>
 
+    <!-- Librerías para exportación -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/svg2pdf.js/2.2.0/svg2pdf.min.js"></script>
-
-    <style>
-        body { font-family: system-ui, sans-serif; max-width: 1200px; margin: 2rem auto; padding: 0 1rem; background: #fafafa; color: #222; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0066cc; padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
-        h1 { color: #0066cc; margin: 0; }
-
-        /* Selector de idioma compacto */
-        .lang-selector {
-            padding: 0.3rem;
-            font-size: 0.9rem;
-            border-radius: 4px;
-            border: 1px solid #ccc;
-            max-width: 130px;
-            background: white;
-        }
-
-        .container { display: flex; gap: 2rem; align-items: flex-start; flex-wrap: wrap; }
-        .sidebar { width: 320px; flex-shrink: 0; }
-        .main-plot { flex-grow: 1; min-width: 300px; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        #zonaDrop { border: 2px dashed #999; padding: 1.5rem; text-align: center; border-radius: 8px; cursor: pointer; background: white; transition: all 0.2s; margin-bottom: 1rem; }
-        #zonaDrop:hover { border-color: #0066cc; background: #f0f7ff; }
-        button { padding: 0.5rem 1rem; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; width: 100%; margin-bottom: 0.5rem; }
-        button:hover { background: #0052a3; }
-        .role-selector { margin-bottom: 1rem; padding: 0.8rem; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; }
-        .role-selector label { display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 0.4rem; }
-        select { width: 100%; padding: 0.4rem; border-radius: 4px; border: 1px solid #ccc; }
-        .auto-plot-toggle { margin-bottom: 1rem; padding: 0.8rem; background: #e3f2fd; border-radius: 6px; border: 1px solid #bbdefb; }
-        .auto-plot-toggle label { display: flex; align-items: center; cursor: pointer; font-weight: bold; }
-        .auto-plot-toggle input { margin-right: 0.5rem; width: 1.2rem; height: 1.2rem; }
-        #salida { margin-top: 1.5rem; padding: 1rem; background: #fff; border: 1px solid #ddd; border-radius: 8px; min-height: 100px; font-family: monospace; font-size: 0.85rem; white-space: pre-wrap; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); }
-        #spectrumSvg { display: block; width: 100%; height: auto; aspect-ratio: 8 / 5; background: white; }
-        .export-group { display: flex; gap: 0.5rem; margin-top: 1rem; margin-bottom: 0.5rem; }
-        .export-group select { flex-grow: 1; padding: 0.5rem; border-radius: 4px; border: 1px solid #ccc; }
-        .export-group button { width: auto; margin-bottom: 0; background: #444; }
-    </style>
 </head>
 <body>
 
@@ -61,7 +27,10 @@
 
 <div class="container">
     <div class="sidebar">
-        <button id="botonProcesar" data-i18n="btn_process">Process File</button>
+        <div class="btn-row">
+            <button id="botonProcesar" data-i18n="btn_process">Process File</button>
+            <button id="botonExportCsvRaw" style="background: #777; display: none;" data-i18n="btn_export_csv_raw">Raw CSV</button>
+        </div>
 
         <div id="rolePanel" style="display: none; margin-top: 1.5rem;">
             <h3 style="margin-top: 0; font-size: 1.1rem;" data-i18n="role_title">Role Assignment</h3>
@@ -71,35 +40,22 @@
                     <input type="checkbox" id="toggleAutoPlot" checked>
                     <span data-i18n="auto_plot">Auto-plot</span>
                 </label>
-                <span style="font-size: 0.75rem; color: #555; display: block; margin-top: 0.3rem;" data-i18n="auto_plot_warn">
-                    Disable if the file is too large to prevent lag.
-                </span>
             </div>
 
             <div class="role-selector">
-                <label for="selectX" data-i18n="select_x">X-Axis (Independent):</label>
+                <label for="selectX" data-i18n="select_x">X-Axis:</label>
                 <select id="selectX"></select>
             </div>
 
             <div class="role-selector">
-                <label data-i18n="select_y">Y-Series (Dependent):</label>
+                <label data-i18n="select_y">Y-Series:</label>
                 <div id="checkboxesY"></div>
             </div>
 
-            <div class="role-selector" style="background: #fff3e0; border-color: #ffe0b2;">
-                <label for="selectMathOp" data-i18n="math_op">Mathematical Operation:</label>
-                <select id="selectMathOp">
-                    <option value="none" data-i18n="math_none">None (Raw Data)</option>
-                    <option value="smooth" data-i18n="math_smooth">Gaussian Smoothing</option>
-                    <option value="derivative" data-i18n="math_derivative">First Derivative</option>
-                    <option value="minmax" data-i18n="math_minmax">Normalize (Min-Max)</option>
-                    <option value="max" data-i18n="math_max">Normalize (Maximum)</option>
-                </select>
-
-                <div id="smoothParams" style="display: none; margin-top: 0.5rem;">
-                    <label for="sliderWindow" style="font-size: 0.8rem;"><span data-i18n="window_size">Window size:</span> <span id="windowValue">5</span></label>
-                    <input type="range" id="sliderWindow" min="3" max="21" step="2" value="5" style="width: 100%;">
-                </div>
+            <div class="role-selector" style="background: #fff8e1; border-color: #ffecb3;">
+                <label data-i18n="math_pipeline">Math Pipeline (Top to Bottom):</label>
+                <div id="pipelineContainer"></div>
+                <button id="btnAddOp" style="background: #ff9800; margin-top: 0.5rem;" data-i18n="btn_add_op">+ Add Operation</button>
             </div>
 
             <button id="botonGraficar" style="display: none; background: #009933;" data-i18n="btn_update_plot">Update Plot</button>
@@ -114,7 +70,7 @@
                 <button id="botonExportar" data-i18n="btn_export_graph">Export Graph</button>
             </div>
 
-            <button id="botonExportCsv" style="background: #555;" data-i18n="btn_export_csv">Export Data (CSV)</button>
+            <button id="botonExportCsvProcessed" style="background: #555;" data-i18n="btn_export_csv_proc">Processed CSV</button>
         </div>
 
         <div id="salida" data-i18n="status_waiting">Waiting for files...</div>

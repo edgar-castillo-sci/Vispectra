@@ -1,6 +1,5 @@
 import { initUI } from './ui.js';
 import { drawPlot } from './plot.js';
-import { smoothGaussian, derivative, normalizeMinMax, normalizeMax } from './processor.js';
 import { translateDOM } from './i18n.js';
 
 import { readFile } from './compiler/00_reading.js';
@@ -60,11 +59,12 @@ export async function compile(file) {
   return { columns, fixedCanon, body, log };
 }
 
-// 1. Inicializar los textos estáticos en el idioma por defecto
+// 1. Inicializar textos estáticos
 translateDOM();
 
 // 2. Iniciar la interfaz
 initUI(
+  // Callback: Procesar archivo (compila y devuelve las columnas crudas)
   async (archivo, salida) => {
     salida.textContent = '';
     try {
@@ -76,30 +76,12 @@ initUI(
       return null;
     }
   },
-  (columns, xIndex, yIndices, mathOptions) => {
+  // Callback: Graficar (recibe las columnas YA procesadas por ui.js)
+  (processedColumns, xIndex, yIndices) => {
     try {
-      const processedColumns = columns.map(col => [...col]);
-      const xData = processedColumns[xIndex];
-
-      yIndices.forEach(idx => {
-        let processedY = [...columns[idx]];
-
-        if (mathOptions.type === 'smooth') {
-          processedY = smoothGaussian(processedY, mathOptions.window);
-        } else if (mathOptions.type === 'derivative') {
-          processedY = derivative(xData, processedY);
-        } else if (mathOptions.type === 'minmax') {
-          processedY = normalizeMinMax(processedY);
-        } else if (mathOptions.type === 'max') {
-          processedY = normalizeMax(processedY);
-        }
-
-        processedColumns[idx] = processedY;
-      });
-
       drawPlot(processedColumns, xIndex, yIndices);
     } catch (error) {
-      console.error("Error en el procesamiento matemático:", error);
+      console.error("Error al dibujar:", error);
     }
   }
 );
