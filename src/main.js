@@ -1,87 +1,380 @@
-import { initUI } from './ui.js';
-import { drawPlot } from './plot.js';
-import { translateDOM } from './i18n.js';
+// ============================================================
+// VISPECTRA — MAIN ORCHESTRATOR (v5.0)
+// ============================================================
+// Function: compile(file, options) → CompileResult
+//
+// Options:
+//   - resolutions: undefined | 'auto' | { [pattern]: resolution }
+//   - maxFailureRatio: number (default 0.20)
+//
+// CompileResult:
+//   {
+//     status: 'ok' | 'partial' | 'failed' | 'needs_disambiguation',
+//     columns: number[][] | null,
+//     segments: Segment[],
+//     ambiguities: { blocks } | null,
+//     body: { start, end },
+//     canonLiteral: string,
+//     numColumns: number | null,
+//     failedRows: number,
+//     totalRows: number,
+//     failureRatio: number,
+//     log, diagnostics,
+//   }
+//
+// Stateless. Each call re-reads and re-processes the file.
+// ============================================================
 
 import { readFile } from './compiler/00_reading.js';
 import { sample } from './compiler/01_sampling.js';
 import { lex } from './compiler/02_lexer.js';
 import { buildIR } from './compiler/03_ir.js';
 import { buildCanon } from './compiler/04_canon.js';
-import { fixCanon, countColumns } from './compiler/05_fixation.js';
+import { detectAmbiguities } from './compiler/04b_disambiguation.js';
+import { buildBlockCanon } from './compiler/04c_block_canon.js';
+import { fixCanon } from './compiler/05_fixation.js';
 import { parseLine } from './compiler/06_parser.js';
 import { verify } from './compiler/07_semantics.js';
 import { createColumns, inject } from './compiler/08_codegen.js';
 import { createLog } from './compiler/09_diagnostics.js';
 
-function collect(diagnostics, log, context = {}) {
-  for (const d of diagnostics) log.add({ ...d, params: { ...d.params, ...context } });
-}
+const DEFAULT_MAX_FAILURE_RATIO = 0.20;
 
-export async function compile(file) {
+export async function compile(file, options = {}) {
+  const {
+    resolutions: userResolutions = undefined,
+    maxFailureRatio = DEFAULT_MAX_FAILURE_RATIO,
+  } = options;
+
   const log = createLog();
-  const { text, diagnostics: readDiag } = await readFile(file);
-  collect(readDiag, log, { fileName: file.name });
+  const diagnostics = [];
 
-  const { lines, centralBlock, sample: sampleIndices, diagnostics: samplingDiag } = sample(text);
-  collect(samplingDiag, log, { fileName: file.name });
+  const collect = (diags, context = {}) => {
+    for (const d of diags) {
+      const merged = { ...d, params: { ...context, ...d.params } };
+      log.add(merged);
+      diagnostics.push(merged);
+    }
+  };
 
-  const structures = [];
-  for (const idx of sampleIndices) {
-    const { structure, diagnostics } = lex(lines[idx].content);
-    collect(diagnostics, log, { fileName: file.name, index: idx });
-    structures.push({ index: idx, structure });
+  // --- Phase 00 ---
+  const { text, diagnostics: d00 } = await readFile(file);
+  collect(d00, { phase: '00_reading', fileName: file.name });
+
+  // --- Phase 01 ---
+  const { lines, centralBlock, sample: sampleIndices, diagnostics: d01 } = sample(text);
+  collect(d01, { phase: '01_sampling', fileName: file.name });
+
+  // --- Phases 02 + 03 ---
+  const structures = sampleIndices.map((idx) => ({
+    index: idx,
+    structure: lex(lines[idx].content).structure,
+  }));
+  const ir = buildIR(structures);
+  collect(ir.diagnostics, { phase: '03_ir', fileName: file.name });
+
+  // --- Phase 04 ---
+  const { canonLiteral, body, blocks, diagnostics: d04 } = buildCanon(ir, lines, centralBlock);
+  collect(d04, { phase: '04_canon', fileName: file.name });
+
+  if (body.end <= body.start) {
+    return finalize({
+      status: 'failed', columns: null, segments: [],
+      ambiguities: null, body, canonLiteral, numColumns: null,
+      failedRows: 0, totalRows: 0, log, diagnostics,
+    });
   }
 
-  const { perLine, frequencies, lengths, diagnostics: irDiag } = buildIR(structures);
-  collect(irDiag, log, { fileName: file.name });
+  // --- Phase 04b ---
+  const {
+    blocks: enrichedBlocks,
+    hasAmbiguity,
+    diagnostics: d04b,
+  } = detectAmbiguities(blocks, lines);
+  collect(d04b, { phase: '04b_disambiguation', fileName: file.name });
 
-  const { canon, body, diagnostics: canonDiag } = buildCanon({ perLine, frequencies, lengths }, lines, centralBlock);
-  collect(canonDiag, log, { fileName: file.name });
+  // --- Resolve ambiguities ---
+  const chosen = selectResolutions(enrichedBlocks, userResolutions, hasAmbiguity);
 
-  const { fixedCanon, diagnostics: fixationDiag } = fixCanon(canon);
-  collect(fixationDiag, log, { fileName: file.name });
+  if (chosen === 'NEEDS_DECISION') {
+    return finalize({
+      status: 'needs_disambiguation', columns: null, segments: [],
+      ambiguities: buildAmbiguitiesReport(enrichedBlocks),
+      body, canonLiteral, numColumns: null,
+      failedRows: 0, totalRows: body.end - body.start, log, diagnostics,
+    });
+  }
 
-  const numColumn = countColumns(fixedCanon);
-  const columns = createColumns(numColumn);
+  // --- Phases 04c + 05 (per block) ---
+  const plans = [];
+  let numColumns = null;
+  let countMismatch = false;
+
+  for (const block of enrichedBlocks) {
+    const resolution = chosen.get(block.pattern);
+    const blockCanon = buildBlockCanon(block, lines, resolution);
+    collect(blockCanon.diagnostics, {
+      phase: '04c_block_canon', fileName: file.name, pattern: block.pattern,
+    });
+
+    if (!blockCanon.canon) continue;
+
+    const fixed = fixCanon(blockCanon, resolution, block.pattern);
+    collect(fixed.diagnostics, {
+      phase: '05_fixation', fileName: file.name, pattern: block.pattern,
+    });
+
+    if (!fixed.plan) continue;
+
+    if (numColumns === null) {
+      numColumns = fixed.plan.numColumns;
+    } else if (numColumns !== fixed.plan.numColumns) {
+      collect([{
+        severity: 'error',
+        code: 'BLOCK_COUNT_MISMATCH',
+        params: { expected: numColumns, got: fixed.plan.numColumns, pattern: block.pattern },
+      }], { phase: 'main', fileName: file.name });
+      countMismatch = true;
+      break;
+    }
+
+    plans.push({ block, plan: fixed.plan, resolution, canon: blockCanon.canon });
+  }
+
+  if (countMismatch || numColumns === null || plans.length === 0) {
+    return finalize({
+      status: 'failed', columns: null, segments: [],
+      ambiguities: null, body, canonLiteral, numColumns,
+      failedRows: 0, totalRows: body.end - body.start, log, diagnostics,
+    });
+  }
+
+  // --- Phases 06 + 07 + 08 (populate) ---
+  const columns = createColumns(numColumns);
+  const lineToPlan = new Map();
+  for (const p of plans) {
+    for (const idx of p.block.instances) lineToPlan.set(idx, p);
+  }
+
+  const segments = [];
+  let currentSegment = null;
+  let failedRows = 0;
+  const totalRows = body.end - body.start;
 
   for (let i = body.start; i < body.end; i++) {
-    const parsed = parseLine(lines[i], fixedCanon);
-    collect(parsed.diagnostics, log, { fileName: file.name, index: i });
-    if (!parsed.ok) continue;
+    const p = lineToPlan.get(i);
 
-    const verified = verify(parsed, fixedCanon);
-    collect(verified.diagnostics, log, { fileName: file.name, index: i });
-    if (!verified.ok) continue;
+    if (!p) {
+      failedRows++;
+      pushNullRow(columns);
+      collect([{
+        severity: 'error', code: 'ROW_NOT_IN_ANY_BLOCK', params: { index: i },
+      }], { phase: 'main', fileName: file.name });
+      continue;
+    }
+
+    const parsed = parseLine(lines[i], p.plan);
+    collect(parsed.diagnostics, { phase: '06_parser', fileName: file.name, index: i });
+
+    if (!parsed.ok) {
+      failedRows++;
+      pushNullRow(columns);
+      collect([{
+        severity: 'info', code: 'ROW_SKIPPED',
+        params: { index: i, reason: parsed.diagnostics[0]?.code ?? 'PARSE_FAILED' },
+      }], { phase: 'main', fileName: file.name });
+      continue;
+    }
+
+    const verified = verify(parsed, p.plan);
+    collect(verified.diagnostics, { phase: '07_semantics', fileName: file.name, index: i });
+
+    if (!verified.ok) {
+      failedRows++;
+      pushNullRow(columns);
+      collect([{
+        severity: 'info', code: 'ROW_SKIPPED',
+        params: { index: i, reason: verified.diagnostics[0]?.code ?? 'VERIFY_FAILED' },
+      }], { phase: 'main', fileName: file.name });
+      continue;
+    }
 
     inject(verified.values, columns);
-  }
 
-  return { columns, fixedCanon, body, log };
+    if (!currentSegment || currentSegment.pattern !== p.block.pattern) {
+      if (currentSegment) segments.push(currentSegment);
+      currentSegment = {
+        startRow: i,
+        endRow: i + 1,
+        pattern: p.block.pattern,
+        resolution: [...p.resolution.commas],
+        canon: p.canon,
+        isException: false,
+      };
+    } else {
+      currentSegment.endRow = i + 1;
+    }
+  }
+  if (currentSegment) segments.push(currentSegment);
+  markExceptions(segments);
+
+  // --- Status ---
+  const failureRatio = totalRows > 0 ? failedRows / totalRows : 0;
+  let status;
+  if (failureRatio === 0) status = 'ok';
+  else if (failureRatio <= maxFailureRatio) status = 'partial';
+  else status = 'failed';
+
+  return finalize({
+    status,
+    columns: status === 'failed' ? null : columns,
+    segments,
+    ambiguities: null,
+    body, canonLiteral, numColumns,
+    failedRows, totalRows, failureRatio,
+    log, diagnostics,
+  });
 }
 
-// 1. Inicializar textos estáticos
-translateDOM();
+// ------------------------------------------------------------
+// Helpers
+// ------------------------------------------------------------
 
-// 2. Iniciar la interfaz
-initUI(
-  // Callback: Procesar archivo (compila y devuelve las columnas crudas)
-  async (archivo, salida) => {
-    salida.textContent = '';
-    try {
-      const { columns, fixedCanon, body } = await compile(archivo);
-      salida.textContent += `✓ ${archivo.name}\n  columns: ${columns.length}\n  canon: ${fixedCanon.join('')}\n  body: [${body.start}, ${body.end}]\n`;
-      return { columns };
-    } catch (err) {
-      salida.textContent += `✗ ${archivo.name}: ${err.message}\n`;
-      return null;
-    }
-  },
-  // Callback: Graficar (recibe las columnas YA procesadas por ui.js)
-  (processedColumns, xIndex, yIndices) => {
-    try {
-      drawPlot(processedColumns, xIndex, yIndices);
-    } catch (error) {
-      console.error("Error al dibujar:", error);
-    }
+function finalize(partial) {
+  return {
+    status: partial.status,
+    columns: partial.columns,
+    segments: partial.segments ?? [],
+    ambiguities: partial.ambiguities ?? null,
+    body: partial.body,
+    canonLiteral: partial.canonLiteral ?? '',
+    numColumns: partial.numColumns ?? null,
+    failedRows: partial.failedRows ?? 0,
+    totalRows: partial.totalRows ?? 0,
+    failureRatio: partial.failureRatio ?? 0,
+    log: partial.log,
+    diagnostics: partial.diagnostics,
+  };
+}
+
+function pushNullRow(columns) {
+  for (const col of columns) col.push(null);
+}
+
+function markExceptions(segments) {
+  if (segments.length === 0) return;
+  const dominant = segments.reduce((a, b) =>
+    b.endRow - b.startRow > a.endRow - a.startRow ? b : a
+  );
+  for (const seg of segments) seg.isException = seg !== dominant;
+}
+
+function countCommasInPattern(pattern) {
+  let n = 0;
+  for (const ch of pattern) if (ch === ',') n++;
+  return n;
+}
+
+function defaultResolutionFor(block) {
+  if (block.resolutions.length > 0) {
+    const def = block.resolutions.find((r) => r.isDefault);
+    return def ?? block.resolutions[0];
   }
-);
+  return { commas: Array(countCommasInPattern(block.pattern)).fill('sep') };
+}
+
+function selectResolutions(blocks, input, hasAmbiguity) {
+  // Mode 'auto': use defaults everywhere, never ask.
+  if (input === 'auto') {
+    const map = new Map();
+    for (const b of blocks) map.set(b.pattern, defaultResolutionFor(b));
+    return map;
+  }
+
+  // Mode explicit: use provided where given, defaults otherwise.
+  if (input && typeof input === 'object') {
+    const map = new Map();
+    for (const b of blocks) {
+      const userRes = input[b.pattern];
+      if (userRes) {
+        const match = b.resolutions.find((r) =>
+          r.id === userRes ||
+          (Array.isArray(userRes) && JSON.stringify(r.commas) === JSON.stringify(userRes))
+        );
+        map.set(b.pattern, match ?? { commas: userRes });
+      } else {
+        map.set(b.pattern, defaultResolutionFor(b));
+      }
+    }
+    return map;
+  }
+
+  // No input: if no ambiguity, use defaults; if ambiguity, ask.
+  if (hasAmbiguity) return 'NEEDS_DECISION';
+
+  const map = new Map();
+  for (const b of blocks) map.set(b.pattern, defaultResolutionFor(b));
+  return map;
+}
+
+function buildAmbiguitiesReport(blocks) {
+  const ambiguous = blocks.filter((b) => b.isAmbiguous);
+  return {
+    blocks: ambiguous.map((b) => ({
+      pattern: b.pattern,
+      instances: b.instances.length,
+      resolutions: b.resolutions,
+    })),
+  };
+}
+
+// ------------------------------------------------------------
+// Bootstrap (temporary — kept for index.html compatibility)
+// ------------------------------------------------------------
+// NOTE: ui.js still expects the v4.0 contract. This bootstrap will
+// surface errors on file load until ui.js is rewritten in the next
+// step. compile() itself is stable and can be imported/tested
+// independently.
+// ------------------------------------------------------------
+
+if (typeof document !== 'undefined' && typeof window !== 'undefined') {
+  const { initUI } = await import('./ui.js');
+  const { drawPlot } = await import('./plot.js');
+  const { translateDOM } = await import('./i18n.js');
+
+  try {
+    translateDOM();
+  } catch (err) {
+    console.warn('i18n: translateDOM failed (non-fatal):', err);
+  }
+
+  try {
+    initUI(
+      async (archivo, salida) => {
+        salida.textContent = '';
+        try {
+          const result = await compile(archivo);
+          salida.textContent +=
+            `${result.status === 'ok' || result.status === 'partial' ? '✓' : '⚠'} ${archivo.name}\n` +
+            `  status: ${result.status}\n` +
+            `  columns: ${result.columns ? result.columns.length : 0}\n` +
+            `  rows: ${result.totalRows} (failed: ${result.failedRows})\n` +
+            `  canon: ${result.canonLiteral}\n`;
+          return result.columns ? { columns: result.columns, segments: result.segments } : null;
+        } catch (err) {
+          salida.textContent += `✗ ${archivo.name}: ${err.message}\n`;
+          return null;
+        }
+      },
+      (processedColumns, xIndex, yIndices) => {
+        try {
+          drawPlot(processedColumns, xIndex, yIndices);
+        } catch (error) {
+          console.error('Plot failed:', error);
+        }
+      }
+    );
+  } catch (err) {
+    console.warn('UI bootstrap failed (non-fatal, compile() still works):', err);
+  }
+}

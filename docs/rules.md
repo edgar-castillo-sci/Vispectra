@@ -1,213 +1,154 @@
+# Vispectra Rules
 
-# Reglas de Vispectra
+## 1. Tokens and numbers
 
-## 1. Tokens y números
+- **R1.** Every numeric token is parsed as a real number. No distinction between "integer" and "decimal" as separate types.
+- **R2.** Syntax of `token_n`: `[+-]? digits ( '.' digits? )? ( [eE] [+-]? digits )?`
+- **R3.** Syntax of `token_c`: `[+-]? digits ( ',' digits? )? ( [eE] [+-]? digits )?`
+- **R4.** `token_c` consumes the comma only if it is followed by digits.
+- **R5.** The dot is always decimal, never a column separator.
+- **R6.** Scientific notation is treated as an indivisible unit.
 
-- **R1.** Todo token numérico se parsea como real. No se distingue "entero" de "decimal" como tipos separados.
-- **R2.** Sintaxis de `token_n`: `[+-]? dígitos ( '.' dígitos? )? ( [eE] [+-]? dígitos )?`
-- **R3.** Sintaxis de `token_c`: `[+-]? dígitos ( ',' dígitos? )? ( [eE] [+-]? dígitos )?`
-- **R4.** `token_c` consume la coma solo si va seguida de dígitos.
-- **R5.** El punto es siempre decimal, nunca separador de columna.
-- **R6.** La notación científica se trata como unidad indivisible.
+## 2. Two-Level Canonical Model (v5.0)
 
-## 2. Construcción de `estructura_interna`
+- **R96.** The literal canon (`n`, `z`, `v`, `,`) does not interpret commas. The comma is a structural character, not a decimal or column separator at this level.
+- **R100.** `v` represents an explicit empty slot and is propagated as `null` to `08_codegen`. It is never injected as `0`.
+- **R101.** The abstract canon (`n`, `z`, `i`, `v`) is built **after** disambiguation. It encodes the nature of each column, not of each row.
+- **R102.** Individual gaps (`v` in some rows but not others) do not change the column type. They are reported as `completeness: { filled, total, gapIndices }` and as a `COLUMN_GAPS` diagnostic.
+- **R103.** Mix of `n` and `z` in the same column -> type `i` + `MIXED_NOTATION` diagnostic (info).
 
-- **R7.** Se eliminan dígitos, `e`, `E`, `+`, `-`, y letras. No se eliminan espacios ni tabs.
-- **R8.** Los caracteres restantes se concatenan en `caracteres`.
-- **R9.** La lectura es de izquierda a derecha, índice por índice.
-- **R10.** `fei` = último carácter emitido a `estructura_interna`.
-- **R11.** `sc` = siguiente carácter en `caracteres` después del actual.
+## 3. Lexer rules (literal transcription)
 
-## 3. Reglas del punto
+- **R7.** The lexer transcribes a line into `n`, `z`, `v`, `,`. It does not interpret commas.
+- **R8.** Numbers are consumed atomically: sign, mantissa, optional exponent.
+- **R9.** `.5` (leading dot followed by digit) is a number.
+- **R10.** An incomplete exponent (`1e`, `1e+`) is not consumed as part of the number; the `e` falls back to a gap.
+- **R11.** Runs of commas are preserved (`1,,3` -> `z,,z`). They are not collapsed.
+- **R12.** A gap between two commas emits `v` (`1, ,3` -> `z,v,z`). A gap between two values with no adjacent comma emits `,` (`1 ; 5` -> `z,z`). A gap adjacent to a comma is decorative and emits nothing (`1, 5` -> `z,z`).
+- **R13.** Leading gaps are skipped. A single trailing comma is dropped. Leading commas are preserved.
 
-- **R12.** Si el carácter es `.` y `fei ∈ tipos_num` → log + error (falta separador entre dos valores).
-- **R13.** Si el carácter es `.` y `fei ∉ tipos_num` o es null → concatenar `n` a `estructura_interna`.
-- **R14.** Secuencia pura de puntos `.....` → se puede leer con el algoritmo de paridad, pero con advertencia severa.
-- **R15.** Secuencia `..` dentro de otra secuencia (`..$.%..#.`) → error (implica número con dos decimales).
-- **R16.** Puntos separados por otros caracteres (`. .$./;.`) → no pasa nada, son puntos independientes.
+## 4. Comma semantics (resolved by disambiguation, not by lexer)
 
-## 4. Reglas de la coma
+- **R14.** The comma has no intrinsic meaning in the literal canon. It becomes a decimal separator (`dec`) or a column separator (`sep`) only after a resolution is applied in `04b`.
+- **R15.** For a block with `k` commas, `2^k` combinations of `dec`/`sep` are candidates. A candidate is valid only if it is structurally compatible with every row of the block.
+- **R16.** A `dec` fusion is valid only if both operands are `/^\d+$/` (no signs, no exponents). Otherwise the row fails with `FUSION_UNSAFE`.
+- **R17.** All rows in a block must yield the same number of columns under the chosen resolution. Otherwise `BLOCK_COUNT_MISMATCH`.
 
-- **R17.** Si `fei ∈ tipos_num` → la coma es separadora de columna. Concatenar `,`. Avanzar `i += 1`.
-- **R18.** Si (`fei = ,` o null) y (`sc = ,` o null) → run detection.
-- **R19.** Si `fei = ,` y `sc ∉ {,, null}` → cierre de run: separador de columna. Concatenar `,`. Avanzar `i += 1`.
-- **R20.** Si `fei = ,` y (`sc = null` o (`sc ≠ ,` y `sc ≠ .`)) → coma decimal. Concatenar `c`. Avanzar `i += 1`.
-- **R21.** Las ramas de la coma deben estar al mismo nivel, no anidadas.
-- **R22.** La coma es el único carácter que puede ser valor o estructura.
+## 5. Run detection and parity
 
-## 5. Run detection y paridad
+- **R18.** A run of `L` commas in the pattern is preserved as `L` consecutive commas in the literal canon.
+- **R19.** Base parity (default resolution): even indices -> `dec`, odd indices -> `sep`. This is the default proposed to the user, not a hard rule.
+- **R20.** A block whose pattern contains consecutive commas (`__`) is always flagged as ambiguous, even if it has only one valid resolution. The user must confirm.
 
-- **R23.** Un run de `L` comas se captura en `comas`. (La paridad se aplica en `05_fijacion`.)
-- **R24.** Paridad base: índices pares (0,2,4…) → `c`; impares (1,3,5…) → `,`. **(Se aplica en `05_fijacion.js`, no en `02_lexer.js`.)**
-- **R25.** Esta paridad asume que el run empieza con decimal. Si empieza con separador, el parser maestro lo detecta.
-- **R26.** La conversión `c,c,c` ocurre solo después de que aparecieron todas las `i` y todas las `n`. **(Se aplica en `05_fijacion.js`.)**
-- **R27.** Las comas son invariantes entre líneas, independientemente de la presencia de `i` o `n`. Solo se redefine su uso.
-- **R28.** Alrededor de `n` e `i`, solo puede haber separadores de columna. Recursivamente, las comas laterales se vuelven columnares.
+## 6. Prohibitions
 
-## 6. Reglas de `i` (ancla)
+- **R44.** `in`, `cn`, `ci`, `ic` -> immediate error (structural prohibition). Detected in canon inference (`04_canon`) and at the line level (`07_semantics`).
+- **R45.** Between two value symbols (`n`, `z`, `i`), there must always be at least one separator.
+- **R46.** Comma count varying between lines -> error.
+- **R62.** Error if the comma count varies between lines in the same block.
+- **R63.** Error if the canon is not satisfied on a line.
 
-- **R29.** `i` = posición que admite: nada, entero sin decimal, o `n`. **No admite `c`.**
-- **R30.** `i` es una posición en canon, no un valor. Aunque esté vacío, sigue siendo ancla.
-- **R31.** Si `i` no tiene valor → se inyecta 0 a la columna correspondiente. **(Detección en `07_semantica.js`, inyección en `08_codegen.js`.)**
-- **R32.** `i` corta la run de comas. La run se divide en fragmentos alrededor de cada `i`.
-- **R33.** Cada fragmento se analiza con paridad local desde el ancla del `i`.
-- **R34.** La coma adyacente a `i` es separadora por definición.
-- **R35.** En `,,i,...`:
-  - Si precedido por `n` o `i`: ambas comas son separadoras, con slot (entero o vacío → 0).
-  - Si `,` es el carácter inicial: la primera coma se asume decimal (forma `c`), la segunda es separadora (anclada por `i`).
-- **R36.** Múltiples `i` en una run: cada uno ancla localmente. El fragmento entre dos `i` se analiza desde ambos bordes.
+## 7. Disambiguation rules (v5.0)
 
-## 7. Generalización del diccionario
+- **R97.** The parity heuristic lives only in `04b_disambiguation` as a default resolution. It does not contaminate the lexer, the canon, or the parser.
+- **R98.** A block is ambiguous if it contains at least one `z`, at least one comma, and no `n` in its rows. The presence of `n` (dot-decimal) disambiguates; the presence of `v` (explicit empty slot) disambiguates.
+- **R99.** Resolutions are grouped by comma pattern, not by full canon. Rows with `n,n,n` and `z,z,z` belong to the same block (`_,_,_`) because they share comma structure.
+- **R70.** Do not guess silently.
+- **R71.** If notations are mixed -> warn, show the interpretation used, recommend normalization.
+- **R72.** Strict mode (abort) and permissive mode (parse, flag suspicious lines).
+- **R73.** If ambiguity persists -> error or ask the user.
+- **R74.** Degradation to user intervention is the **default behavior** in v5.0. The interactive editor is the standard disambiguation mechanism, not a future feature.
 
-- **R37.** Se mantiene un diccionario de claves canónicas vistas.
-- **R38.** Si llega una clave nueva que difiere en una posición donde hay un `n` (o un valor), esa posición se promueve a `i`.
-- **R39.** Criterio de promoción: basta una línea con `n` en esa posición para promover a `i`. No hay otra condición.
-- **R40.** `i` valida tanto la versión con valor como la versión sin valor.
-- **R41.** Ejemplo: `,,,,,` + `,n,,,,` → `,i,,,,`.
-- **R42.** Ejemplo: `n;n,,,,,n` + `n;n,,n,,,n` → `n;n,,i,,,n`.
-- **R43.** Si aparece otra clave que generaliza más, se actualiza el canon.
+## 8. Parser rules (v5.0, plan-driven)
 
-## 8. Prohibiciones estructurales
+- **R48.** The `plan` tells the parser what to look for and in what order, left to right.
+- **R49.** `_` -> consume one number token.
+- **R50.** `v` -> consume one gap token; verify no number is present.
+- **R51.** `,` with role `sep` -> consume one comma token; finalize the pending slot.
+- **R52.** `,` with role `dec` -> consume one comma token and the following number; fuse both into a single number (requires `/^\d+$/` on both sides). Skip the next `_` in the pattern (it is the fused number's right half).
+- **R53.** `i` (abstract canon only) -> not a parser concern; the column type is decided in `04c`.
+- **R54.** Trailing gaps (comments, whitespace) are tolerated. Trailing numbers or commas -> `EXTRA_TOKENS`.
+- **R55.** The column index advances only when a value is produced, not with each pattern symbol.
+- **R56.** Each canon symbol consumes exactly one token, one separator, or nothing (only `v`).
 
-- **R44.** `in`, `cn`, `ci`, `ic` → error inmediato. **Detección en canon: `04_canon.js`. Detección a nivel línea: `07_semantica.js`.**
-- **R45.** Entre dos símbolos de valor (`n`, `c`, `i`) siempre debe haber al menos un separador.
-- **R46.** Número de comas variable o distinto entre líneas → error. **(Fusiona las antiguas R46 y R47.)**
+## 9. Diagnostics
 
-## 9. Parser maestro
+- **R60.** Error if `fei in num_types` and a dot arrives (absorbed by the lexer's atomic number consumption in v5.0).
+- **R61.** Error if `in`, `cn`, `ci`, `ic` appears (R44).
+- **R64.** Error if `..` appears inside another sequence.
+- **R65.** Severe warning for pure dot sequence `......`.
+- **R66.** Log when consecutive comma runs are detected, explaining the resolution algorithm.
+- **R67.** Log if separators vary between rows but the count is consistent.
+- **R68.** Syntax error log with normalization recommendation when ambiguity is present.
+- **R69.** Explicit recommendation to normalize the file before operating.
+- **R105.** All segments must produce the same number of columns. If not, `BLOCK_COUNT_MISMATCH` (error) and the file is rejected or exported as separate tables (user decision).
 
-- **R48.** `canon` le indica al parser qué buscar y en qué orden, de izquierda a derecha.
-- **R49.** `n` → busca float con punto decimal.
-- **R50.** `c` → busca float con coma decimal y lo convierte a punto.
-- **R51.** `c` + encuentra coma → error por conflicto con algoritmo `c,c,c`.
-- **R52.** `c` + encuentra separador distinto de `,` → **detecta ausencia y devuelve `null`**. (La inyección de 0 es en `08_codegen.js`.)
-- **R53.** `i` → busca entero, `n`, o nada. Si nada → **devuelve `null`**. (La inyección de 0 es en `08_codegen.js`.)
-- **R54.** Separador → lo consume. Si el siguiente símbolo de canon también es separador → **devuelve `null` en la columna intermedia**. (La inyección de 0 es en `08_codegen.js`.)
-- **R55.** El índice de columna avanza solo cuando se produce un valor, no con cada símbolo de canon.
-- **R56.** Cada símbolo de canon consume **un token, un separador, o nada (solo `i` vacío)**.
+## 10. Ambiguity policy
 
-## 10. Clasificación local de comas (en parser maestro)
+- **R70.** Do not guess silently.
+- **R71.** If notations are mixed -> warn, show the interpretation used, recommend normalization.
+- **R72.** Strict mode (abort) and permissive mode (parse, flag suspicious lines).
+- **R73.** If ambiguity persists -> error or ask the user.
+- **R74.** User intervention is the standard mechanism in v5.0.
 
-- **Precedencia:** el canon manda. Cuando el canon dice `c` o `,`, el parser obedece al canon y valida. Si la línea no cuadra → error (R63). R57–R59 se usan **solo cuando el canon dice `i`**, para decidir si ese `i` se resuelve como `n`, entero o vacío.
-- **R57.** Para cada coma en la línea original: si está entre dígitos → decimal; si no → separadora.
-- **R58.** Esta clasificación es local y directa. No necesita paridad ni fase.
-- **R59.** El parser maestro tiene la línea original, así que puede aplicarla.
+## 11. Sampling, expansion, and fixation
 
-## 11. Errores y logs
+- **R75.** `terciolines = numlines / 3`, rounded up.
+- **R76.** If `numlines < 3` -> `terciolines = numlines`.
+- **R77.** Random sampling of `terciolines` lines within the central third `[terciolines, 2*terciolines)`. The extreme thirds are reserved: the first as preamble, the last as residue.
+- **R78.** Canon fixation occurs **after** generalization and expansion (`04_canon`). The canon does not change during parsing.
+- **R79.** The sampling `rng` is injectable to allow reproducible tests without sacrificing randomness in production.
 
-- **R60.** Error si `fei ∈ tipos_num` y llega un punto (R12).
-- **R61.** Error si aparece `in`, `cn`, `ci`, `ic` (R44).
-- **R62.** Error si el número de comas varía entre líneas (R46).
-- **R63.** Error si el canon no se cumple en una línea.
-- **R64.** Error si hay `..` dentro de otra secuencia (R15).
-- **R65.** Advertencia severa si hay secuencia pura de puntos `......`.
-- **R66.** Log al detectar secuencia de comas continuas, explicando el algoritmo de paridad.
-- **R67.** Log si los separadores varían entre filas pero el número es consistente.
-- **R68.** Log de error de sintaxis con recomendación de normalizar cuando hay ambigüedad.
-- **R69.** Recomendación explícita de normalizar el archivo antes de operar.
+## 12. Center-out expansion
 
-## 12. Política de ambigüedad
+- **R89.** The tentative canon is built from the central third's lines.
+- **R90.** The canon expands from the center outward: lines immediately before and after the central third are evaluated. If compatible with the canon, they are incorporated and expansion continues. If not, it stops on that side.
+- **R91.** Expansion uses `lex` to obtain each line's structure and verifies structural compatibility against the tentative canon. It does not invoke `06_parser`, to avoid forward dependency.
+- **R92.** The data body is the contiguous region `[start, end]` where the canon holds. Lines outside that range are preamble (before) or residue (after).
+- **R93.** Canon failures in the central third are errors (`CENTRAL_DIVERGENCE`). Failures at the extremes define the body boundary (`PREAMBLE_DETECTED`, `RESIDUE_DETECTED`).
+- **R94.** If the resulting data body is too small (e.g., fewer than `terciolines` lines), `BODY_LIMITATION` (warn) is emitted.
+- **R95.** Expansion bounds advance symmetrically: `lowerBound -= 1` descends to 0, `upperBound += 1` ascends to `numlines`. Expansion stops when a bound fails (or when both fail, per configuration).
 
-- **R70.** No adivinar en silencio.
-- **R71.** Si hay mezcla de notaciones → alertar, mostrar interpretación usada, recomendar normalizar.
-- **R72.** Modo estricto (aborta) y modo permisivo (parsea, marca sospechosas).
-- **R73.** Si la ambigüedad persiste → error o consulta al usuario.
-- **R74.** Degradación a intervención del usuario en versiones futuras para desambiguación de `c`.
+## 13. Hybrid UI (future)
 
-## 13. Muestreo, expansión y fijación
+- **R80.** If more than 2 columns are detected, the UI asks the user what each one means.
+- **R81.** Possible roles: wavelength, absorbance, transmittance, additional absorbance, other parameter, ignore.
+- **R82.** Based on the answer, the parser applies corresponding operations.
+- **R83.** Neither absolute automation nor absolute control: the parser deduces what it can, asks when it cannot.
 
-- **R75.** `terciolineas = numlineas / 3`, redondeado hacia arriba.
-- **R76.** Si `numlineas < 3` → `terciolineas = numlineas`.
-- **R77.** Muestreo aleatorio de `terciolineas` líneas dentro del tercio central `[terciolineas, 2*terciolineas)`. Los tercios extremos se reservan: el primero como preámbulo, el último como residuo.
-- **R78.** Fijación del canon **después de la generalización y la expansión (`04_canon`)**. El canon no cambia durante el parsing.
-- **R79.** El `rng` del muestreo es inyectable para permitir tests reproducibles sin sacrificar aleatoriedad en producción.
+(R80-R83 live in `10_ui.js` or `src/ui/`, not inside the compiler.)
 
-## 14. Expansión desde el centro
+## 14. Out of scope
 
-- **R89.** El canon tentativo se construye a partir de las líneas del tercio central.
-- **R90.** El canon se expande desde el centro hacia afuera: se evalúan las líneas inmediatamente anteriores y posteriores al tercio central. Si son compatibles con el canon, se incorporan y la expansión continúa. Si no, se detiene en ese lado.
-- **R91.** La expansión usa `lexear` para obtener la estructura de cada línea y verifica compatibilidad estructural contra el canon tentativo. No invoca `06_parser`, para no crear dependencia hacia adelante.
-- **R92.** El cuerpo de datos es la región contigua `[inicio, fin]` donde el canon se sostiene. Las líneas fuera de ese rango son preámbulo (antes) o residuo (después).
-- **R93.** Los fallos del canon en el tercio central son error (`DIVERGENCIA_CENTRAL`). Los fallos en los extremos definen el borde del cuerpo (`PREAMBULO_DETECTADO`, `RESIDUO_DETECTADO`).
-- **R94.** Si el cuerpo de datos resultante es demasiado pequeño (por ejemplo, menos de `terciolineas` líneas), se emite `LIMITACION_CUERPO_DATOS` (warn).
-- **R95.** Las cotas de expansión avanzan simétricamente: `cota_inferior -= 1` baja hacia 0, `cota_superior += 1` sube hacia `numlineas`. La expansión se detiene cuando alguna cota falla (o cuando ambas fallan, según configuración).
+- **R84.** Thousands notation (`1.234,56`).
+- **R85.** Literal missing values (`NaN`, `---`, `>3.0`).
+- **R86.** Rows split across multiple lines.
+- **R87.** Units attached to numbers (`250nm`).
+- **R88.** Comments at the end of lines.
 
-## 15. UI híbrida (futuro)
+## 15. Retired rules (v5.0)
 
-- **R80.** Si se detectan más de 2 columnas, la UI pregunta al usuario qué significa cada una.
-- **R81.** Roles posibles: longitud de onda, absorbancia, transmitancia, absorbancia adicional, otro parámetro, ignorar.
-- **R82.** Según la respuesta, el parser aplica operaciones correspondientes.
-- **R83.** Ni automatización absoluta ni control absoluto: el parser deduce lo que puede, pregunta cuando no.
+The following rules from the previous architecture are obsolete and kept here only for historical reference. Do not implement them.
 
-**(R80–R83 viven en `10_ui.js` o en `src/ui/`, no dentro del compilador.)**
-
-## 16. Fuera de alcance
-
-- **R84.** Notación de miles (`1.234,56`).
-- **R85.** Valores faltantes literales (`NaN`, `---`, `>3.0`).
-- **R86.** Filas partidas en varias líneas.
-- **R87.** Unidades pegadas a números (`250nm`).
-- **R88.** Comentarios al final de línea.
-
----
-
-## Correcciones aplicadas respecto a la primera versión
-
-| Regla | Cambio |
-|---|---|
-| R24 | Movida a `05_fijacion.js`. |
-| R26 | Movida a `05_fijacion.js`. |
-| R31 | Detección en `07`, inyección en `08`. |
-| R44 | Doble: canon en `04`, línea en `07`. |
-| R46 y R47 | Fusionadas en R46. |
-| R56 | Añadido "o nada (solo `i` vacío)". |
-| R57–R59 | Precedencia: canon manda; R57–R59 solo para `i`. |
-| R52–R54 | Detección en `06`, inyección en `08`. |
-| R78 | "Después de la generalización y la expansión", no del muestreo. |
-| R80–R83 | Asignadas a UI (`10_ui.js` o `src/ui/`). |
-
-## Correcciones aplicadas respecto a la segunda versión
-
-| Regla | Cambio |
-|---|---|
-| R23, R24, R26 | `05_congelacion` → `05_fijacion`. |
-| R77 | Reescrita: muestreo aleatorio del tercio central, no del inferior. |
-| R78 | Reescrita: fijación después de generalización y expansión. |
-| R79 | Reescrita: `rng` inyectable. |
-| R89–R95 | Añadidas: expansión desde el centro, cuerpo de datos, cotas simétricas. |
-| Sección 13 | Renombrada de "Muestreo y congelación" a "Muestreo, expansión y fijación". |
-| Sección 14 | Nueva: "Expansión desde el centro". |
-| Sección 15 | Renumerada (antes era 14). |
-| Sección 16 | Renumerada (antes era 15). |
-
-## Correcciones aplicadas respecto a la tercera versión (v5.0)
-
-El modelo de canon se reescribió completo. Las reglas que siguen se conservan íntegras o reformuladas; las demás quedan obsoletas.
-
-| Regla | Estado | Nota |
+| Rule | Status | Note |
 |---|---|---|
-| R1–R6 | **Se mantienen** | Tokens numéricos. |
-| R7–R22 | **Retiradas** | Clasificación de comas en el lexer. Reemplazadas por `tokenizer.js` (transcripción literal). |
-| R23–R28 | **Retiradas** | Paridad y runs en el lexer. La paridad vive ahora en `04b_disambiguation` como resolución por defecto. |
-| R29–R36 | **Retiradas** | Ancla `i` original. `i` regresa en el canon abstracto con significado distinto (mezcla `n`+`z` en una columna). |
-| R37–R43 | **Retiradas** | Generalización a `i` en el canon literal. Reemplazadas por agrupación en bloques por patrón de comas. |
-| R44–R46 | **Se mantienen** | Prohibiciones estructurales. Ahora filtran resoluciones en `04b`. |
-| R48–R56 | **Reformuladas** | El parser camina un `plan` en lugar de un `fixedCanon` de tokens. |
-| R57–R59 | **Retiradas** | Clasificación local de comas en el parser. Ya no hay resolución local. |
-| R60–R69 | **Se mantienen** | Diagnósticos. |
-| R70–R74 | **Se mantienen** | Política de ambigüedad. **R74 pasa de "futuro" a comportamiento por defecto**: el editor interactivo es el mecanismo estándar de desambiguación. |
-| R75–R79 | **Se mantienen** | Muestreo, expansión, `rng` inyectable. |
-| R89–R95 | **Se mantienen** | Expansión desde el centro. |
-| R96–R105 | **Nuevas** | Canon literal, desambiguación por bloque, canon abstracto, `MIXED_NOTATION`, `COLUMN_GAPS`, `BLOCK_COUNT_MISMATCH`, `plan` de ejecución, propagación de `null`, preferencia por canon único con excepciones explícitas. |
+| R7-R22 | Retired | Comma classification in the lexer. Replaced by `tokenizer.js` (literal transcription). |
+| R23-R28 | Retired | Parity and runs in the lexer. Parity now lives in `04b_disambiguation` as a default resolution. |
+| R29-R36 | Retired | Original `i` anchor. `i` returns in the abstract canon with a different meaning (mix of `n`+`z` in a column). |
+| R37-R43 | Retired | Generalization to `i` in the literal canon. Replaced by block grouping by comma pattern. |
+| R57-R59 | Retired | Local comma classification in the parser. There is no local resolution anymore. |
 
-### Reglas nuevas (R96–R105)
+## 16. Applied corrections (v5.0 summary)
 
-- **R96.** El canon literal (`n`, `z`, `v`, `,`) no interpreta comas. La coma es un carácter estructural, no un separador decimal ni de columna.
-- **R97.** La heurística de paridad vive únicamente en `04b_disambiguation` como resolución por defecto. No contamina el lexer, el canon ni el parser.
-- **R98.** Un bloque es ambiguo si contiene al menos una `z`, al menos una coma, y ninguna `n` en sus filas. La presencia de `n` (punto decimal) desambigua; la presencia de `v` (slot vacío explícito) desambigua.
-- **R99.** Las resoluciones se agrupan por patrón de comas, no por canon completo. Filas con `n,n,n` y `z,z,z` pertenecen al mismo bloque (`_,_,_`) porque comparten estructura de comas.
-- **R100.** `v` representa un slot vacío explícito y se propaga como `null` hasta `08_codegen`. No se inyecta `0`.
-- **R101.** El canon abstracto (`n`, `z`, `i`, `v`) se construye **después** de la desambiguación. Codifica la naturaleza de cada columna, no de cada fila.
-- **R102.** Los gaps individuales (`v` en algunas filas, no en todas) no cambian el tipo de columna. Se reportan como `completeness: { filled, total, gapIndices }` y como diagnóstico `COLUMN_GAPS`.
-- **R103.** Mezcla `n`+`z` en la misma columna → tipo `i` + diagnóstico `MIXED_NOTATION` (info).
-- **R104.** El codegen consume `segments`. Cada segmento lleva su `plan`. Se prefiere un único plan que cubra todo el cuerpo; los bloques que no se unifican se tratan como **excepciones explícitas**.
-- **R105.** Todos los segmentos deben producir el mismo número de columnas. Si no, `BLOCK_COUNT_MISMATCH` (error) y el archivo se rechaza o se exporta en tablas separadas (decisión del usuario).
+| Rule group | Status |
+|---|---|
+| R1-R6 | Maintained. Numeric tokens. |
+| R7-R43 | Retired. See section 15. |
+| R44-R46 | Maintained. Structural prohibitions. Now filter resolutions in `04b`. |
+| R48-R56 | Reformulated. Parser walks a `plan` instead of a `fixedCanon` array. |
+| R57-R59 | Retired. Local comma classification removed. |
+| R60-R69 | Maintained. Diagnostics. |
+| R70-R74 | Maintained. R74 is now the default behavior. |
+| R75-R79 | Maintained. Sampling, expansion, injectable `rng`. |
+| R89-R95 | Maintained. Center-out expansion. |
+| R96-R105 | New. Literal canon, block disambiguation, abstract canon, `MIXED_NOTATION`, `COLUMN_GAPS`, `BLOCK_COUNT_MISMATCH`, executable `plan`, `null` propagation, single-canon preference with explicit exceptions. |

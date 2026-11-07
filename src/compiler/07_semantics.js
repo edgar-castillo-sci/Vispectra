@@ -1,47 +1,70 @@
 // ============================================================
-// PHASE 07 — SEMANTICS (Validation)
+// PHASE 07 — SEMANTICS (v5.0)
 // ============================================================
-// Function: verify(parsed, fixedCanon)
+// Function: verify(parsed, plan)
 //
-// Input: {index, ok, values}, [token]
+// Input:
+//   - parsed: { index, ok, values, diagnostics } from 06_parser
+//   - plan:   { pattern, commaRoles, columnTypes, numColumns }
+//
 // Output: { index, ok, values, diagnostics }
 //
 // Does:
-//   - Validates mathematical consistency (no NaN, no Infinity).
-//   - Applies structural prohibitions (R44).
-//   - Passes data through for codegen.
+//   - If parsed.ok is false, propagates as-is.
+//   - Validates values.length === plan.numColumns (defensive).
+//   - Validates each non-null value is a finite number.
+//   - Rejects values in a 'v' column (defensive).
+//
+// Does NOT:
+//   - Emit MISSING_VALUE (gaps are aggregated in 04c as COLUMN_GAPS).
+//   - Enforce Number.isInteger on 'z' columns (exponents like 1e-2
+//     are 'z' by raw, non-integer by value — both valid).
+//   - Interpret units, ranges, or physical meaning.
 // ============================================================
 
-export function verify(parsed, fixedCanon) {
-  const { index, ok, values, diagnostics } = parsed;
+export function verify(parsed, plan) {
+  if (!parsed.ok) return parsed;
 
-  if (!ok) return parsed;
+  const { index, values } = parsed;
+  const { columnTypes, numColumns } = plan;
+  const diagnostics = [];
 
-  // 1. Mathematical consistency
+  if (values.length !== numColumns) {
+    diagnostics.push({
+      severity: 'error',
+      code: 'SEMANTIC_COUNT_MISMATCH',
+      params: { index, expected: numColumns, got: values.length },
+    });
+    return { index, ok: false, values, diagnostics };
+  }
+
+  let hasError = false;
+
   for (let i = 0; i < values.length; i++) {
     const val = values[i];
+    const type = columnTypes[i];
 
-    if (val !== null) {
-      if (isNaN(val)) {
-        diagnostics.push({
-          severity: 'error',
-          code: 'INVALID_NUMERIC_VALUE',
-          params: { index, col: i, value: 'NaN' }
-        });
-      } else if (!isFinite(val)) {
-        diagnostics.push({
-          severity: 'error',
-          code: 'INVALID_NUMERIC_VALUE',
-          params: { index, col: i, value: 'Infinity' }
-        });
-      }
+    if (val === null) continue;
+
+    if (typeof val !== 'number' || !Number.isFinite(val)) {
+      diagnostics.push({
+        severity: 'error',
+        code: 'INVALID_NUMERIC_VALUE',
+        params: { index, column: i, value: String(val) },
+      });
+      hasError = true;
+      continue;
+    }
+
+    if (type === 'v') {
+      diagnostics.push({
+        severity: 'error',
+        code: 'VALUE_IN_EMPTY_COLUMN',
+        params: { index, column: i },
+      });
+      hasError = true;
     }
   }
 
-  // 2. Structural Prohibitions (R44) at line level
-  // If the canon itself was valid, the parser already enforced it.
-  // But we can double-check if a value is null where a number was strictly required.
-  // (The parser already does this, so this is just a safety net).
-
-  return { index, ok: true, values, diagnostics };
+  return { index, ok: !hasError, values, diagnostics };
 }
