@@ -178,3 +178,36 @@
 | Sección 14 | Nueva: "Expansión desde el centro". |
 | Sección 15 | Renumerada (antes era 14). |
 | Sección 16 | Renumerada (antes era 15). |
+
+## Correcciones aplicadas respecto a la tercera versión (v5.0)
+
+El modelo de canon se reescribió completo. Las reglas que siguen se conservan íntegras o reformuladas; las demás quedan obsoletas.
+
+| Regla | Estado | Nota |
+|---|---|---|
+| R1–R6 | **Se mantienen** | Tokens numéricos. |
+| R7–R22 | **Retiradas** | Clasificación de comas en el lexer. Reemplazadas por `tokenizer.js` (transcripción literal). |
+| R23–R28 | **Retiradas** | Paridad y runs en el lexer. La paridad vive ahora en `04b_disambiguation` como resolución por defecto. |
+| R29–R36 | **Retiradas** | Ancla `i` original. `i` regresa en el canon abstracto con significado distinto (mezcla `n`+`z` en una columna). |
+| R37–R43 | **Retiradas** | Generalización a `i` en el canon literal. Reemplazadas por agrupación en bloques por patrón de comas. |
+| R44–R46 | **Se mantienen** | Prohibiciones estructurales. Ahora filtran resoluciones en `04b`. |
+| R48–R56 | **Reformuladas** | El parser camina un `plan` en lugar de un `fixedCanon` de tokens. |
+| R57–R59 | **Retiradas** | Clasificación local de comas en el parser. Ya no hay resolución local. |
+| R60–R69 | **Se mantienen** | Diagnósticos. |
+| R70–R74 | **Se mantienen** | Política de ambigüedad. **R74 pasa de "futuro" a comportamiento por defecto**: el editor interactivo es el mecanismo estándar de desambiguación. |
+| R75–R79 | **Se mantienen** | Muestreo, expansión, `rng` inyectable. |
+| R89–R95 | **Se mantienen** | Expansión desde el centro. |
+| R96–R105 | **Nuevas** | Canon literal, desambiguación por bloque, canon abstracto, `MIXED_NOTATION`, `COLUMN_GAPS`, `BLOCK_COUNT_MISMATCH`, `plan` de ejecución, propagación de `null`, preferencia por canon único con excepciones explícitas. |
+
+### Reglas nuevas (R96–R105)
+
+- **R96.** El canon literal (`n`, `z`, `v`, `,`) no interpreta comas. La coma es un carácter estructural, no un separador decimal ni de columna.
+- **R97.** La heurística de paridad vive únicamente en `04b_disambiguation` como resolución por defecto. No contamina el lexer, el canon ni el parser.
+- **R98.** Un bloque es ambiguo si contiene al menos una `z`, al menos una coma, y ninguna `n` en sus filas. La presencia de `n` (punto decimal) desambigua; la presencia de `v` (slot vacío explícito) desambigua.
+- **R99.** Las resoluciones se agrupan por patrón de comas, no por canon completo. Filas con `n,n,n` y `z,z,z` pertenecen al mismo bloque (`_,_,_`) porque comparten estructura de comas.
+- **R100.** `v` representa un slot vacío explícito y se propaga como `null` hasta `08_codegen`. No se inyecta `0`.
+- **R101.** El canon abstracto (`n`, `z`, `i`, `v`) se construye **después** de la desambiguación. Codifica la naturaleza de cada columna, no de cada fila.
+- **R102.** Los gaps individuales (`v` en algunas filas, no en todas) no cambian el tipo de columna. Se reportan como `completeness: { filled, total, gapIndices }` y como diagnóstico `COLUMN_GAPS`.
+- **R103.** Mezcla `n`+`z` en la misma columna → tipo `i` + diagnóstico `MIXED_NOTATION` (info).
+- **R104.** El codegen consume `segments`. Cada segmento lleva su `plan`. Se prefiere un único plan que cubra todo el cuerpo; los bloques que no se unifican se tratan como **excepciones explícitas**.
+- **R105.** Todos los segmentos deben producir el mismo número de columnas. Si no, `BLOCK_COUNT_MISMATCH` (error) y el archivo se rechaza o se exporta en tablas separadas (decisión del usuario).

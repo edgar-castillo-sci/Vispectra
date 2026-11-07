@@ -1,77 +1,86 @@
 // ============================================================
-// PHASE 05 — FIXATION
+// PHASE 05 — FIXATION (v5.0)
 // ============================================================
-// Functions: fixCanon(canon), countColumns(fixedCanon)
+// Function: fixCanon(blockCanon, resolution, pattern)
 //
-// Input: string (generalized canon)
-// Output: { fixedCanon: [token], diagnostics: [diag] }
+// Input:
+//   - blockCanon: from 04c { canon, columns }
+//   - resolution: from 04b { id, commas } (chosen or default)
+//   - pattern: block's pattern ('_,_,_' etc.)
+//
+// Output: {
+//   plan: {
+//     pattern:     string,          // '_,_,_'
+//     commaRoles:  ['dec'|'sep'],   // one per comma in pattern
+//     columnTypes: ['n'|'z'|'i'|'v'], // from blockCanon.columns
+//     numColumns:  number,
+//   } | null,
+//   diagnostics: [diag],
+// }
+//
+// Does:
+//   - Validates that resolution.commas length matches the pattern's
+//     comma count.
+//   - Validates that blockCanon.columns is present and non-empty.
+//   - Packages the three inputs into a single `plan` object.
+//
+// Does NOT:
+//   - Re-derive column counts (04c already did).
+//   - Apply parity (04b already did).
+//   - Interpret values (that's 06_parser).
+//
+// The `plan` is the parser's executable spec: it carries the
+// structural skeleton (pattern), the comma semantics (commaRoles),
+// and the expected output shape (columnTypes, numColumns).
 // ============================================================
 
-export function fixCanon(canon) {
-  const fixedCanon = [];
+export function fixCanon(blockCanon, resolution, pattern) {
   const diagnostics = [];
-  let i = 0;
+  const commaCount = countCommas(pattern);
 
-  while (i < canon.length) {
-    const char = canon[i];
-
-    if (char === ',') {
-      // Find the whole run of commas
-      let runLength = 0;
-      while (i + runLength < canon.length && canon[i + runLength] === ',') {
-        runLength++;
-      }
-
-      if (runLength === 1) {
-        // A single comma between values is a column separator, not a decimal.
-        const prev = fixedCanon[fixedCanon.length - 1];
-        const next = canon[i + 1];
-        const isBetweenValues =
-          (prev === 'n' || prev === 'c' || prev === 'i') &&
-          (next === 'n' || next === 'c' || next === 'i');
-
-        if (isBetweenValues) {
-          fixedCanon.push(',');
-        } else {
-          fixedCanon.push('c');
-        }
-      } else {
-        // For runs of 2 or more commas, apply parity (R24)
-        for (let k = 0; k < runLength; k++) {
-          if (k % 2 === 0) {
-            fixedCanon.push('c');
-          } else {
-            fixedCanon.push(',');
-          }
-        }
-      }
-      i += runLength;
-    } else {
-      // It's an 'n', 'c', or 'i'
-      fixedCanon.push(char);
-      i++;
-    }
-  }
-
-  // R44: Structural prohibitions check (in, cn, ci, ic)
-  const canonString = fixedCanon.join('');
-  if (/in|cn|ci|ic/.test(canonString)) {
+  if (!resolution || !Array.isArray(resolution.commas) ||
+      resolution.commas.length !== commaCount) {
     diagnostics.push({
       severity: 'error',
-      code: 'STRUCTURAL_PROHIBITION',
-      params: { canon: canonString },
+      code: 'RESOLUTION_LENGTH_MISMATCH',
+      params: {
+        pattern,
+        expected: commaCount,
+        got: resolution?.commas?.length ?? 0,
+      },
     });
+    return { plan: null, diagnostics };
   }
 
-  return { fixedCanon, diagnostics };
+  if (!blockCanon || !Array.isArray(blockCanon.columns) ||
+      blockCanon.columns.length === 0) {
+    diagnostics.push({
+      severity: 'error',
+      code: 'MISSING_BLOCK_CANON',
+      params: { pattern },
+    });
+    return { plan: null, diagnostics };
+  }
+
+  const columnTypes = blockCanon.columns.map(c => c.type);
+
+  return {
+    plan: {
+      pattern,
+      commaRoles: [...resolution.commas],
+      columnTypes,
+      numColumns: columnTypes.length,
+    },
+    diagnostics,
+  };
 }
 
-export function countColumns(fixedCanon) {
-  let count = 0;
-  for (const token of fixedCanon) {
-    if (token === 'n' || token === 'c' || token === 'i') {
-      count++;
-    }
-  }
-  return count;
+// ------------------------------------------------------------
+// Helpers
+// ------------------------------------------------------------
+
+function countCommas(pattern) {
+  let n = 0;
+  for (const ch of pattern) if (ch === ',') n++;
+  return n;
 }

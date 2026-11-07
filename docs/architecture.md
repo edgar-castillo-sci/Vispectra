@@ -13,30 +13,50 @@ All phases return a named object, except `08_codegen`, which directly mutates `c
 ```
 [File]
     ↓
-[00_reading]      → text + diagnostics
+[00_reading]         → text + diagnostics
     ↓
-[01_sampling]     → lines, centralBlock, sample + diagnostics
+[01_sampling]        → lines, centralBlock, sample + diagnostics
     ↓
-[02_lexer]        → structure per line + diagnostics
+[02_lexer]           → literal structure per line (n / z / v / ,) + diagnostics
     ↓
-[03_ir]           → assembled IR + diagnostics
+[03_ir]              → totalCount + frequencies + lengths + diagnostics
     ↓
-[04_canon]        → generalized canon + body {start, end} + diagnostics
+[04_canon]           → literal canon + blocks (grouped by comma pattern) + body
     ↓
-[05_fixation]     → fixed canon + diagnostics
+[04b_disambiguation] → per-block candidate resolutions + hasAmbiguity
     ↓
-[06_parser]       → values per line + diagnostics
+[04c_block_canon]    → per-block abstract canon (n / z / i / v) + completeness
     ↓
-[07_semantics]    → verified values + diagnostics
+[05_fixation]        → per-block executable plan (pattern + commaRoles + columnTypes)
     ↓
-[08_codegen]      → filled columns (mutation)
+[06_parser]          → values per line, driven by plan
     ↓
-[09_diagnostics]  → diagnostics accumulator
+[07_semantics]       → verified values
+    ↓
+[08_codegen]         → filled columns (mutation)
+    ↓
+[09_diagnostics]     → diagnostics accumulator
     ↓
 [Normalized data + diagnostics]
 ```
 
 `main.js` orchestrates the pipeline. Each phase is a pure function (except `08_codegen`, which mutates `columns` by explicit design) and returns a named object. Diagnostics are accumulated in `09_diagnostics`.
+
+## Two-Level Canonical Model
+
+The canon operates at two distinct levels that must never be conflated:
+
+1. **Literal canon (per row).** Transcription of a single line into the alphabet `n`, `z`, `v`, `,`. No comma is interpreted. `350.0,0.523,0.001` → `n,n,n`. `1,5` → `z,z`. `1,,3` → `z,,z`. `1.5, ,2.5` → `n,v,n`.
+
+2. **Abstract canon (per block).** One symbol per column, describing the nature of that column across all rows of a block:
+   - `n` — all non-empty values in the column are dot-decimals.
+   - `z` — all non-empty values are integers.
+   - `i` — mix of `n` and `z` in the same column (`MIXED_NOTATION` diagnostic).
+   - `v` — column is entirely empty.
+
+   Gaps (`v` in some rows but not others) do **not** change the column symbol. They are reported separately as `completeness: { filled, total, gapIndices }` and as a `COLUMN_GAPS` diagnostic.
+
+The literal canon is produced by `02_lexer`. The abstract canon is produced by `04c_block_canon`, **after** the disambiguation phase has fixed the comma roles.
 
 ## Phase Contracts
 
@@ -63,58 +83,67 @@ All phases return a named object, except `08_codegen`, which directly mutates `c
 ### 02_lexer
 
 - **Function**: `lex(line)`
-- **Input**: `string` (a raw line)
+- **Input**: `string` (raw line)
 - **Output**: `{ structure: string, diagnostics: [diag] }`
-- **Does**: removes digits and reserved symbols, classifies dots and commas, emits `structure` with symbols `n`, `c`, `,`.
-- **Possible diagnostics**: `DOT_AFTER_NUMBER` (error), `CONSECUTIVE_DOTS` (error), `DOT_SEQUENCE` (warn), `COMMA_RUN` (info).
-- **Does NOT**: apply parity, generalize, interpret values, fix.
-- **Rules**: R7–R28.
+- **Does**: transcribes the line into `n`, `z`, `v`, `,`. Consumes numbers atomically (via `tokenizer`). Preserves runs of commas. Emits `v` when a gap sits between two commas.
+- **Does NOT**: interpret commas, apply parity, generalize, resolve anything.
+- **Depends on**: `compiler/tokenizer.js`.
 
 ### 03_ir
 
 - **Function**: `buildIR(structures)`
 - **Input**: `[{index, structure}]`
-- **Output**: `{ perLine, frequencies, lengths, diagnostics: [diag] }`
-- **Does**: groups and counts structures, prepares for generalization.
-- **Possible diagnostics**: `HETEROGENEOUS_STRUCTURES` (warn) if all structures are different and there is no clear pattern.
-- **Does NOT**: generalize, interpret, validate.
-- **Rules**: — (aggregation phase).
+- **Output**: `{ totalCount, frequencies, lengths, diagnostics }`
+- **Does**: builds a frequency histogram of literal structures. `totalCount` replaces the previous `perLine` array (O(unique) memory).
+- **Does NOT**: generalize, interpret.
 
 ### 04_canon
 
 - **Function**: `buildCanon(ir, lines, centralBlock)`
-- **Input**: IR, all lines in the file, central block `{start, end}`.
-- **Output**: `{ canon: string, body: {start, end}, diagnostics: [diag] }`
-- **Does**:
-  - Builds the tentative canon from the central block.
-  - Expands from the center outwards as long as the canon holds.
-  - Delimits the data body: `[start, end]`.
-  - Failures in the central block are errors; failures at the extremes define the body boundaries (preamble or residue).
-- **Possible diagnostics**: `PREAMBLE_DETECTED` (info), `RESIDUE_DETECTED` (info), `CENTRAL_DIVERGENCE` (error), `BODY_LIMITATION` (warn).
-- **Does NOT**: apply parity, fix, interpret values.
-- **Rules**: R29–R46, R77 (expanded), R89–R95.
-- **Note**: expansion uses `lex` to get the structure of each line and a structural compatibility check against the tentative canon. It does not invoke `06_parser` to avoid forward dependency.
+- **Input**: IR, all lines, central block.
+- **Output**: `{ canonLiteral, body, blocks, diagnostics }`
+  - `canonLiteral`: the most frequent literal pattern.
+  - `blocks`: `[{ pattern, instances, hasAmbiguity }]` — grouped by comma pattern (`n`/`z` normalized to `_`, `,` and `v` preserved).
+- **Does**: computes the literal canon, expands the body from the center while matching any pattern seen in the sample, groups all body lines into blocks.
+- **Ambiguity rule**: a block is ambiguous if its pattern contains ≥1 comma, no `v`, at least one `z`, and no `n`. (Dot-decimals and explicit empty slots disambiguate.)
+- **Does NOT**: resolve ambiguity (`04b`), build abstract canon (`04c`).
+
+### 04b_disambiguation
+
+- **Function**: `detectAmbiguities(blocks, lines)`
+- **Input**: blocks from `04_canon`, all lines.
+- **Output**: `{ blocks, hasAmbiguity, diagnostics }`
+  - `blocks[i].resolutions`: `[{ id, commas: ['dec'|'sep'], columns, isDefault }]`.
+- **Does**: enumerates valid resolutions per block (`2^k` combinations, filtered by fusion safety), computes resulting column counts, assigns parity as default when valid.
+- **Ambiguity propagation**: block is ambiguous if it has >1 valid resolution, or if it has 1 valid resolution that is not the default, or if its pattern contains consecutive commas.
+- **Does NOT**: resolve, apply, or build abstract canon.
+
+### 04c_block_canon
+
+- **Function**: `buildBlockCanon(block, lines, resolution)`
+- **Input**: block, all lines, chosen resolution (or `null` → synthesize all-`sep`).
+- **Output**: `{ canon, columns, diagnostics }`
+  - `canon`: `'n,n,n'`, `'i,z'`, etc.
+  - `columns`: `[{ type: 'n'|'z'|'i'|'v', completeness: { filled, total, gapIndices } }]`.
+- **Does**: applies the resolution to each row (via `applyResolution`), aggregates per column, emits `MIXED_NOTATION` and `COLUMN_GAPS` diagnostics.
+- **Does NOT**: resolve ambiguity, decide column count (that comes from resolution).
 
 ### 05_fixation
 
-- **Functions**: `fixCanon(canon)`, `countColumns(fixedCanon)`
-- **Input**: `string` (generalized canon)
-- **Output**: `{ fixedCanon: [token], diagnostics: [diag] }`
-- **Does**: applies base parity (R24) and `c,c,c` conversion (R26), fixes the canon as an array of tokens. `countColumns` counts value symbols (`n`, `c`, `i`) plus 1.
-- **Does NOT**: generalize further, interpret values.
-- **Rules**: R24, R26, R78.
+- **Function**: `fixCanon(blockCanon, resolution, pattern)`
+- **Input**: output of `04c`, chosen resolution, block pattern.
+- **Output**: `{ plan: { pattern, commaRoles, columnTypes, numColumns } | null, diagnostics }`
+- **Does**: validates inputs and packages them into a single `plan` object — the parser's executable spec.
+- **Does NOT**: apply parity, re-derive column counts, interpret values.
 
 ### 06_parser
 
-- **Function**: `parseLine(line, fixedCanon)`
-- **Input**: `{index, content}`, `[token]`
-- **Output**: `{ index, ok, values, diagnostics }`
-  - `values`: `[number | null]`. `null` indicates absence.
-  - If `ok: false`, `values` is not used.
-- **Does**: iterates `fixedCanon` and extracts values from the line according to R48–R56. Local comma classification (R57–R59) only when the canon says `i`.
-- **Possible diagnostics**: `CANON_MISMATCH` (error), `UNEXPECTED_COMMA` (error).
-- **Does NOT**: validate, inject 0, fill columns.
-- **Rules**: R1–R6, R48–R59.
+- **Function**: `parseLine(line, plan)`
+- **Input**: `{ index, content }`, plan from `05_fixation`.
+- **Output**: `{ index, ok, values: (number|null)[], diagnostics }`
+- **Does**: walks the pattern left to right, consuming tokens from `tokenize(line)`. `_` consumes a number (or marks empty slot if none available). `v` consumes a gap. `,` with role `sep` finalizes the pending slot. `,` with role `dec` fuses the pending number with the next (requires both to be `/^\d+$/`, else `FUSION_UNSAFE`).
+- **Does NOT**: resolve ambiguity, apply heuristics, inject defaults.
+- **Depends on**: `compiler/tokenizer.js`.
 
 ### 07_semantics
 
@@ -298,3 +327,15 @@ To maintain the browser-native, local-first philosophy, all mathematical operati
 - **R86**: rows split across multiple lines.
 - **R87**: units attached to numbers (`250nm`).
 - **R88**: comments at the end of lines.
+
+## Retired in v5.0
+
+- `i` as a wildcard in the per-row canon. Reintroduced with a different meaning in the abstract canon (mixed notation).
+- `c` as a token emitted by the lexer. Comma-decimal notation is now a *resolution* decided in `04b`, not a property the lexer assigns.
+- `u` as a token. Replaced by per-block resolutions.
+- Parity rules in `05_fixation`. Moved to `04b` as the default resolution.
+- `fixedCanon` as an array of tokens. Replaced by `plan` (per block).
+- `perLine` in `03_ir`. Replaced by `totalCount` and `frequencies`.
+- Fast-fail in the lexer (`[0-9][.,][0-9]`). The lexer now transcribes every line; metadata filtering is implicit in the block grouping.
+- `null → 0` injection in `08_codegen`. Pending rewrite; `null` will be preserved.
+- `04a_column_typing` (never implemented). Its function is subsumed by `04c_block_canon`.

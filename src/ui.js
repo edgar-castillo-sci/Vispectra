@@ -27,13 +27,11 @@ export function initUI(procesarFn, graficarFn) {
 
   if (!zona || !input || !botonProcesar) return;
 
-  // --- Selector de Idioma ---
   if (langSelector) {
     langSelector.addEventListener('change', (e) => {
       setLanguage(e.target.value);
       if (columnasGlobales) {
         prepararRolePanel(columnasGlobales.length);
-        // Reconstruir pipeline para traducir textos dinámicos
         const currentPipeline = getMathPipeline();
         pipelineContainer.innerHTML = '';
         currentPipeline.forEach(op => agregarPasoPipeline(op));
@@ -46,22 +44,27 @@ export function initUI(procesarFn, graficarFn) {
   ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => zona.addEventListener(ev, e => e.preventDefault()));
   zona.addEventListener('drop', (e) => actualizarArchivos(e.dataTransfer.files, salida));
 
-  // --- Procesar ---
   botonProcesar.addEventListener('click', async () => {
     if (archivos.length === 0) return salida.textContent = t('status_waiting');
     salida.textContent = t('status_processing');
     const resultado = await onProcesar(archivos[0], salida);
 
     if (resultado) {
-      columnasGlobales = resultado.columns;
-      prepararRolePanel(resultado.columns.length);
+      // DEDUPLICACIÓN
+      const { unique, originalIndices } = deduplicateColumns(resultado.columns);
+
+      console.log("Columnas originales:", resultado.columns.length);
+      console.log("Columnas únicas tras deduplicar:", unique.length);
+
+      columnasGlobales = unique;
+      prepararRolePanel(unique.length, originalIndices);
+
       if(rolePanel) rolePanel.style.display = 'block';
       if(botonExportCsvRaw) botonExportCsvRaw.style.display = 'block';
       if (toggleAutoPlot && toggleAutoPlot.checked) actualizarGrafico();
     }
   });
 
-  // --- Añadir Operación Matemática ---
   if (btnAddOp) {
     btnAddOp.addEventListener('click', () => {
       agregarPasoPipeline();
@@ -69,7 +72,6 @@ export function initUI(procesarFn, graficarFn) {
     });
   }
 
-  // --- Auto-graficado ---
   if (toggleAutoPlot) {
     toggleAutoPlot.addEventListener('change', (e) => {
       if (botonGraficar) botonGraficar.style.display = e.target.checked ? 'none' : 'block';
@@ -77,7 +79,6 @@ export function initUI(procesarFn, graficarFn) {
     });
   }
 
-  // --- Exportaciones ---
   if (botonExportar) {
     botonExportar.addEventListener('click', async () => {
       const svg = document.getElementById('spectrumSvg');
@@ -138,7 +139,6 @@ export function initUI(procesarFn, graficarFn) {
 
     pipelineContainer.appendChild(step);
 
-    // Si estamos reconstruyendo, aplicamos los valores previos
     if (opData) {
       select.value = opData.type;
       actualizarParametros(opData.type, paramsDiv, opData);
@@ -221,10 +221,6 @@ export function initUI(procesarFn, graficarFn) {
     });
     return processed;
   }
-
-  // ------------------------------------------------------------
-  // Gráfico y Exportación CSV
-  // ------------------------------------------------------------
 
   function actualizarGrafico() {
     if (!columnasGlobales) return;
@@ -309,7 +305,7 @@ export function initUI(procesarFn, graficarFn) {
     if (toggleAutoPlot && toggleAutoPlot.checked) actualizarGrafico();
   }
 
-  function prepararRolePanel(numColumnas) {
+  function prepararRolePanel(numColumnas, originalIndices) {
     const selectX = document.getElementById('selectX');
     const checkboxesY = document.getElementById('checkboxesY');
     if (!selectX || !checkboxesY) return;
@@ -318,24 +314,67 @@ export function initUI(procesarFn, graficarFn) {
     for (let i = 0; i < numColumnas; i++) {
       const opt = document.createElement('option');
       opt.value = i;
-      opt.textContent = `${t('col_prefix')} ${i}`;
+      const label = originalIndices ? originalIndices[i] : i;
+      opt.textContent = `${t('col_prefix')} ${label}`;
       selectX.appendChild(opt);
     }
     for (let i = 0; i < numColumnas; i++) {
       const label = document.createElement('label'); label.style.display = 'block'; label.style.fontSize = '0.9rem';
       const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = i; cb.className = 'checkbox-y';
+
+      // AUTO-SELECCIÓN INTELIGENTE: Seleccionar la columna 1 (asumiendo que es la Abs), NUNCA la 0.
       if (i === 1) cb.checked = true;
+
       cb.addEventListener('change', onSelectionChange);
       label.appendChild(cb);
-      label.appendChild(document.createTextNode(` ${t('col_prefix')} ${i}`));
+      const labelIdx = originalIndices ? originalIndices[i] : i;
+      label.appendChild(document.createTextNode(` ${t('col_prefix')} ${labelIdx}`));
       checkboxesY.appendChild(label);
     }
     selectX.addEventListener('change', onSelectionChange);
   }
 }
 
+// ------------------------------------------------------------
+// Funciones Auxiliares
+// ------------------------------------------------------------
+
 function actualizarArchivos(fileList, salida) {
   archivos = Array.from(fileList);
   if (archivos.length === 0) return salida.textContent = t('status_waiting');
   salida.textContent = `${archivos.length} file(s) ready.`;
+}
+
+function deduplicateColumns(columns) {
+  const unique = [];
+  const originalIndices = [];
+
+  for (let i = 0; i < columns.length; i++) {
+    let isDuplicate = false;
+
+    for (let j = 0; j < unique.length; j++) {
+      const a = columns[i];
+      const b = unique[j];
+
+      if (a.length !== b.length) continue;
+
+      let match = true;
+      for (let k = 0; k < a.length; k++) {
+        // Comparación numérica con margen de error
+        if (Math.abs(a[k] - b[k]) > 0.000001) { match = false; break; }
+      }
+
+      if (match) {
+        isDuplicate = true;
+        break;
+      }
+    }
+
+    if (!isDuplicate) {
+      unique.push(columns[i]);
+      originalIndices.push(i);
+    }
+  }
+
+  return { unique, originalIndices };
 }

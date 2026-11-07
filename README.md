@@ -36,11 +36,18 @@ The compiler is structured as a pipeline of independent, pure functions. Each ph
 
 ## Implementation Status
 
-**Current Version:** `v0.1.1-alpha` (Pre-release)
+**Current Version:** `v0.2.0-alpha-dev` (compiler rebuild, not yet released)
 
-*   **Implemented:** Phases 00, 01, 02, 03, and 09.
-*   **In Development (Stubs):** Phases 04, 05, 06, 07, and 08.
-*   **Status:** The pipeline runs end-to-end and correctly parses the sampled structures of real spectroscopic files, but it does not yet output final numerical columns.
+**Canonical model (v5.0):** Two-level canon.
+- **Literal canon (per row):** `n` (dot-decimal), `z` (integer), `v` (empty slot), `,` (literal comma). No comma interpretation at this level.
+- **Abstract canon (per block):** `n` / `z` / `i` / `v`, one symbol per column. Built **after** disambiguation, so column nature (uniform, mixed, or empty) is preserved without conflating it with per-row transcription.
+
+Comma disambiguation is concentrated in `04b_disambiguation`, which enumerates valid resolutions per block and, when ambiguity is real, defers to the user through an interactive editor (planned).
+
+**Status:**
+- **Implemented and tested:** `tokenizer`, `02_lexer`, `03_ir`, `04_canon`, `04b_disambiguation`, `04c_block_canon`, `05_fixation`, `06_parser`, `09_diagnostics`.
+- **Pending rewrite:** `main.js` (orchestration), `07_semantics`, `08_codegen`.
+- **Pipeline state:** does **not** run end-to-end. `npm run dev` will fail on file load until orchestration is rebuilt on the new contracts.
 
 ## Usage & Deployment
 
