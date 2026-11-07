@@ -1,26 +1,6 @@
 // ============================================================
 // COMPILER — SHARED TOKENIZER
 // ============================================================
-// Function: tokenize(line)
-//
-// Input: string (a raw line)
-// Output: [token]
-//
-// Token types:
-//   { type: 'number', raw, value, hasDot, start, end }
-//   { type: 'comma',  start, end }
-//   { type: 'gap',    raw, start, end }
-//
-// Rules:
-//   - A number is consumed atomically: sign + mantissa + optional exponent.
-//   - A '.5' (leading dot) is a number.
-//   - An exponent is only consumed if complete (e/E followed by digits or sign+digits).
-//   - A comma is always a comma token. Never interpreted here.
-//   - Everything else (letters, spaces, tabs, semicolons, etc.) is a gap.
-//
-// This tokenizer is consumed by BOTH 02_lexer (structure) and 06_parser
-// (values). It contains no heuristics, no parity, no resolution logic.
-// ============================================================
 
 export function tokenize(line) {
   const tokens = [];
@@ -50,14 +30,14 @@ export function tokenize(line) {
       continue;
     }
 
-    // Gap
+    // Separador duro: espacios, punto y coma, tabs, etc.
     const start = i;
     while (i < line.length && !isNumberStart(line, i) && line[i] !== ',') {
       i++;
     }
-    if (i === start) { i++; continue; } // safety
+    if (i === start) { i++; continue; }
     tokens.push({
-      type: 'gap',
+      type: 'separator',
       raw: line.slice(start, i),
       start,
       end: i,
@@ -66,10 +46,6 @@ export function tokenize(line) {
 
   return tokens;
 }
-
-// ------------------------------------------------------------
-// Helpers (private)
-// ------------------------------------------------------------
 
 function isNumberStart(line, i) {
   const ch = line[i];

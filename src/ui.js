@@ -1,5 +1,8 @@
 import { t, setLanguage } from './i18n.js';
-import { smoothGaussian, derivative, correctBaseline, normalizeMinMax, normalizeMax } from './processor.js';
+import { deduplicateColumns } from './services/columns.js';
+import { applyPipeline } from './services/pipeline.js';
+import { openDisambiguationModal } from './ui/disambiguationModal.js';
+import { openColumnsModal } from './ui/columnsModal.js';
 
 let archivos = [];
 let onProcesar = null;
@@ -31,37 +34,115 @@ export function initUI(procesarFn, graficarFn) {
     langSelector.addEventListener('change', (e) => {
       setLanguage(e.target.value);
       if (columnasGlobales) {
-        prepararRolePanel(columnasGlobales.length);
+        prepararRolePanel(columnasGlobales.length, null, false);
         const currentPipeline = getMathPipeline();
         pipelineContainer.innerHTML = '';
-        currentPipeline.forEach(op => agregarPasoPipeline(op));
+        currentPipeline.forEach((op) => agregarPasoPipeline(op));
       }
     });
   }
 
   zona.addEventListener('click', () => input.click());
-  input.addEventListener('change', (e) => { actualizarArchivos(e.target.files, salida); input.value = ''; });
-  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => zona.addEventListener(ev, e => e.preventDefault()));
-  zona.addEventListener('drop', (e) => actualizarArchivos(e.dataTransfer.files, salida));
+  input.addEventListener('change', (e) => {
+    actualizarArchivos(e.target.files, salida);
+    input.value = '';
+  });
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((ev) =>
+    zona.addEventListener(ev, (e) => e.preventDefault())
+  );
+  zona.addEventListener('drop', (e) =>
+    actualizarArchivos(e.dataTransfer.files, salida)
+  );
 
   botonProcesar.addEventListener('click', async () => {
-    if (archivos.length === 0) return salida.textContent = t('status_waiting');
+    if (archivos.length === 0) return (salida.textContent = t('status_waiting'));
     salida.textContent = t('status_processing');
-    const resultado = await onProcesar(archivos[0], salida);
 
-    if (resultado) {
-      // DEDUPLICACIÓN
-      const { unique, originalIndices } = deduplicateColumns(resultado.columns);
+    try {
+      let result = await onProcesar(archivos[0], {});
 
-      console.log("Columnas originales:", resultado.columns.length);
-      console.log("Columnas únicas tras deduplicar:", unique.length);
+      if (!result) {
+        salida.textContent = `✗ ${archivos[0].name}: compile() returned null\n`;
+        return;
+      }
 
-      columnasGlobales = unique;
-      prepararRolePanel(unique.length, originalIndices);
+      if (result.status === 'needs_disambiguation') {
+        const resolutions = await openDisambiguationModal(result.ambiguities);
+        if (!resolutions) {
+          salida.textContent = `✗ ${archivos[0].name}: disambiguation cancelled\n`;
+          return;
+        }
+        salida.textContent = t('status_processing');
+        result = await onProcesar(archivos[0], { resolutions });
+      }
 
-      if(rolePanel) rolePanel.style.display = 'block';
-      if(botonExportCsvRaw) botonExportCsvRaw.style.display = 'block';
-      if (toggleAutoPlot && toggleAutoPlot.checked) actualizarGrafico();
+      if (!result) {
+        salida.textContent = `✗ ${archivos[0].name}: compile() returned null after disambiguation\n`;
+        return;
+      }
+
+      if (result.status === 'failed') {
+        salida.textContent = `✗ ${archivos[0].name}: failed (${result.failedRows}/${result.totalRows} rows)\n`;
+        const errors = (result.diagnostics || [])
+          .filter((d) => d.severity === 'error')
+          .slice(0, 5);
+        for (const e of errors) {
+          salida.textContent += `    ${e.code}\n`;
+        }
+        return;
+      }
+
+      if (result.status === 'ok' || result.status === 'partial') {
+        if (!result.columns || result.columns.length === 0) {
+          salida.textContent = `✗ ${archivos[0].name}: no columns produced\n`;
+          return;
+        }
+
+        const { unique, originalIndices } = deduplicateColumns(result.columns);
+
+        let autoSelect = false;
+        let finalColumns = unique;
+        let finalIndices = originalIndices;
+
+                // Si hay columnas duplicadas, preguntamos al usuario usando el modal
+        if (unique.length < result.columns.length) {
+          const duplicatesCount = result.columns.length - unique.length;
+          const shouldCollapse = await openColumnsModal(
+            duplicatesCount,
+            unique.length,
+            result.columns.length
+          );
+
+          if (shouldCollapse) {
+            autoSelect = true; // Activa las Y automáticamente
+          } else {
+            // Si dice que no, no colapsa y no auto-selecciona nada
+            finalColumns = result.columns;
+            finalIndices = result.columns.map((_, i) => i);
+          }
+        }
+
+        columnasGlobales = finalColumns;
+
+        salida.textContent =
+          `✓ ${archivos[0].name}\n` +
+          `  status: ${result.status}\n` +
+          `  columns: ${finalColumns.length} (from ${result.columns.length})\n` +
+          `  rows: ${result.totalRows} (failed: ${result.failedRows})\n` +
+          `  canon: ${result.canonLiteral.substring(0, 50)}...\n` +
+          `  segments: ${result.segments.length}` +
+          (result.segments.some((s) => s.isException) ? ' (with exceptions)' : '') +
+          '\n';
+
+        prepararRolePanel(finalColumns.length, finalIndices, autoSelect);
+
+        if (rolePanel) rolePanel.style.display = 'block';
+        if (botonExportCsvRaw) botonExportCsvRaw.style.display = 'block';
+        if (toggleAutoPlot && toggleAutoPlot.checked) actualizarGrafico();
+      }
+    } catch (err) {
+      console.error(err);
+      salida.textContent = `✗ Error inesperado: ${err.message}\nRevisa la consola (F12) para más detalles.`;
     }
   });
 
@@ -74,7 +155,8 @@ export function initUI(procesarFn, graficarFn) {
 
   if (toggleAutoPlot) {
     toggleAutoPlot.addEventListener('change', (e) => {
-      if (botonGraficar) botonGraficar.style.display = e.target.checked ? 'none' : 'block';
+      if (botonGraficar)
+        botonGraficar.style.display = e.target.checked ? 'none' : 'block';
       if (e.target.checked) actualizarGrafico();
     });
   }
@@ -86,7 +168,8 @@ export function initUI(procesarFn, graficarFn) {
       const format = selectFormat.value;
       const serializer = new XMLSerializer();
       let svgString = serializer.serializeToString(svg);
-      if (!svgString.includes('xmlns="http://www.w3.org/2000/svg"')) svgString = svgString.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
+      if (!svgString.includes('xmlns="http://www.w3.org/2000/svg"'))
+        svgString = svgString.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
 
       if (format === 'svg') descargarArchivo(svgString, 'image/svg+xml', 'svg');
       else if (format === 'png' || format === 'jpeg') exportarRaster(svgString, format);
@@ -94,34 +177,26 @@ export function initUI(procesarFn, graficarFn) {
     });
   }
 
-  if (botonExportCsvRaw) {
-    botonExportCsvRaw.addEventListener('click', () => exportarCSV(false));
-  }
-
-  if (botonExportCsvProcessed) {
-    botonExportCsvProcessed.addEventListener('click', () => exportarCSV(true));
-  }
+  if (botonExportCsvRaw) botonExportCsvRaw.addEventListener('click', () => exportarCSV(false));
+  if (botonExportCsvProcessed) botonExportCsvProcessed.addEventListener('click', () => exportarCSV(true));
 
   // ------------------------------------------------------------
-  // Lógica del Pipeline Matemático
+  // Math Pipeline UI
   // ------------------------------------------------------------
-
   function agregarPasoPipeline(opData = null) {
     const step = document.createElement('div');
     step.className = 'pipeline-step';
-
-    step.innerHTML = `
-      <button class="btn-remove" title="Remove">×</button>
-      <select class="op-type">
-        <option value="none">${t('op_none')}</option>
-        <option value="smooth">${t('op_smooth')}</option>
-        <option value="derivative">${t('op_derivative')}</option>
-        <option value="baseline">${t('op_baseline')}</option>
-        <option value="minmax">${t('op_minmax')}</option>
-        <option value="max">${t('op_max')}</option>
-      </select>
-      <div class="op-params" style="display: none; margin-top: 0.5rem; font-size: 0.8rem;"></div>
-    `;
+    step.innerHTML =
+      `<button class="btn-remove" title="Remove">×</button>` +
+      `<select class="op-type">` +
+      `<option value="none">${t('op_none')}</option>` +
+      `<option value="smooth">${t('op_smooth')}</option>` +
+      `<option value="derivative">${t('op_derivative')}</option>` +
+      `<option value="baseline">${t('op_baseline')}</option>` +
+      `<option value="minmax">${t('op_minmax')}</option>` +
+      `<option value="max">${t('op_max')}</option>` +
+      `</select>` +
+      `<div class="op-params" style="display: none; margin-top: 0.5rem; font-size: 0.8rem;"></div>`;
 
     const select = step.querySelector('.op-type');
     const paramsDiv = step.querySelector('.op-params');
@@ -131,12 +206,10 @@ export function initUI(procesarFn, graficarFn) {
       actualizarParametros(select.value, paramsDiv);
       onSelectionChange();
     });
-
     btnRemove.addEventListener('click', () => {
       step.remove();
       onSelectionChange();
     });
-
     pipelineContainer.appendChild(step);
 
     if (opData) {
@@ -151,40 +224,34 @@ export function initUI(procesarFn, graficarFn) {
 
     if (tipo === 'smooth') {
       const win = prevData ? prevData.window : 5;
-      container.innerHTML = `
-        <label>${t('param_window')} <span class="win-val">${win}</span></label>
-        <input type="range" class="win-slider" min="3" max="21" step="2" value="${win}" style="width: 100%;">
-      `;
+      container.innerHTML =
+        `<label>${t('param_window')} <span class="win-val">${win}</span></label>` +
+        `<input type="range" class="win-slider" min="3" max="21" step="2" value="${win}" style="width: 100%;">`;
       const slider = container.querySelector('.win-slider');
       const val = container.querySelector('.win-val');
       slider.addEventListener('input', (e) => {
         val.textContent = e.target.value;
         onSelectionChange();
       });
-    }
-    else if (tipo === 'baseline') {
+    } else if (tipo === 'baseline') {
       const len = columnasGlobales ? columnasGlobales[0].length : 100;
       const startIdx = prevData ? prevData.start : Math.floor(len * 0.1);
       const endIdx = prevData ? prevData.end : Math.floor(len * 0.9);
-
-      container.innerHTML = `
-        <label>${t('param_start')} <input type="number" class="base-start" value="${startIdx}" style="width: 60px;"></label>
-        <label>${t('param_end')} <input type="number" class="base-end" value="${endIdx}" style="width: 60px;"></label>
-      `;
+      container.innerHTML =
+        `<label>${t('param_start')} <input type="number" class="base-start" value="${startIdx}" style="width: 60px;"></label>` +
+        `<label>${t('param_end')} <input type="number" class="base-end" value="${endIdx}" style="width: 60px;"></label>`;
       container.querySelector('.base-start').addEventListener('input', onSelectionChange);
       container.querySelector('.base-end').addEventListener('input', onSelectionChange);
-    }
-    else if (tipo === 'none') {
+    } else if (tipo === 'none') {
       container.style.display = 'none';
     }
   }
 
   function getMathPipeline() {
     const steps = [];
-    document.querySelectorAll('.pipeline-step').forEach(step => {
+    document.querySelectorAll('.pipeline-step').forEach((step) => {
       const type = step.querySelector('.op-type').value;
       if (type === 'none') return;
-
       const params = { type };
       if (type === 'smooth') {
         params.window = parseInt(step.querySelector('.win-slider').value);
@@ -197,42 +264,16 @@ export function initUI(procesarFn, graficarFn) {
     return steps;
   }
 
-  function aplicarPipeline(columns, xIndex, pipeline) {
-    const processed = columns.map(col => [...col]);
-    const xData = processed[xIndex];
-
-    pipeline.forEach(op => {
-      document.querySelectorAll('.checkbox-y:checked').forEach(cb => {
-        const idx = parseInt(cb.value);
-        let yData = [...processed[idx]];
-
-        if (op.type === 'smooth') {
-          processed[idx] = smoothGaussian(yData, op.window);
-        } else if (op.type === 'derivative') {
-          processed[idx] = derivative(xData, yData);
-        } else if (op.type === 'baseline') {
-          processed[idx] = correctBaseline(xData, yData, op.start, op.end);
-        } else if (op.type === 'minmax') {
-          processed[idx] = normalizeMinMax(yData);
-        } else if (op.type === 'max') {
-          processed[idx] = normalizeMax(yData);
-        }
-      });
-    });
-    return processed;
-  }
-
   function actualizarGrafico() {
     if (!columnasGlobales) return;
     const selectX = document.getElementById('selectX');
     if (!selectX) return;
     const xIndex = parseInt(selectX.value);
     const yIndices = [];
-    document.querySelectorAll('.checkbox-y:checked').forEach(cb => yIndices.push(parseInt(cb.value)));
+    document.querySelectorAll('.checkbox-y:checked').forEach((cb) => yIndices.push(parseInt(cb.value)));
 
     const pipeline = getMathPipeline();
-    const processedColumns = aplicarPipeline(columnasGlobales, xIndex, pipeline);
-
+    const processedColumns = applyPipeline(columnasGlobales, xIndex, yIndices, pipeline);
     onGraficar(processedColumns, xIndex, yIndices);
   }
 
@@ -241,28 +282,27 @@ export function initUI(procesarFn, graficarFn) {
     const selectX = document.getElementById('selectX');
     const xIndex = parseInt(selectX.value);
     const yIndices = [];
-    document.querySelectorAll('.checkbox-y:checked').forEach(cb => yIndices.push(parseInt(cb.value)));
+    document.querySelectorAll('.checkbox-y:checked').forEach((cb) => yIndices.push(parseInt(cb.value)));
     if (yIndices.length === 0) return alert(t('alert_select_y'));
 
     let finalColumns = columnasGlobales;
-
     if (procesar) {
       const pipeline = getMathPipeline();
-      finalColumns = aplicarPipeline(columnasGlobales, xIndex, pipeline);
+      finalColumns = applyPipeline(columnasGlobales, xIndex, yIndices, pipeline);
     }
 
     const xData = finalColumns[xIndex];
-    const ySeries = yIndices.map(i => finalColumns[i]);
+    const ySeries = yIndices.map((i) => finalColumns[i]);
 
-    let csvContent = "";
-    let headers = [`${t('col_prefix')}_${xIndex}`];
-    yIndices.forEach(idx => headers.push(`${t('col_prefix')}_${idx}`));
-    csvContent += headers.join(',') + "\n";
+    let csvContent = '';
+    const headers = [`${t('col_prefix')}_${xIndex}`];
+    yIndices.forEach((idx) => headers.push(`${t('col_prefix')}_${idx}`));
+    csvContent += headers.join(',') + '\n';
 
     for (let i = 0; i < xData.length; i++) {
-      let row = [xData[i]];
-      ySeries.forEach(yData => row.push(yData[i] !== null && yData[i] !== undefined ? yData[i] : ""));
-      csvContent += row.join(',') + "\n";
+      const row = [xData[i]];
+      ySeries.forEach((yData) => row.push(yData[i] !== null && yData[i] !== undefined ? yData[i] : ''));
+      csvContent += row.join(',') + '\n';
     }
     descargarArchivo(csvContent, 'text/csv;charset=utf-8;', 'csv');
   }
@@ -294,7 +334,7 @@ export function initUI(procesarFn, graficarFn) {
   }
 
   async function exportarPDF(svg) {
-    if (!window.jspdf || !window.svg2pdf) return alert("PDF libs loading...");
+    if (!window.jspdf || !window.svg2pdf) return alert('PDF libs loading...');
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('landscape', 'px', [800, 500]);
     await doc.svg(svg, { x: 0, y: 0, width: 800, height: 500 });
@@ -305,11 +345,12 @@ export function initUI(procesarFn, graficarFn) {
     if (toggleAutoPlot && toggleAutoPlot.checked) actualizarGrafico();
   }
 
-  function prepararRolePanel(numColumnas, originalIndices) {
+  function prepararRolePanel(numColumnas, originalIndices, autoSelect) {
     const selectX = document.getElementById('selectX');
     const checkboxesY = document.getElementById('checkboxesY');
     if (!selectX || !checkboxesY) return;
-    selectX.innerHTML = ''; checkboxesY.innerHTML = '';
+    selectX.innerHTML = '';
+    checkboxesY.innerHTML = '';
 
     for (let i = 0; i < numColumnas; i++) {
       const opt = document.createElement('option');
@@ -318,14 +359,32 @@ export function initUI(procesarFn, graficarFn) {
       opt.textContent = `${t('col_prefix')} ${label}`;
       selectX.appendChild(opt);
     }
-    for (let i = 0; i < numColumnas; i++) {
-      const label = document.createElement('label'); label.style.display = 'block'; label.style.fontSize = '0.9rem';
-      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = i; cb.className = 'checkbox-y';
 
-      // AUTO-SELECCIÓN INTELIGENTE: Seleccionar la columna 1 (asumiendo que es la Abs), NUNCA la 0.
-      if (i === 1) cb.checked = true;
+    for (let i = 0; i < numColumnas; i++) {
+      const label = document.createElement('label');
+      label.style.display = 'block';
+      label.style.fontSize = '0.9rem';
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = i;
+      cb.className = 'checkbox-y';
+
+      const cbId = `col-checkbox-${i}`;
+      cb.id = cbId;
+      label.htmlFor = cbId;
+
+      // NUEVA LÓGICA DE AUTO-SELECCIÓN
+      if (autoSelect) {
+        // Si el usuario aceptó colapsar, seleccionamos todas las Y (excepto X=0)
+        if (i !== 0) cb.checked = true;
+      } else {
+        // Por defecto, solo marcamos la primera Y (la 1)
+        if (i === 1) cb.checked = true;
+      }
 
       cb.addEventListener('change', onSelectionChange);
+
       label.appendChild(cb);
       const labelIdx = originalIndices ? originalIndices[i] : i;
       label.appendChild(document.createTextNode(` ${t('col_prefix')} ${labelIdx}`));
@@ -336,45 +395,10 @@ export function initUI(procesarFn, graficarFn) {
 }
 
 // ------------------------------------------------------------
-// Funciones Auxiliares
+// Helpers
 // ------------------------------------------------------------
-
 function actualizarArchivos(fileList, salida) {
   archivos = Array.from(fileList);
-  if (archivos.length === 0) return salida.textContent = t('status_waiting');
+  if (archivos.length === 0) return (salida.textContent = t('status_waiting'));
   salida.textContent = `${archivos.length} file(s) ready.`;
-}
-
-function deduplicateColumns(columns) {
-  const unique = [];
-  const originalIndices = [];
-
-  for (let i = 0; i < columns.length; i++) {
-    let isDuplicate = false;
-
-    for (let j = 0; j < unique.length; j++) {
-      const a = columns[i];
-      const b = unique[j];
-
-      if (a.length !== b.length) continue;
-
-      let match = true;
-      for (let k = 0; k < a.length; k++) {
-        // Comparación numérica con margen de error
-        if (Math.abs(a[k] - b[k]) > 0.000001) { match = false; break; }
-      }
-
-      if (match) {
-        isDuplicate = true;
-        break;
-      }
-    }
-
-    if (!isDuplicate) {
-      unique.push(columns[i]);
-      originalIndices.push(i);
-    }
-  }
-
-  return { unique, originalIndices };
 }

@@ -108,9 +108,13 @@ function groupIntoBlocks(rows) {
 }
 
 function isAmbiguous(pattern, structures) {
+  // Si no hay comas originales, no es ambiguo
   if (!pattern.includes(',')) return false;
-  if (pattern.includes('v')) return false;
+
+  // Si hay comas, verificamos si hay números enteros (z)
+  // Si solo hay n, la coma no puede ser decimal (ya hay punto).
   const hasZ = structures.some((s) => s.includes('z'));
   const hasN = structures.some((s) => s.includes('n'));
+
   return hasZ && !hasN;
 }

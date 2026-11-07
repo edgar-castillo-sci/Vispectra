@@ -1,37 +1,8 @@
 // ============================================================
-// PHASE 04b — DISAMBIGUATION (v5.0)
-// ============================================================
-// Function: detectAmbiguities(blocks, lines)
-//
-// Input:
-//   - blocks from 04_canon
-//   - all lines (to re-lex real structures per block)
-//
-// Output: {
-//   blocks: [
-//     {
-//       pattern: string,            // '_,_,_' (abstract)
-//       instances: [int],
-//       resolutions: [
-//         { id, commas: ['sep'|'dec'], columns, isDefault }
-//       ],
-//       isAmbiguous: boolean,
-//     },
-//   ],
-//   hasAmbiguity: boolean,
-//   diagnostics: [diag],
-// }
-//
-// Rules for `dec` validity:
-//   - Both neighbors must be 'z' (no dot yet).
-//   - No adjacent commas around a 'dec'.
-//   - Cannot follow another 'dec' in the same number.
-//   - All rows in the block must yield the SAME column count.
+// PHASE 04b — DISAMBIGUATION (v5.2)
 // ============================================================
 
 import { lex } from './02_lexer.js';
-
-const MAX_COMMAS = 12; // 2^12 = 4096 max combinations
 
 export function detectAmbiguities(blocks, lines) {
   const diagnostics = [];
@@ -40,24 +11,32 @@ export function detectAmbiguities(blocks, lines) {
   for (const block of blocks) {
     const structures = block.instances.map(i => lex(lines[i].content).structure);
     const commaCount = countCommas(block.pattern);
+    const hasHardSeparator = block.pattern.includes('|');
 
-    // Trivial cases: no commas, or explicit empty slots.
     if (commaCount === 0 || block.pattern.includes('v')) {
       enriched.push({ ...block, resolutions: [], isAmbiguous: false });
       continue;
     }
 
-    if (commaCount > MAX_COMMAS) {
-      diagnostics.push({
-        severity: 'error',
-        code: 'BLOCK_TOO_COMPLEX',
-        params: { pattern: block.pattern, commas: commaCount },
-      });
-      enriched.push({ ...block, resolutions: [], isAmbiguous: true });
-      continue;
+    const resolutions = enumerateResolutions(structures, commaCount, hasHardSeparator);
+
+    // Detectar si el bloque es basura (falla en su propia resolución)
+    let isGarbage = false;
+    if (resolutions.length > 0) {
+      const defaultRes = resolutions[0];
+      let failCount = 0;
+      for (const struct of structures) {
+        if (!countColumns(struct, defaultRes.commas).ok) failCount++;
+      }
+      if (failCount > structures.length / 2) {
+        isGarbage = true;
+      }
     }
 
-    const resolutions = enumerateResolutions(structures, commaCount);
+    if (isGarbage) {
+      enriched.push({ ...block, resolutions: [], isAmbiguous: false });
+      continue;
+    }
 
     if (resolutions.length === 0) {
       diagnostics.push({
@@ -105,9 +84,26 @@ function isParity(commas) {
   return true;
 }
 
-function enumerateResolutions(structures, commaCount) {
-  const resolutions = [];
+function enumerateResolutions(structures, commaCount, hasHardSeparator) {
+  if (hasHardSeparator) {
+    const allDec = Array(commaCount).fill('dec');
+    let columns = -1;
+
+    if (structures.length > 0) {
+      const result = countColumns(structures[0], allDec);
+      if (result.ok) columns = result.columns;
+    }
+
+    return [{
+      id: allDec.join(','),
+      commas: allDec,
+      columns,
+      isDefault: true,
+    }];
+  }
+
   const total = 1 << commaCount;
+  const resolutions = [];
 
   for (let bits = 0; bits < total; bits++) {
     const commas = [];
@@ -135,7 +131,6 @@ function enumerateResolutions(structures, commaCount) {
     }
   }
 
-  // Assign default
   if (resolutions.length === 1) {
     resolutions[0].isDefault = true;
   } else if (resolutions.length > 1) {
@@ -144,7 +139,6 @@ function enumerateResolutions(structures, commaCount) {
     else resolutions[0].isDefault = true;
   }
 
-  // Sort: default first, then by columns desc, then lexicographic.
   resolutions.sort((a, b) => {
     if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
     if (a.columns !== b.columns) return b.columns - a.columns;
@@ -173,6 +167,12 @@ function countColumns(structure, resolution) {
       if (pending) return { ok: false };
       columns++;
       i++;
+    } else if (ch === '|') {
+      if (pending) {
+        columns++;
+        pending = false;
+      }
+      i++;
     } else if (ch === ',') {
       if (commaIdx >= resolution.length) return { ok: false };
       const dec = resolution[commaIdx++];
@@ -182,12 +182,11 @@ function countColumns(structure, resolution) {
         pendingHasDot = false;
         i++;
       } else {
-        // dec: must have a 'z' on the right and no dot on the left.
         if (!pending || pendingHasDot) return { ok: false };
         if (i + 1 >= structure.length) return { ok: false };
         if (structure[i + 1] !== 'z') return { ok: false };
         pendingHasDot = true;
-        i += 2; // consume the next 'z'
+        i += 2;
       }
     } else {
       return { ok: false };

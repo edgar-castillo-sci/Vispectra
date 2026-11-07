@@ -1,33 +1,13 @@
 // ============================================================
-// PHASE 06 — MASTER PARSER (v5.0)
+// PHASE 06 — MASTER PARSER (v5.1)
 // ============================================================
 // Function: parseLine(line, plan)
 //
-// Input:
-//   - line: { index, content }
-//   - plan: from 05_fixation {
-//       pattern:     '_,_,_',
-//       commaRoles:  ['dec'|'sep', ...],
-//       columnTypes: ['n'|'z'|'i'|'v', ...],
-//       numColumns:  number,
-//     }
-//
-// Output: { index, ok, values: (number|null)[], diagnostics }
-//
-// Algorithm:
-//   Walk the pattern left to right, consuming tokens:
-//     '_'  → consume number (or mark empty slot if none available)
-//     'v'  → consume gap; verify no number is present
-//     ','  → consume comma; apply role:
-//            'sep' → finalize pending, reset
-//            'dec' → fuse pending with next number (skip next '_')
-//
-// Fusion safety:
-//   'dec' requires both raw operands to be plain digits (/^\d+$/).
-//   Anything else (signs, exponents) → ok:false + FUSION_UNSAFE.
-//
-// Trailing gaps are allowed (comments, whitespace). Trailing numbers
-// or commas are rejected with EXTRA_TOKENS.
+// Pattern characters:
+//   '_' → number slot
+//   'v' → explicit empty slot (gap between separators)
+//   '|' → hard column separator (;, space, tab)
+//   ',' → literal comma (can be 'sep' or 'dec')
 // ============================================================
 
 import { tokenize } from './tokenizer.js';
@@ -57,7 +37,8 @@ export function parseLine(line, plan) {
   let pending = null;
 
   const skipGaps = () => {
-    while (tokenIdx < tokens.length && tokens[tokenIdx].type === 'gap') {
+    // Omitimos los "separator" y "gap" temporales para buscar el siguiente token real
+    while (tokenIdx < tokens.length && tokens[tokenIdx].type === 'separator') {
       tokenIdx++;
     }
   };
@@ -81,46 +62,64 @@ export function parseLine(line, plan) {
         };
         tokenIdx++;
       } else {
-        // No number available: the slot is empty.
-        // This is compatible with patterns that mix `_,_,_` and `_,v,_`
-        // rows in the same block (both represent an empty slot).
         pending = { kind: 'empty' };
       }
       patternIdx++;
-    } else if (ch === 'v') {
+    }
+    else if (ch === 'v') {
       skipGaps();
       if (tokenIdx < tokens.length && tokens[tokenIdx].type === 'number') {
         return fail('UNEXPECTED_NUMBER_IN_V_SLOT', { patternIdx });
       }
       pending = { kind: 'empty' };
       patternIdx++;
-    } else if (ch === ',') {
+    }
+    else if (ch === '|') {
+      // Separador duro (;, espacio, tab)
+      skipGaps();
+      if (tokenIdx < tokens.length && tokens[tokenIdx].type === 'separator') {
+        tokenIdx++; // Consumir el separador
+      }
+      finalize();
+      patternIdx++;
+    }
+    else if (ch === ',') {
+      // Coma original (puede ser decimal o separadora)
       if (commaIdx >= commaRoles.length) {
         return fail('COMMA_ROLE_OVERFLOW', { patternIdx });
       }
       const role = commaRoles[commaIdx++];
+
       skipGaps();
+
+      // Buscamos el token de coma explícito
       if (tokenIdx >= tokens.length || tokens[tokenIdx].type !== 'comma') {
         return fail('EXPECTED_COMMA', { patternIdx });
       }
-      tokenIdx++; // consume comma
+      tokenIdx++; // Consumir la coma
 
       if (role === 'sep') {
         finalize();
         patternIdx++;
-      } else if (role === 'dec') {
+      }
+      else if (role === 'dec') {
         if (!pending || pending.kind !== 'value') {
           return fail('DEC_WITHOUT_LEFT_VALUE', { patternIdx });
         }
+
         skipGaps();
         if (tokenIdx >= tokens.length || tokens[tokenIdx].type !== 'number') {
           return fail('EXPECTED_NUMBER_AFTER_DEC', { patternIdx });
         }
+
         const rightRaw = tokens[tokenIdx].raw;
         const leftRaw = pending.raw;
+
+        // Validación de fusión (solo dígitos puros)
         if (!/^\d+$/.test(leftRaw) || !/^\d+$/.test(rightRaw)) {
           return fail('FUSION_UNSAFE', { left: leftRaw, right: rightRaw });
         }
+
         const fused = parseFloat(`${leftRaw}.${rightRaw}`);
         pending = {
           kind: 'value',
@@ -129,26 +128,27 @@ export function parseLine(line, plan) {
         };
         tokenIdx++;
 
-        // The next pattern char must be '_' (the underscore that the
-        // fused number occupies). Skip it.
+        // El siguiente carácter en el patrón debe ser '_' (la mitad derecha del decimal)
         if (
           patternIdx + 1 >= pattern.length ||
           pattern[patternIdx + 1] !== '_'
         ) {
           return fail('DEC_MISSING_RIGHT_PLACEHOLDER', { patternIdx });
         }
-        patternIdx += 2; // skip comma AND the underscore
-      } else {
+        patternIdx += 2; // Saltamos la coma y el guion bajo
+      }
+      else {
         return fail('UNKNOWN_COMMA_ROLE', { patternIdx, role });
       }
-    } else {
+    }
+    else {
       return fail('UNKNOWN_PATTERN_CHAR', { patternIdx, ch });
     }
   }
 
   if (pending !== null) finalize();
 
-  // Trailing gaps (comments, whitespace) are allowed; anything else is not.
+  // Los separadores al final de la línea se ignoran
   skipGaps();
   if (tokenIdx < tokens.length) {
     return fail('EXTRA_TOKENS', {

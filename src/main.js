@@ -1,28 +1,5 @@
 // ============================================================
-// VISPECTRA — MAIN ORCHESTRATOR (v5.0)
-// ============================================================
-// Function: compile(file, options) → CompileResult
-//
-// Options:
-//   - resolutions: undefined | 'auto' | { [pattern]: resolution }
-//   - maxFailureRatio: number (default 0.20)
-//
-// CompileResult:
-//   {
-//     status: 'ok' | 'partial' | 'failed' | 'needs_disambiguation',
-//     columns: number[][] | null,
-//     segments: Segment[],
-//     ambiguities: { blocks } | null,
-//     body: { start, end },
-//     canonLiteral: string,
-//     numColumns: number | null,
-//     failedRows: number,
-//     totalRows: number,
-//     failureRatio: number,
-//     log, diagnostics,
-//   }
-//
-// Stateless. Each call re-reads and re-processes the file.
+// VISPECTRA — MAIN ORCHESTRATOR (v5.6)
 // ============================================================
 
 import { readFile } from './compiler/00_reading.js';
@@ -94,22 +71,72 @@ export async function compile(file, options = {}) {
   collect(d04b, { phase: '04b_disambiguation', fileName: file.name });
 
   // --- Resolve ambiguities ---
-  const chosen = selectResolutions(enrichedBlocks, userResolutions, hasAmbiguity);
+  let chosen = selectResolutions(enrichedBlocks, userResolutions, hasAmbiguity);
 
   if (chosen === 'NEEDS_DECISION') {
-    return finalize({
-      status: 'needs_disambiguation', columns: null, segments: [],
-      ambiguities: buildAmbiguitiesReport(enrichedBlocks),
-      body, canonLiteral, numColumns: null,
-      failedRows: 0, totalRows: body.end - body.start, log, diagnostics,
-    });
+    const ambiguities = buildAmbiguitiesReport(enrichedBlocks, lines);
+
+    if (ambiguities.blocks.length === 0) {
+      chosen = new Map();
+      for (const b of enrichedBlocks) chosen.set(b.pattern, defaultResolutionFor(b));
+    } else {
+      return finalize({
+        status: 'needs_disambiguation', columns: null, segments: [],
+        ambiguities,
+        body, canonLiteral, numColumns: null,
+        failedRows: 0, totalRows: body.end - body.start, log, diagnostics,
+      });
+    }
   }
 
   // --- Phases 04c + 05 (per block) ---
   const plans = [];
-  let numColumns = null;
-  let countMismatch = false;
+  let maxNumColumns = 0;
 
+  // 1. Escaneo rápido para encontrar el máximo de columnas
+  for (const block of enrichedBlocks) {
+    const resolution = chosen.get(block.pattern);
+    const blockCanon = buildBlockCanon(block, lines, resolution);
+    if (!blockCanon.canon) continue;
+    const fixed = fixCanon(blockCanon, resolution, block.pattern);
+    if (!fixed.plan) continue;
+    if (fixed.plan.numColumns > maxNumColumns) {
+      maxNumColumns = fixed.plan.numColumns;
+    }
+  }
+
+  if (maxNumColumns === 0) {
+    return finalize({
+      status: 'failed', columns: null, segments: [],
+      ambiguities: null, body, canonLiteral, numColumns: 0,
+      failedRows: 0, totalRows: body.end - body.start, log, diagnostics,
+    });
+  }
+
+  const numColumns = maxNumColumns;
+
+  // 2. Identificar el bloque más grande (el que tiene más filas)
+  let biggestBlock = null;
+  for (const block of enrichedBlocks) {
+    if (!biggestBlock || block.instances.length > biggestBlock.instances.length) {
+      biggestBlock = block;
+    }
+  }
+
+  // 3. ¿El bloque más grande ya tiene el número máximo de columnas?
+  let biggestBlockCols = 0;
+  if (biggestBlock) {
+    const resolution = chosen.get(biggestBlock.pattern);
+    const blockCanon = buildBlockCanon(biggestBlock, lines, resolution);
+    if (blockCanon.canon) {
+      const fixed = fixCanon(blockCanon, resolution, biggestBlock.pattern);
+      if (fixed.plan) biggestBlockCols = fixed.plan.numColumns;
+    }
+  }
+
+  const ignoreSmallerBlocks = (biggestBlockCols === maxNumColumns);
+
+  // 4. Procesar los bloques definitivos
   for (const block of enrichedBlocks) {
     const resolution = chosen.get(block.pattern);
     const blockCanon = buildBlockCanon(block, lines, resolution);
@@ -126,27 +153,12 @@ export async function compile(file, options = {}) {
 
     if (!fixed.plan) continue;
 
-    if (numColumns === null) {
-      numColumns = fixed.plan.numColumns;
-    } else if (numColumns !== fixed.plan.numColumns) {
-      collect([{
-        severity: 'error',
-        code: 'BLOCK_COUNT_MISMATCH',
-        params: { expected: numColumns, got: fixed.plan.numColumns, pattern: block.pattern },
-      }], { phase: 'main', fileName: file.name });
-      countMismatch = true;
-      break;
+    // Si el bloque principal ya tiene el máximo, ignoramos los que tengan menos columnas
+    if (ignoreSmallerBlocks && fixed.plan.numColumns < maxNumColumns) {
+      continue;
     }
 
     plans.push({ block, plan: fixed.plan, resolution, canon: blockCanon.canon });
-  }
-
-  if (countMismatch || numColumns === null || plans.length === 0) {
-    return finalize({
-      status: 'failed', columns: null, segments: [],
-      ambiguities: null, body, canonLiteral, numColumns,
-      failedRows: 0, totalRows: body.end - body.start, log, diagnostics,
-    });
   }
 
   // --- Phases 06 + 07 + 08 (populate) ---
@@ -165,11 +177,7 @@ export async function compile(file, options = {}) {
     const p = lineToPlan.get(i);
 
     if (!p) {
-      failedRows++;
       pushNullRow(columns);
-      collect([{
-        severity: 'error', code: 'ROW_NOT_IN_ANY_BLOCK', params: { index: i },
-      }], { phase: 'main', fileName: file.name });
       continue;
     }
 
@@ -199,7 +207,12 @@ export async function compile(file, options = {}) {
       continue;
     }
 
-    inject(verified.values, columns);
+    const finalValues = [...verified.values];
+    while (finalValues.length < numColumns) {
+      finalValues.push(null);
+    }
+
+    inject(finalValues, columns);
 
     if (!currentSegment || currentSegment.pattern !== p.block.pattern) {
       if (currentSegment) segments.push(currentSegment);
@@ -284,14 +297,12 @@ function defaultResolutionFor(block) {
 }
 
 function selectResolutions(blocks, input, hasAmbiguity) {
-  // Mode 'auto': use defaults everywhere, never ask.
   if (input === 'auto') {
     const map = new Map();
     for (const b of blocks) map.set(b.pattern, defaultResolutionFor(b));
     return map;
   }
 
-  // Mode explicit: use provided where given, defaults otherwise.
   if (input && typeof input === 'object') {
     const map = new Map();
     for (const b of blocks) {
@@ -309,7 +320,6 @@ function selectResolutions(blocks, input, hasAmbiguity) {
     return map;
   }
 
-  // No input: if no ambiguity, use defaults; if ambiguity, ask.
   if (hasAmbiguity) return 'NEEDS_DECISION';
 
   const map = new Map();
@@ -317,24 +327,32 @@ function selectResolutions(blocks, input, hasAmbiguity) {
   return map;
 }
 
-function buildAmbiguitiesReport(blocks) {
-  const ambiguous = blocks.filter((b) => b.isAmbiguous);
+function buildAmbiguitiesReport(blocks, lines) {
+  const totalRows = blocks.reduce((sum, b) => sum + b.instances.length, 0);
+
+  const ambiguous = blocks.filter((b) =>
+    b.isAmbiguous &&
+    b.resolutions.length > 0 &&
+    (b.instances.length / totalRows) > 0.05
+  );
+
   return {
-    blocks: ambiguous.map((b) => ({
-      pattern: b.pattern,
-      instances: b.instances.length,
-      resolutions: b.resolutions,
-    })),
+    blocks: ambiguous.map((b) => {
+      const exampleIndex = b.instances[0];
+      const exampleText = lines && lines[exampleIndex] ? lines[exampleIndex].content : '';
+
+      return {
+        pattern: b.pattern,
+        instances: b.instances.length,
+        resolutions: b.resolutions,
+        example: exampleText
+      };
+    }),
   };
 }
 
 // ------------------------------------------------------------
-// Bootstrap (temporary — kept for index.html compatibility)
-// ------------------------------------------------------------
-// NOTE: ui.js still expects the v4.0 contract. This bootstrap will
-// surface errors on file load until ui.js is rewritten in the next
-// step. compile() itself is stable and can be imported/tested
-// independently.
+// Bootstrap
 // ------------------------------------------------------------
 
 if (typeof document !== 'undefined' && typeof window !== 'undefined') {
@@ -350,21 +368,8 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined') {
 
   try {
     initUI(
-      async (archivo, salida) => {
-        salida.textContent = '';
-        try {
-          const result = await compile(archivo);
-          salida.textContent +=
-            `${result.status === 'ok' || result.status === 'partial' ? '✓' : '⚠'} ${archivo.name}\n` +
-            `  status: ${result.status}\n` +
-            `  columns: ${result.columns ? result.columns.length : 0}\n` +
-            `  rows: ${result.totalRows} (failed: ${result.failedRows})\n` +
-            `  canon: ${result.canonLiteral}\n`;
-          return result.columns ? { columns: result.columns, segments: result.segments } : null;
-        } catch (err) {
-          salida.textContent += `✗ ${archivo.name}: ${err.message}\n`;
-          return null;
-        }
+      async (archivo, options = {}) => {
+        return await compile(archivo, options);
       },
       (processedColumns, xIndex, yIndices) => {
         try {
