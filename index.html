@@ -76,8 +76,14 @@
         <div id="salida" data-i18n="status_waiting">Waiting for files...</div>
     </div>
 
-    <div class="main-plot">
-        <svg id="spectrumSvg" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="main-plot" style="display: flex; gap: 10px; align-items: stretch; width: 100%;">
+        <!-- Menú de controles de zoom (oculto por defecto) -->
+        <div id="zoomControls" style="display: none; flex-direction: column; gap: 6px; justify-content: center; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; flex-shrink: 0;">
+            <!-- Los botones se inyectan dinámicamente desde plot.js -->
+        </div>
+
+        <!-- El gráfico SVG -->
+        <svg id="spectrumSvg" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg" style="flex: 1; width: 100%; max-width: 800px; border: 1px solid #eee; border-radius: 8px;"></svg>
     </div>
 </div>
 

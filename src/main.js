@@ -357,7 +357,7 @@ function buildAmbiguitiesReport(blocks, lines) {
 
 if (typeof document !== 'undefined' && typeof window !== 'undefined') {
   const { initUI } = await import('./ui.js');
-  const { drawPlot } = await import('./plot.js');
+  const { drawPlot } = await import('./plot/index.js'); // <--- RUTA CORREGIDA
   const { translateDOM } = await import('./i18n.js');
 
   try {
