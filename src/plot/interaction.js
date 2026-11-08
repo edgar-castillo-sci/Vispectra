@@ -83,6 +83,9 @@ export function attachInteraction(ctx) {
   }
 
   overlay.addEventListener('mousedown', (e) => {
+    // FIX: Ignorar el segundo click de un doble click. Dejar que dblclick se dispare.
+    if (e.detail > 1) { e.preventDefault(); return; }
+
     const pos = getMousePos(e);
     if (!inPlotArea(pos)) return;
 
@@ -173,6 +176,8 @@ export function attachInteraction(ctx) {
       const dy = Math.abs(pos.y - state.dragStart.y);
 
       if (dx < 15 && dy < 15) {
+        // FIX: Ignorar si es el segundo click de un doble click
+        if (e.detail > 1) return;
         if (!inPlotArea(pos)) return;
         state.isPinned = !state.isPinned;
         if (state.isPinned) {
@@ -219,6 +224,9 @@ export function attachInteraction(ctx) {
   });
 
   overlay.addEventListener('click', (e) => {
+    // FIX: Ignorar el segundo click de un doble click
+    if (e.detail > 1) return;
+
     if (state.currentTool !== 'crosshair') return;
     const pos = getMousePos(e);
     if (!inPlotArea(pos)) return;

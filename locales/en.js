@@ -127,5 +127,7 @@ export default {
   undo_all: "Undo (any axis)",
   undo_x: "Undo X only",
   undo_y: "Undo Y only",
-  redo_all: "Redo",
+    redo_all: "Redo",
+      reset_x: "Reset X range",
+  reset_y: "Reset Y range",
 };

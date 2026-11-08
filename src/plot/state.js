@@ -117,3 +117,16 @@ export function adjustViewForFrameChange(oldWidth, oldHeight, newWidth, newHeigh
     minY: yAdj.min, maxY: yAdj.max
   };
 }
+export function resetAxis(axis) {
+  const newLimits = { ...state.viewLimits };
+  if (axis === 'x') {
+    newLimits.minX = null;
+    newLimits.maxX = null;
+  } else if (axis === 'y') {
+    newLimits.minY = null;
+    newLimits.maxY = null;
+  }
+  state.viewLimits = newLimits;
+  pushHistory(newLimits, axis);
+  return true;
+}

@@ -1,38 +1,36 @@
-import { state, pushHistory, clearPin, undoAxis } from '../plot/state.js';
+import { state, pushHistory, clearPin, undoAxis, resetAxis } from '../plot/state.js';
 import { t } from '../i18n.js';
 
 let lastRenderCtx = null;
-let redrawFn = null;
+
+// Estilos con overrides fuertes para vencer cualquier regla global
+const BTN_STYLE = 'width: auto !important; flex: 0 0 auto !important; display: inline-flex; align-items: center; justify-content: center; padding: 1px 6px; cursor: pointer; border: 1px solid #ccc; background: #f8f8f8; border-radius: 3px; font-size: 0.7rem; line-height: 1; min-width: 28px; height: 20px; box-sizing: border-box;';
+const INPUT_STYLE = 'flex: 0 0 auto; padding: 2px 4px; font-family: monospace; font-size: 0.75rem; border: 1px solid #ccc; border-radius: 3px; background: #fff; height: 20px; box-sizing: border-box;';
+
+const ROW_STYLE = 'display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; white-space: nowrap; min-width: 0;';
 
 export function initRangePanel(redraw) {
   const container = document.getElementById('rangePanel');
   if (!container) return;
 
-  redrawFn = redraw;
+  const renderRow = (axis) => {
+    const isX = axis === 'x';
+    const label = isX ? 'X' : 'Y';
+    return `
+      <div style="${ROW_STYLE}">
+        <span style="color:#888; font-weight:bold;">${label}:</span>
+        <input type="number" id="range${label}Min" step="any" style="${INPUT_STYLE} width: 70px;">
+        <span style="color:#888;">→</span>
+        <input type="number" id="range${label}Max" step="any" style="${INPUT_STYLE} width: 70px;">
+        <span style="color:#0055cc; font-weight:bold;">Δ</span>
+        <input type="number" id="range${label}Shift" step="any" placeholder="0" style="${INPUT_STYLE} width: 55px;" title="${t(isX ? 'range_shift_x' : 'range_shift_y')}">
+        <button id="rangeUndo${label}" style="${BTN_STYLE}" title="${t(isX ? 'undo_x' : 'undo_y')}">↶${label}</button>
+        <button id="rangeReset${label}" style="${BTN_STYLE}" title="${t(isX ? 'reset_x' : 'reset_y')}">↺${label}</button>
+      </div>
+    `;
+  };
 
-  const inputStyle = 'width: 82px; padding: 2px 4px; font-family: monospace; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 3px; background: #fff;';
-  const shiftStyle = 'width: 60px; padding: 2px 4px; font-family: monospace; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 3px; background: #fff;';
-  const btnStyle = 'padding: 2px 7px; cursor: pointer; border: 1px solid #ccc; background: #f8f8f8; border-radius: 3px; font-size: 0.8rem;';
-
-  container.innerHTML = `
-    <span style="color:#888; font-weight:bold;">X:</span>
-    <input type="number" id="rangeXMin" step="any" style="${inputStyle}">
-    <span style="color:#888;">→</span>
-    <input type="number" id="rangeXMax" step="any" style="${inputStyle}">
-    <span style="color:#0055cc; font-weight:bold;">Δ</span>
-    <input type="number" id="rangeXShift" step="any" placeholder="0" style="${shiftStyle}" title="${t('range_shift_x')}">
-    <button id="rangeUndoX" style="${btnStyle}" title="${t('undo_x')}">↶X</button>
-    <span style="color:#ccc; margin: 0 4px;">|</span>
-    <span style="color:#888; font-weight:bold;">Y:</span>
-    <input type="number" id="rangeYMin" step="any" style="${inputStyle}">
-    <span style="color:#888;">→</span>
-    <input type="number" id="rangeYMax" step="any" style="${inputStyle}">
-    <span style="color:#0055cc; font-weight:bold;">Δ</span>
-    <input type="number" id="rangeYShift" step="any" placeholder="0" style="${shiftStyle}" title="${t('range_shift_y')}">
-    <button id="rangeUndoY" style="${btnStyle}" title="${t('undo_y')}">↶Y</button>
-    <span style="color:#ccc; margin: 0 4px;">|</span>
-    <button id="rangeReset" style="${btnStyle} color:#d32f2f;" title="${t('range_reset')}">↺</button>
-  `;
+  container.innerHTML = renderRow('x') + renderRow('y');
 
   const inputs = {
     xMin: document.getElementById('rangeXMin'),
@@ -59,7 +57,6 @@ export function initRangePanel(redraw) {
     return { ...limits };
   };
 
-  // --- Edición manual de min/max ---
   const applyRangeChange = () => {
     const xmin = parseFloat(inputs.xMin.value);
     const xmax = parseFloat(inputs.xMax.value);
@@ -93,7 +90,6 @@ export function initRangePanel(redraw) {
     });
   });
 
-  // --- Shift determinista ---
   const applyShift = (axis) => {
     const input = shifts[axis];
     const delta = parseFloat(input.value);
@@ -138,25 +134,19 @@ export function initRangePanel(redraw) {
     if (e.key === 'Escape') { shifts.y.value = ''; shifts.y.blur(); }
   });
 
-  // --- Undo por eje ---
   document.getElementById('rangeUndoX').onclick = () => {
-    if (undoAxis('x')) {
-      clearPin();
-      redraw();
-    }
+    if (undoAxis('x')) { clearPin(); redraw(); }
   };
   document.getElementById('rangeUndoY').onclick = () => {
-    if (undoAxis('y')) {
-      clearPin();
-      redraw();
-    }
+    if (undoAxis('y')) { clearPin(); redraw(); }
   };
-
-  // --- Reset ---
-  document.getElementById('rangeReset').onclick = () => {
-    state.viewLimits = { minX: null, maxX: null, minY: null, maxY: null };
-    state.viewHistory = [{ limits: { minX: null, maxX: null, minY: null, maxY: null }, axis: 'xy' }];
-    state.historyIndex = 0;
+  document.getElementById('rangeResetX').onclick = () => {
+    resetAxis('x');
+    clearPin();
+    redraw();
+  };
+  document.getElementById('rangeResetY').onclick = () => {
+    resetAxis('y');
     clearPin();
     redraw();
   };
@@ -184,7 +174,6 @@ export function updateRangePanel(renderCtx) {
     el.style.background = '#fff';
   }
 
-  // Actualizar estado de los botones ↶X y ↶Y
   const undoXBtn = document.getElementById('rangeUndoX');
   const undoYBtn = document.getElementById('rangeUndoY');
 

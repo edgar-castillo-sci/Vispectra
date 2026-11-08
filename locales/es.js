@@ -125,5 +125,7 @@ export default {
       undo_all: "Deshacer (cualquier eje)",
   undo_x: "Deshacer solo X",
   undo_y: "Deshacer solo Y",
-  redo_all: "Rehacer",
+    redo_all: "Rehacer",
+      reset_x: "Reiniciar rango de X",
+  reset_y: "Reiniciar rango de Y",
 };
