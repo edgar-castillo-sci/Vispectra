@@ -171,6 +171,16 @@ Handles the interface. Consumes `main.js` results and acts. Includes custom moda
 
 Plots the normalized columns. Sorts the X-axis before drawing to prevent ECG artifacts from unsorted instrument data, and ignores `null` values to avoid zero-scaling.
 
+### plot/ (Visualization Engine)
+The visualization engine is fully modularized into `src/plot/`:
+- `state.js`: Centralized state (zoom history, axes config, series styles).
+- `axes.js`: Tick generation (Linear/Log10, Auto/Count/Step/Nice) and number formatting.
+- `renderer.js`: Pure SVG drawing (grid, axes, lines, legend, titles).
+- `interaction.js`: Mouse events (Box Zoom, Pan, Crosshair, Pin).
+- `controls.js`: External zoom toolbar.
+
+The `state.axisConfig` allows fine-grained control over scales (linear/log), ticks, grid minors, and formatting. The `state.seriesConfig` handles per-series colors, line styles (solid, dashed, dotted, dashdot), and custom labels for the legend.
+
 ## Design Decisions
 
 ### Why two levels of canon?

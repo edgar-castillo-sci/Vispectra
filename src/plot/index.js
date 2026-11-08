@@ -51,21 +51,12 @@ export function drawPlot(columns, xIndex = 0, yIndices = [1]) {
   const height = 500;
   const margin = { top: 40, right: 40, bottom: 60, left: 70 };
 
-  // 1. Render (puro)
   const ctx = render(svg, dataPoints, ySeries, state.viewLimits, margin, width, height, yIndices);
 
-  // 2. Interacción (eventos)
   attachInteraction({
-    ...ctx,
-    svg,
-    dataPoints,
-    yIndices,
-    margin,
-    width,
-    height,
+    ...ctx, svg, dataPoints, yIndices, margin, width, height,
     redraw: () => drawPlot(columns, xIndex, yIndices)
   });
 
-  // 3. Controles externos
   updateControls(() => drawPlot(columns, xIndex, yIndices));
 }

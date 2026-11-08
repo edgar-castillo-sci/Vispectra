@@ -58,6 +58,15 @@
                 <button id="btnAddOp" style="background: #ff9800; margin-top: 0.5rem;" data-i18n="btn_add_op">+ Add Operation</button>
             </div>
 
+            <!-- NUEVO PANEL DE CONFIGURACIÓN DE EJES -->
+            <div class="role-selector" style="background: #f0f8ff; border-color: #b3e5fc;">
+                <label style="font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                    <span>⚙️ Axis Settings</span>
+                    <input type="checkbox" id="toggleAxesPanel" style="margin: 0; cursor: pointer;">
+                </label>
+                <div id="axesPanel" style="display: none; margin-top: 10px; font-size: 0.85rem;"></div>
+            </div>
+
             <button id="botonGraficar" style="display: none; background: #009933;" data-i18n="btn_update_plot">Update Plot</button>
 
             <div class="export-group">
@@ -76,13 +85,8 @@
         <div id="salida" data-i18n="status_waiting">Waiting for files...</div>
     </div>
 
-        <div class="main-plot" style="display: flex; gap: 10px; align-items: stretch; width: 100%;">
-        <!-- Menú de controles de zoom (oculto por defecto) -->
-        <div id="zoomControls" style="display: none; flex-direction: column; gap: 6px; justify-content: center; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; flex-shrink: 0;">
-            <!-- Los botones se inyectan dinámicamente desde plot.js -->
-        </div>
-
-        <!-- El gráfico SVG -->
+    <div class="main-plot" style="display: flex; gap: 10px; align-items: stretch; width: 100%;">
+        <div id="zoomControls" style="display: none; flex-direction: column; gap: 6px; justify-content: center; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; flex-shrink: 0;"></div>
         <svg id="spectrumSvg" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg" style="flex: 1; width: 100%; max-width: 800px; border: 1px solid #eee; border-radius: 8px;"></svg>
     </div>
 </div>

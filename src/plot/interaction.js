@@ -5,7 +5,6 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 export function attachInteraction(ctx) {
   const { svg, dataPoints, yIndices, mapX, unmapX, unmapY, plotWidth, plotHeight, margin, width, height, redraw } = ctx;
 
-  // Elementos de Crosshair
   const hoverGroup = document.createElementNS(SVG_NS, 'g');
   hoverGroup.setAttribute('style', 'display: none; pointer-events: none;');
   const crosshair = document.createElementNS(SVG_NS, 'line');
@@ -15,7 +14,6 @@ export function attachInteraction(ctx) {
   hoverGroup.appendChild(crosshair);
   svg.appendChild(hoverGroup);
 
-  // Overlay
   const overlay = document.createElementNS(SVG_NS, 'rect');
   overlay.setAttribute('x', margin.left); overlay.setAttribute('y', margin.top);
   overlay.setAttribute('width', plotWidth); overlay.setAttribute('height', plotHeight);
@@ -27,7 +25,6 @@ export function attachInteraction(ctx) {
 
   svg.appendChild(overlay);
 
-  // Rectángulo de Zoom
   const zoomRect = document.createElementNS(SVG_NS, 'rect');
   zoomRect.setAttribute('fill', 'rgba(0, 85, 204, 0.15)');
   zoomRect.setAttribute('stroke', '#0055cc'); zoomRect.setAttribute('stroke-width', '1');
@@ -42,9 +39,10 @@ export function attachInteraction(ctx) {
     };
   };
 
-    const updateCrosshair = (mouseX) => {
+  const updateCrosshair = (mouseX) => {
     crosshair.setAttribute('x1', mouseX);
     crosshair.setAttribute('x2', mouseX);
+
     let closestPoint = dataPoints[0];
     let minDist = Math.abs(mouseX - mapX(closestPoint.x));
     for (let i = 1; i < dataPoints.length; i++) {
@@ -68,7 +66,6 @@ export function attachInteraction(ctx) {
     });
   };
 
-  // Restaurar pin si existe
   if (state.isPinned && state.pinnedX !== null) {
     let closestPoint = dataPoints[0];
     let minDist = Math.abs(state.pinnedX - dataPoints[0].x);
@@ -81,28 +78,30 @@ export function attachInteraction(ctx) {
     updateDOMValues(closestPoint, yIndices);
   }
 
-  // --- Eventos ---
   overlay.addEventListener('mousedown', (e) => {
-    if (state.currentTool === 'crosshair') return;
-
     const pos = getMousePos(e);
     if (pos.x < margin.left || pos.x > width - margin.right) return;
 
-    state.isDragging = true;
-    state.dragStart = pos;
-    state.panStartLimits = { ...state.viewLimits };
+    if (state.currentTool === 'crosshair') {
+      // En modo crosshair, no hacemos drag, solo permitimos el clic
+      state.isDragging = false;
+    } else {
+      state.isDragging = true;
+      state.dragStart = pos;
+      state.panStartLimits = { ...state.viewLimits };
 
-    if (state.currentTool === 'zoom') {
-      zoomRect.setAttribute('x', pos.x); zoomRect.setAttribute('y', pos.y);
-      zoomRect.setAttribute('width', 0); zoomRect.setAttribute('height', 0);
-      zoomRect.setAttribute('style', 'display: block; pointer-events: none;');
-    } else if (state.currentTool === 'pan') {
-      overlay.setAttribute('style', 'cursor: grabbing;');
+      if (state.currentTool === 'zoom') {
+        zoomRect.setAttribute('x', pos.x); zoomRect.setAttribute('y', pos.y);
+        zoomRect.setAttribute('width', 0); zoomRect.setAttribute('height', 0);
+        zoomRect.setAttribute('style', 'display: block; pointer-events: none;');
+      } else if (state.currentTool === 'pan') {
+        overlay.setAttribute('style', 'cursor: grabbing;');
+      }
+      window.addEventListener('mousemove', onMouseMoveWindow);
+      window.addEventListener('mouseup', onMouseUpWindow);
     }
 
     e.preventDefault();
-    window.addEventListener('mousemove', onMouseMoveWindow);
-    window.addEventListener('mouseup', onMouseUpWindow);
   });
 
   const onMouseMoveWindow = (e) => {
@@ -151,6 +150,7 @@ export function attachInteraction(ctx) {
       const dy = Math.abs(pos.y - state.dragStart.y);
 
       if (dx < 15 && dy < 15) {
+        // CLIC SIN DRAG = PIN
         if (pos.x < margin.left || pos.x > width - margin.right) return;
         state.isPinned = !state.isPinned;
         if (state.isPinned) {
@@ -163,6 +163,7 @@ export function attachInteraction(ctx) {
           hoverGroup.setAttribute('style', 'display: none; pointer-events: none;');
         }
       } else {
+        // DRAG = ZOOM
         const minPxX = Math.min(state.dragStart.x, pos.x), maxPxX = Math.max(state.dragStart.x, pos.x);
         const minPxY = Math.min(state.dragStart.y, pos.y), maxPxY = Math.max(state.dragStart.y, pos.y);
 
@@ -179,6 +180,7 @@ export function attachInteraction(ctx) {
     }
   };
 
+  // Eventos para el modo CROSSHAIR (Hover y Clic)
   overlay.addEventListener('mousemove', (e) => {
     if (state.isDragging) return;
 
@@ -195,6 +197,24 @@ export function attachInteraction(ctx) {
     if (state.currentTool === 'crosshair' && !state.isPinned) {
       hoverGroup.setAttribute('style', 'display: block; pointer-events: none;');
       updateCrosshair(pos.x);
+    }
+  });
+
+  overlay.addEventListener('click', (e) => {
+    if (state.currentTool !== 'crosshair') return;
+
+    const pos = getMousePos(e);
+    if (pos.x < margin.left || pos.x > width - margin.right) return;
+
+    state.isPinned = !state.isPinned;
+    if (state.isPinned) {
+      hoverGroup.setAttribute('style', 'display: block; pointer-events: none;');
+      const pt = updateCrosshair(pos.x);
+      state.pinnedX = pt.x;
+      state.pinnedBounds = { ...state.viewLimits };
+    } else {
+      clearPin();
+      hoverGroup.setAttribute('style', 'display: none; pointer-events: none;');
     }
   });
 

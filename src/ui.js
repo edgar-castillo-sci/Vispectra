@@ -6,6 +6,8 @@ import { openDisambiguationModal } from './ui/disambiguationModal.js';
 import { openColumnsModal } from './ui/columnsModal.js';
 import { prepararRolePanel } from './ui/rolePanel.js';
 import { agregarPasoPipeline, getMathPipeline } from './ui/pipelinePanel.js';
+import { initAxesPanel } from './ui/axesPanel.js';
+import { state } from './plot/state.js'; // Necesitamos el estado aquí
 
 let archivos = [];
 let onProcesar = null;
@@ -36,6 +38,50 @@ export function initUI(procesarFn, graficarFn) {
   const onSelectionChange = () => {
     if (toggleAutoPlot && toggleAutoPlot.checked) actualizarGrafico();
   };
+
+  // --- Inicializar Paneles ---
+  const toggleAxesPanel = document.getElementById('toggleAxesPanel');
+  const axesPanel = document.getElementById('axesPanel');
+  if (toggleAxesPanel && axesPanel) {
+    initAxesPanel(() => actualizarGrafico());
+    toggleAxesPanel.addEventListener('change', (e) => {
+      axesPanel.style.display = e.target.checked ? 'block' : 'none';
+    });
+  }
+
+  // --- Inicializar Panel de Apariencia ---
+  const toggleAppearancePanel = document.getElementById('toggleAppearancePanel');
+  const appearancePanel = document.getElementById('appearancePanel');
+  const inputGraphTitle = document.getElementById('inputGraphTitle');
+  const chkShowLegend = document.getElementById('chkShowLegend');
+  const selectLegendPos = document.getElementById('selectLegendPos');
+
+  if (toggleAppearancePanel && appearancePanel) {
+    toggleAppearancePanel.addEventListener('change', (e) => {
+      appearancePanel.style.display = e.target.checked ? 'block' : 'none';
+    });
+  }
+
+  if (inputGraphTitle) {
+    inputGraphTitle.addEventListener('input', (e) => {
+      state.graphConfig.title = e.target.value;
+      onSelectionChange();
+    });
+  }
+
+  if (chkShowLegend) {
+    chkShowLegend.addEventListener('change', (e) => {
+      state.graphConfig.legend.show = e.target.checked;
+      onSelectionChange();
+    });
+  }
+
+  if (selectLegendPos) {
+    selectLegendPos.addEventListener('change', (e) => {
+      state.graphConfig.legend.position = e.target.value;
+      onSelectionChange();
+    });
+  }
 
   if (langSelector) {
     langSelector.addEventListener('change', (e) => {

@@ -302,3 +302,30 @@ export function redo() {
   }
   return false;
 }
+.axes-panel-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.axis-config-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.axis-config-group h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #333;
+}
+.axis-config-group label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.axis-config-group input[type="number"], .axis-config-group select {
+  width: 100px;
+  padding: 2px 4px;
+  font-size: 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}

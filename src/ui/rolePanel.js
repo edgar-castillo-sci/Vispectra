@@ -1,4 +1,5 @@
 import { t } from '../i18n.js';
+import { state } from '../plot/state.js';
 
 let normalChecked = [];
 let onlyChecked = [];
@@ -9,19 +10,18 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
   const checkboxesY = document.getElementById('checkboxesY');
   if (!selectX || !checkboxesY) return;
 
-  // Detectar si es un archivo nuevo (para resetear el estado del Only Mode)
   const isNewFile = (originalIndices !== null);
 
   if (isNewFile) {
     normalChecked = [];
     onlyChecked = [];
     onlyModeActive = false;
+    state.seriesConfig = {};
   }
 
   selectX.innerHTML = '';
   checkboxesY.innerHTML = '';
 
-  // 1. Poblar el selector X (Columna 0)
   for (let i = 0; i < numColumnas; i++) {
     const opt = document.createElement('option');
     opt.value = i;
@@ -30,7 +30,6 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
     selectX.appendChild(opt);
   }
 
-  // 2. Crear el toggle de Only Mode (insertado justo antes de las Y-series)
   let onlyModeContainer = document.getElementById('onlyModeContainer');
   if (!onlyModeContainer) {
     onlyModeContainer = document.createElement('div');
@@ -48,30 +47,28 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
 
     onlyModeContainer.appendChild(toggle);
     onlyModeContainer.appendChild(label);
-
     checkboxesY.parentNode.insertBefore(onlyModeContainer, checkboxesY);
   }
 
   const onlyModeToggle = document.getElementById('onlyModeToggle');
 
-  // 3. Poblar los checkboxes Y
   for (let i = 0; i < numColumnas; i++) {
-    const label = document.createElement('label');
-    label.style.display = 'block';
-    label.style.fontSize = '0.9rem';
-    label.style.marginBottom = '4px';
-    label.style.overflow = 'hidden';
+    const row = document.createElement('div');
+    row.style.cssText = 'margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px dashed #eee;';
+
+    const topRow = document.createElement('div');
+    topRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; width: 100%;';
+
+    const leftGroup = document.createElement('span');
+    leftGroup.style.cssText = 'display: flex; align-items: center; gap: 4px; flex: 1;';
 
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.value = i;
     cb.className = 'checkbox-y';
-
     const cbId = `col-checkbox-${i}`;
     cb.id = cbId;
-    label.htmlFor = cbId;
 
-    // Restaurar estado inicial
     if (isNewFile) {
         if (autoSelect) cb.checked = (i !== 0);
         else cb.checked = (i === 1);
@@ -80,73 +77,109 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
         cb.checked = activeChecked.includes(i);
     }
 
-    // Evento al cambiar un checkbox
     cb.addEventListener('change', () => {
-        const current = Array.from(document.querySelectorAll('.checkbox-y'))
-                             .filter(b => b.checked)
-                             .map(b => parseInt(b.value));
-
+        const current = Array.from(document.querySelectorAll('.checkbox-y')).filter(b => b.checked).map(b => parseInt(b.value));
         if (onlyModeActive) onlyChecked = current;
         else normalChecked = current;
-
         onSelectionChange();
     });
 
-    label.appendChild(cb);
-    const labelIdx = originalIndices ? originalIndices[i] : i;
-    label.appendChild(document.createTextNode(` ${t('col_prefix')} ${labelIdx} `));
+    leftGroup.appendChild(cb);
 
-    // Span alineado a la derecha
+    const defaultName = `${t('col_prefix')} ${originalIndices ? originalIndices[i] : i}`;
+    if (i !== 0 && !state.seriesConfig[i]) {
+      const colorIdx = i % state.defaultColors.length;
+      const styleIdx = Math.floor(i / state.defaultColors.length) % state.defaultStyles.length;
+      state.seriesConfig[i] = {
+        color: state.defaultColors[colorIdx],
+        style: state.defaultStyles[styleIdx],
+        width: 1.5,
+        label: defaultName
+      };
+    }
+
+    const nameSpan = document.createElement('span');
+    nameSpan.contentEditable = 'true';
+    nameSpan.style.cssText = 'cursor: text; outline: none; border-bottom: 1px dashed transparent; padding: 0 2px; min-width: 60px; color: #333;';
+    nameSpan.textContent = (i === 0) ? (state.axisConfig.x.label || defaultName) : state.seriesConfig[i].label;
+
+    nameSpan.addEventListener('focus', () => nameSpan.style.borderBottomColor = '#aaa');
+    nameSpan.addEventListener('blur', () => {
+      nameSpan.style.borderBottomColor = 'transparent';
+      const newLabel = nameSpan.textContent.trim() || defaultName;
+      nameSpan.textContent = newLabel;
+
+      if (i === 0) {
+        state.axisConfig.x.label = newLabel;
+      } else {
+        state.seriesConfig[i].label = newLabel;
+      }
+      onSelectionChange();
+    });
+    nameSpan.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); nameSpan.blur(); }
+    });
+
+    leftGroup.appendChild(nameSpan);
+    topRow.appendChild(leftGroup);
+
     const valSpan = document.createElement('span');
     valSpan.className = 'y-val-display';
     valSpan.dataset.col = i;
-    valSpan.style.cssText = `
-      float: right;
-      text-align: right;
-      min-width: 80px;
-      color: #0055cc;
-      font-family: monospace;
-      font-weight: bold;
-    `;
-    label.appendChild(valSpan);
+    valSpan.style.cssText = 'color: #0055cc; font-family: monospace; font-weight: bold; font-size: 0.8rem; min-width: 50px; text-align: right;';
+    topRow.appendChild(valSpan);
+    row.appendChild(topRow);
 
-    checkboxesY.appendChild(label);
+    if (i !== 0) {
+      const bottomRow = document.createElement('div');
+      bottomRow.style.cssText = 'display: flex; gap: 4px; margin-top: 4px; align-items: center; justify-content: flex-end;';
+
+      const colorInput = document.createElement('input');
+      colorInput.type = 'color';
+      colorInput.style.cssText = 'width: 20px; height: 20px; padding: 0; border: none; cursor: pointer;';
+      colorInput.value = state.seriesConfig[i].color;
+      colorInput.addEventListener('input', (e) => { state.seriesConfig[i].color = e.target.value; onSelectionChange(); });
+
+      const styleSelect = document.createElement('select');
+      styleSelect.style.cssText = 'font-size: 10px; padding: 0; height: 20px; border: 1px solid #ccc; border-radius: 2px; cursor: pointer; width: 40px;';
+      styleSelect.innerHTML = `
+        <option value="solid">──</option>
+        <option value="dashed">- -</option>
+        <option value="dotted">··</option>
+        <option value="dashdot">-·</option>
+      `;
+      styleSelect.value = state.seriesConfig[i].style;
+      styleSelect.addEventListener('change', (e) => { state.seriesConfig[i].style = e.target.value; onSelectionChange(); });
+
+      bottomRow.appendChild(colorInput);
+      bottomRow.appendChild(styleSelect);
+      row.appendChild(bottomRow);
+    }
+
+    checkboxesY.appendChild(row);
   }
 
-  // 4. Configurar el toggle de Only Mode
   onlyModeToggle.checked = onlyModeActive;
 
   onlyModeToggle.onchange = (e) => {
       const boxes = Array.from(document.querySelectorAll('.checkbox-y'));
-
       if (e.target.checked) {
-          // ACTIVAR Only Mode
           normalChecked = boxes.filter(cb => cb.checked).map(cb => parseInt(cb.value));
           onlyModeActive = true;
-
-          // Al estar onlyChecked vacío, apaga todo. Si ya tenía selección, la restaura.
-          boxes.forEach(cb => {
-              cb.checked = onlyChecked.includes(parseInt(cb.value));
-          });
+          boxes.forEach(cb => { cb.checked = onlyChecked.includes(parseInt(cb.value)); });
       } else {
-          // DESACTIVAR Only Mode
           onlyChecked = boxes.filter(cb => cb.checked).map(cb => parseInt(cb.value));
           onlyModeActive = false;
-
-          boxes.forEach(cb => {
-              cb.checked = normalChecked.includes(parseInt(cb.value));
-          });
+          boxes.forEach(cb => { cb.checked = normalChecked.includes(parseInt(cb.value)); });
       }
       onSelectionChange();
   };
 
-  // Guardar el estado inicial si es un archivo nuevo
   if (isNewFile) {
       const boxes = Array.from(document.querySelectorAll('.checkbox-y'));
       normalChecked = boxes.filter(cb => cb.checked).map(cb => parseInt(cb.value));
-      onlyChecked = []; // <--- LA CORRECCIÓN: Iniciar vacío
+      onlyChecked = [];
   }
 
-  // Usamos onchange en lugar de addEventListener para evitar duplicados al re-renderizar
   selectX.onchange = onSelectionChange;
 }

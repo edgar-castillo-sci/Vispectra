@@ -9,6 +9,24 @@ export const state = {
   isDragging: false,
   dragStart: { x: 0, y: 0 },
   panStartLimits: null,
+
+  axisConfig: {
+    x: { scale: 'linear', mode: 'auto', count: 5, step: 0.5, format: 'auto', minor: 0, label: '' },
+    y: { scale: 'linear', mode: 'auto', count: 5, step: 0.5, format: 'auto', minor: 0, label: '' }
+  },
+
+  // NUEVO: Configuración global del gráfico
+  graphConfig: {
+    title: '',
+    legend: {
+      show: false,
+      position: 'top-right'
+    }
+  },
+
+  seriesConfig: {},
+  defaultColors: ['#000000', '#cc0000', '#0055cc', '#009933', '#6600cc', '#ff9900', '#00cccc', '#cc00cc'],
+  defaultStyles: ['solid', 'dashed', 'dotted', 'dashdot']
 };
 
 export function resetView() {
