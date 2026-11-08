@@ -8,14 +8,29 @@ import { prepararRolePanel } from './ui/rolePanel.js';
 import { agregarPasoPipeline, getMathPipeline } from './ui/pipelinePanel.js';
 import { initAxesPanel } from './ui/axesPanel.js';
 import { initFramePanel } from './ui/framePanel.js';
-import { state, resetView } from './plot/state.js';
 import { initConfigPanel } from './ui/configPanel.js';
 import { initRangePanel } from './ui/rangePanel.js';
+import { state, resetView } from './plot/state.js';
 
 let archivos = [];
 let onProcesar = null;
 let onGraficar = null;
 let columnasGlobales = null;
+
+// --- Helper: toggle panel with scroll into view ---
+function bindCollapsiblePanel(checkboxId, panelId) {
+  const checkbox = document.getElementById(checkboxId);
+  const panel = document.getElementById(panelId);
+  if (!checkbox || !panel) return;
+  checkbox.addEventListener('change', (e) => {
+    panel.style.display = e.target.checked ? 'block' : 'none';
+    if (e.target.checked) {
+      requestAnimationFrame(() => {
+        panel.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      });
+    }
+  });
+}
 
 export function initUI(procesarFn, graficarFn) {
   onProcesar = procesarFn;
@@ -43,52 +58,24 @@ export function initUI(procesarFn, graficarFn) {
     if (toggleAutoPlot && toggleAutoPlot.checked) actualizarGrafico();
   };
 
-  // --- Inicializar Paneles Colapsables ---
-  const toggleAxesPanel = document.getElementById('toggleAxesPanel');
-  const axesPanel = document.getElementById('axesPanel');
-  if (toggleAxesPanel && axesPanel) {
-    initAxesPanel(() => actualizarGrafico());
-    toggleAxesPanel.addEventListener('change', (e) => {
-      axesPanel.style.display = e.target.checked ? 'block' : 'none';
-    });
-  }
+  // --- Inicializar paneles (render interno) ---
+  if (document.getElementById('toggleAxesPanel')) initAxesPanel(() => actualizarGrafico());
+  if (document.getElementById('toggleFramePanel')) initFramePanel(() => actualizarGrafico());
+  if (document.getElementById('toggleConfigPanel')) initConfigPanel(() => actualizarGrafico());
+  if (document.getElementById('rangePanel')) initRangePanel(() => actualizarGrafico());
 
-  const toggleFramePanel = document.getElementById('toggleFramePanel');
-  const framePanel = document.getElementById('framePanel');
-  if (toggleFramePanel && framePanel) {
-    initFramePanel(() => actualizarGrafico());
-    toggleFramePanel.addEventListener('change', (e) => {
-      framePanel.style.display = e.target.checked ? 'block' : 'none';
-    });
-  }
+  // --- Toggles con scroll into view ---
+  bindCollapsiblePanel('toggleAxesPanel', 'axesPanel');
+  bindCollapsiblePanel('toggleFramePanel', 'framePanel');
+  bindCollapsiblePanel('toggleConfigPanel', 'configPanel');
+  bindCollapsiblePanel('toggleAppearancePanel', 'appearancePanel');
 
-const rangePanelEl = document.getElementById('rangePanel');
-if (rangePanelEl) {
-  initRangePanel(() => actualizarGrafico());
-}
-
-   const toggleConfigPanel = document.getElementById('toggleConfigPanel');
-const configPanelEl = document.getElementById('configPanel');
-if (toggleConfigPanel && configPanelEl) {
-  initConfigPanel(() => actualizarGrafico());
-  toggleConfigPanel.addEventListener('change', (e) => {
-    configPanelEl.style.display = e.target.checked ? 'block' : 'none';
-  });
-}
-
-  const toggleAppearancePanel = document.getElementById('toggleAppearancePanel');
-  const appearancePanel = document.getElementById('appearancePanel');
+  // --- Graph Appearance panel logic ---
   const inputGraphTitle = document.getElementById('inputGraphTitle');
   const chkShowLegend = document.getElementById('chkShowLegend');
   const selectLegendPos = document.getElementById('selectLegendPos');
   const selectLegendLayout = document.getElementById('selectLegendLayout');
   const legendLayoutRow = document.getElementById('legendLayoutRow');
-
-  if (toggleAppearancePanel && appearancePanel) {
-    toggleAppearancePanel.addEventListener('change', (e) => {
-      appearancePanel.style.display = e.target.checked ? 'block' : 'none';
-    });
-  }
 
   if (inputGraphTitle) {
     inputGraphTitle.addEventListener('input', (e) => {
@@ -127,17 +114,17 @@ if (toggleConfigPanel && configPanelEl) {
     updateLayoutVisibility();
   }
 
-  // --- Selector de idioma ---
+  // --- Language selector ---
   if (langSelector) {
     langSelector.addEventListener('change', (e) => {
       setLanguage(e.target.value);
-
-      // Re-traducir el DOM estático
       translateDOM();
 
-      // Re-renderizar paneles dinámicos con i18n
+      // Re-render i18n-dependent panels
       initAxesPanel(() => actualizarGrafico());
       initFramePanel(() => actualizarGrafico());
+      initConfigPanel(() => actualizarGrafico());
+      initRangePanel(() => actualizarGrafico());
 
       if (columnasGlobales) {
         prepararRolePanel(columnasGlobales.length, null, false, onSelectionChange);
@@ -150,11 +137,16 @@ if (toggleConfigPanel && configPanelEl) {
 
   // --- Drag & Drop ---
   zona.addEventListener('click', () => input.click());
-  input.addEventListener('change', (e) => { actualizarArchivos(e.target.files, salida); input.value = ''; });
-  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => zona.addEventListener(ev, e => e.preventDefault()));
+  input.addEventListener('change', (e) => {
+    actualizarArchivos(e.target.files, salida);
+    input.value = '';
+  });
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev =>
+    zona.addEventListener(ev, e => e.preventDefault())
+  );
   zona.addEventListener('drop', (e) => actualizarArchivos(e.dataTransfer.files, salida));
 
-  // --- Botón Procesar ---
+  // --- Process button ---
   botonProcesar.addEventListener('click', async () => {
     if (archivos.length === 0) return (salida.textContent = t('status_waiting'));
     salida.textContent = t('status_processing');
@@ -172,8 +164,8 @@ if (toggleConfigPanel && configPanelEl) {
       if (!result || result.status === 'failed') {
         salida.textContent = `✗ ${archivos[0].name}: failed\n`;
         if (result && result.diagnostics) {
-           const errors = result.diagnostics.filter(d => d.severity === 'error').slice(0, 5);
-           for (const e of errors) salida.textContent += `    ${e.code}\n`;
+          const errors = result.diagnostics.filter(d => d.severity === 'error').slice(0, 5);
+          for (const e of errors) salida.textContent += `    ${e.code}\n`;
         }
         return;
       }
@@ -185,7 +177,11 @@ if (toggleConfigPanel && configPanelEl) {
         let finalIndices = originalIndices;
 
         if (unique.length < result.columns.length) {
-          const shouldCollapse = await openColumnsModal(result.columns.length - unique.length, unique.length, result.columns.length);
+          const shouldCollapse = await openColumnsModal(
+            result.columns.length - unique.length,
+            unique.length,
+            result.columns.length
+          );
           if (shouldCollapse) {
             autoSelect = true;
           } else {
@@ -197,11 +193,15 @@ if (toggleConfigPanel && configPanelEl) {
         columnasGlobales = finalColumns;
         resetView();
 
-        salida.textContent = `✓ ${archivos[0].name}\n  status: ${result.status}\n  columns: ${finalColumns.length} (from ${result.columns.length})\n  rows: ${result.totalRows} (failed: ${result.failedRows})\n`;
+        salida.textContent =
+          `✓ ${archivos[0].name}\n` +
+          `  status: ${result.status}\n` +
+          `  columns: ${finalColumns.length} (from ${result.columns.length})\n` +
+          `  rows: ${result.totalRows} (failed: ${result.failedRows})\n`;
 
         prepararRolePanel(finalColumns.length, finalIndices, autoSelect, onSelectionChange);
 
-        if (rolePanel) rolePanel.style.display = 'block';
+        if (rolePanel) rolePanel.style.display = 'flex';
         if (exportGroup) exportGroup.style.display = 'flex';
         if (botonExportCsvRaw) botonExportCsvRaw.style.display = 'block';
         if (toggleAutoPlot && toggleAutoPlot.checked) actualizarGrafico();
@@ -212,7 +212,7 @@ if (toggleConfigPanel && configPanelEl) {
     }
   });
 
-  // --- Add Operation ---
+  // --- Add operation ---
   if (btnAddOp) {
     btnAddOp.addEventListener('click', () => {
       agregarPasoPipeline(pipelineContainer, null, onSelectionChange);
@@ -228,7 +228,7 @@ if (toggleConfigPanel && configPanelEl) {
     });
   }
 
-  // --- Export Plot (con modo SVG forzado) ---
+  // --- Export plot (SVG forced mode) ---
   if (botonExportar) {
     botonExportar.addEventListener('click', async () => {
       const prevText = salida.textContent;
@@ -255,7 +255,7 @@ if (toggleConfigPanel && configPanelEl) {
     });
   }
 
-  // --- Export CSV Raw ---
+  // --- Export CSV raw ---
   if (botonExportCsvRaw) {
     botonExportCsvRaw.addEventListener('click', () => {
       const selectX = document.getElementById('selectX');
@@ -266,7 +266,7 @@ if (toggleConfigPanel && configPanelEl) {
     });
   }
 
-  // --- Export CSV Processed ---
+  // --- Export CSV processed ---
   if (botonExportCsvProcessed) {
     botonExportCsvProcessed.addEventListener('click', () => {
       const selectX = document.getElementById('selectX');
@@ -277,6 +277,7 @@ if (toggleConfigPanel && configPanelEl) {
     });
   }
 
+  // --- Redraw orchestrator ---
   function actualizarGrafico() {
     if (!columnasGlobales) return;
     const selectX = document.getElementById('selectX');

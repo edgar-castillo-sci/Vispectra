@@ -1,331 +1,414 @@
 /* ============================================================
-   VISPECTRA — ESTILOS GLOBALES
+   VISPECTRA — ESTILOS GLOBALES (v2.0)
    ============================================================ */
 
-body {
-  font-family: system-ui, -apple-system, sans-serif;
-  max-width: 1200px;
-  margin: 2rem auto;
-  padding: 0 1rem;
-  background: #fafafa;
-  color: #222;
-  line-height: 1.6;
+:root {
+  /* Palette */
+  --c-bg: #f5f7fa;
+  --c-surface: #ffffff;
+  --c-surface-alt: #f8fafc;
+  --c-border: #e2e8f0;
+  --c-border-strong: #cbd5e1;
+
+  --c-text: #1e293b;
+  --c-text-2: #64748b;
+  --c-text-3: #94a3b8;
+
+  --c-primary: #0066cc;
+  --c-primary-hover: #0052a3;
+  --c-primary-light: #eff6ff;
+
+  --c-success: #059669;
+  --c-warning: #d97706;
+  --c-danger: #dc2626;
+
+  /* Typography */
+  --f-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --f-mono: 'SF Mono', Monaco, Consolas, 'Courier New', monospace;
+
+  /* Spacing scale */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+
+  /* Radius */
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 8px;
+
+  /* Shadows */
+  --sh-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --sh-md: 0 2px 8px rgba(0,0,0,0.06);
+  --sh-lg: 0 8px 24px rgba(0,0,0,0.10);
+
+  /* Transitions */
+  --t: 150ms ease;
 }
 
-/* --- Cabecera y Selector de Idioma --- */
+/* --- Reset & base --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--f-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  background: var(--c-bg);
+  color: var(--c-text);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* --- Header --- */
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 2px solid #0066cc;
-  padding-bottom: 0.5rem;
-  margin-bottom: 1.5rem;
+  padding: var(--s-3) var(--s-6);
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border);
+  box-shadow: var(--sh-sm);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 h1 {
-  color: #0066cc;
   margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--c-primary);
+  letter-spacing: -0.02em;
 }
 
 .lang-selector {
-  padding: 0.3rem;
-  font-size: 0.9rem;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  max-width: 130px;
-  background: white;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  color: var(--c-text);
+  cursor: pointer;
+  transition: all var(--t);
+}
+.lang-selector:hover { border-color: var(--c-primary); }
+.lang-selector:focus {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 1px;
 }
 
-/* --- Layout Principal --- */
-.container {
-  display: flex;
-  gap: 2rem;
-  align-items: flex-start;
-  flex-wrap: wrap;
-}
-
-.sidebar {
-  width: 340px;
-  flex-shrink: 0;
-}
-
-.main-plot {
-  flex-grow: 1;
-  min-width: 300px;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 1rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-
-/* --- Zona de Carga --- */
+/* --- Drop zone --- */
 #zonaDrop {
-  border: 2px dashed #999;
-  padding: 1.5rem;
+  max-width: 1600px;
+  margin: var(--s-5) auto;
+  padding: var(--s-5);
+  border: 2px dashed var(--c-border-strong);
+  border-radius: var(--r-lg);
   text-align: center;
-  border-radius: 8px;
   cursor: pointer;
-  background: white;
-  transition: all 0.2s;
-  margin-bottom: 1rem;
+  background: var(--c-surface);
+  color: var(--c-text-2);
+  font-weight: 500;
+  transition: all 200ms ease;
 }
-
 #zonaDrop:hover {
-  border-color: #0066cc;
-  background: #f0f7ff;
+  border-color: var(--c-primary);
+  background: var(--c-primary-light);
+  color: var(--c-primary);
 }
 
-/* --- Botones --- */
+/* --- Panels --- */
+.role-selector {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  padding: var(--s-3);
+  box-shadow: var(--sh-sm);
+  transition: box-shadow var(--t);
+}
+.role-selector:hover { box-shadow: var(--sh-md); }
+
+.role-selector > label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: var(--s-2);
+}
+
+/* --- Buttons (base) --- */
 button {
-  padding: 0.5rem 1rem;
-  background: #0066cc;
-  color: white;
-  border: none;
-  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.2;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
   cursor: pointer;
-  font-size: 1rem;
-  width: 100%;
-  margin-bottom: 0.5rem;
-  transition: background 0.2s;
+  transition: all var(--t);
+  background: var(--c-primary);
+  color: #ffffff;
+  width: auto;
 }
 
-button:hover {
-  background: #0052a3;
+button:hover:not(:disabled) { background: var(--c-primary-hover); }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 2px;
 }
-
 button:disabled {
-  background: #ccc;
+  opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Full-width ONLY in these specific containers */
+.btn-row button,
+#rolePanel > button,
+.role-selector > button,
+#exportGroup > button {
+  width: 100%;
 }
 
 .btn-row {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: var(--s-2);
+  margin-bottom: var(--s-3);
 }
 
-.btn-row button {
-  margin-bottom: 0;
-}
-
-/* --- Selectores y Controles --- */
+/* --- Form controls --- */
+input[type="text"],
+input[type="number"],
 select {
-  width: 100%;
-  padding: 0.4rem;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  background-color: white;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  color: var(--c-text);
+  transition: all var(--t);
 }
 
-input[type="range"] {
-  width: 100%;
-  margin-top: 0.3rem;
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus {
+  outline: none;
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
 }
 
-input[type="number"] {
-  padding: 0.2rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+input[type="number"] { font-family: var(--f-mono); }
+
+input[type="checkbox"] {
+  accent-color: var(--c-primary);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  vertical-align: middle;
 }
 
-.role-selector {
-  margin-bottom: 1rem;
-  padding: 0.8rem;
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 6px;
-}
-
-.role-selector label {
-  display: block;
-  font-size: 0.9rem;
-  font-weight: bold;
-  margin-bottom: 0.4rem;
-}
-
-/* --- Panel de Auto-graficado --- */
+/* --- Auto-plot toggle --- */
 .auto-plot-toggle {
-  margin-bottom: 1rem;
-  padding: 0.8rem;
-  background: #e3f2fd;
-  border-radius: 6px;
-  border: 1px solid #bbdefb;
+  background: var(--c-primary-light);
+  border: 1px solid #b8d4f0;
+  border-radius: var(--r-md);
+  padding: var(--s-2) var(--s-3);
+  margin-bottom: var(--s-3);
 }
-
 .auto-plot-toggle label {
   display: flex;
   align-items: center;
+  gap: var(--s-2);
+  font-weight: 600;
+  font-size: 0.85rem;
   cursor: pointer;
-  font-weight: bold;
 }
 
-.auto-plot-toggle input {
-  margin-right: 0.5rem;
-  width: 1.2rem;
-  height: 1.2rem;
-}
-
-/* --- Pipeline Matemático --- */
+/* --- Pipeline step --- */
 .pipeline-step {
-  background: #fff3e0;
-  border: 1px solid #ffe0b2;
-  padding: 0.8rem;
-  border-radius: 6px;
-  margin-bottom: 0.5rem;
   position: relative;
+  background: #fffbf2;
+  border: 1px solid #fde5b8;
+  border-radius: var(--r-md);
+  padding: var(--s-3);
+  margin-bottom: var(--s-2);
 }
-
+.pipeline-step select {
+  width: calc(100% - 28px);
+  margin-bottom: 0;
+}
 .pipeline-step .btn-remove {
   position: absolute;
-  top: 5px;
-  right: 5px;
-  background: #cc0000;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
-  font-size: 14px;
-  cursor: pointer;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
   padding: 0;
+  min-width: 22px;
+  background: var(--c-danger);
+  color: white;
+  border-radius: 50%;
+  font-size: 14px;
   line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
+.pipeline-step .btn-remove:hover { background: #b91c1c; }
 
-.pipeline-step .btn-remove:hover {
-  background: #990000;
-}
-
-.pipeline-step select {
-  margin-bottom: 0.5rem;
-  width: calc(100% - 25px); /* Deja espacio para el botón de borrar */
-}
-
-/* --- Caja de Salida y Gráfico --- */
+/* --- Output / status --- */
 #salida {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  min-height: 100px;
-  font-family: monospace;
-  font-size: 0.85rem;
+  padding: var(--s-3);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  font-family: var(--f-mono);
+  font-size: 0.78rem;
+  color: var(--c-text-2);
   white-space: pre-wrap;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+  min-height: 60px;
+}
+
+/* --- Plot area --- */
+#plotWrapper {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-md);
+  overflow: hidden;
 }
 
 #spectrumSvg {
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 8 / 5;
-  background: white;
+  background: var(--c-surface);
 }
 
-/* --- Exportación --- */
-.export-group {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
+/* --- Range panel --- */
+#rangePanel {
+  padding: var(--s-3);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  font-family: var(--f-mono);
+  font-size: 0.8rem;
+  color: var(--c-text);
+  box-shadow: var(--sh-sm);
 }
 
-.export-group select {
-  flex-grow: 1;
-  padding: 0.5rem;
-  border-radius: 4px;
-  border: 1px solid #ccc;
+/* --- Floating zoom controls --- */
+.floating-zoom-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: none;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-2);
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-lg);
+  z-index: 20;
+  backdrop-filter: blur(6px);
 }
 
-.export-group button {
+.floating-zoom-controls button {
+  padding: 4px 8px;
+  font-size: 12px;
+  background: var(--c-surface);
+  color: var(--c-text);
+  border: 1px solid var(--c-border);
   width: auto;
-  margin-bottom: 0;
-  background: #444;
+}
+.floating-zoom-controls button:hover:not(:disabled) {
+  background: var(--c-primary-light);
+  border-color: var(--c-primary);
+  color: var(--c-primary);
 }
 
-.export-group button:hover {
-  background: #222;
-}}
-
-
-export const state = {
-  viewLimits: { minX: null, maxX: null, minY: null, maxY: null },
-  viewHistory: [null],
-  historyIndex: 0,
-  currentTool: 'zoom',
-  isPinned: false,
-  pinnedX: null,
-  pinnedBounds: null,
-  isDragging: false,
-  dragStart: { x: 0, y: 0 },
-  panStartLimits: null,
-};
-
-export function resetView() {
-  state.viewLimits = { minX: null, maxX: null, minY: null, maxY: null };
-  state.viewHistory = [null];
-  state.historyIndex = 0;
+/* --- Export group --- */
+#exportGroup {
+  display: none;
+  gap: var(--s-1);
+  flex-wrap: wrap;
+}
+#exportGroup select {
+  flex: 1;
+  min-width: 100px;
+}
+#exportGroup button {
+  width: auto;
 }
 
-export function clearPin() {
-  state.isPinned = false;
-  state.pinnedX = null;
-  state.pinnedBounds = null;
-  const spans = document.querySelectorAll('.y-val-display');
-  spans.forEach(span => span.textContent = '');
-}
-
-export function pushHistory(newLimits) {
-  state.viewHistory = state.viewHistory.slice(0, state.historyIndex + 1);
-  state.viewHistory.push(newLimits);
-  state.historyIndex = state.viewHistory.length - 1;
-}
-
-export function undo() {
-  if (state.historyIndex > 0) {
-    state.historyIndex--;
-    state.viewLimits = state.viewHistory[state.historyIndex] || { minX: null, maxX: null, minY: null, maxY: null };
-    return true;
-  }
-  return false;
-}
-
-export function redo() {
-  if (state.historyIndex < state.viewHistory.length - 1) {
-    state.historyIndex++;
-    state.viewLimits = state.viewHistory[state.historyIndex] || { minX: null, maxX: null, minY: null, maxY: null };
-    return true;
-  }
-  return false;
-}
+/* --- Axis config panel --- */
 .axes-panel-inner {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--s-2);
 }
 .axis-config-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--s-1);
 }
 .axis-config-group h4 {
-  margin: 0;
+  margin: 0 0 var(--s-1) 0;
   font-size: 0.9rem;
-  color: #333;
+  color: var(--c-text);
 }
 .axis-config-group label {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-.axis-config-group input[type="number"], .axis-config-group select {
-  width: 100px;
-  padding: 2px 4px;
+  gap: var(--s-2);
   font-size: 0.8rem;
-  border: 1px solid #ccc;
-  border-radius: 3px;
+  color: var(--c-text-2);
+}
+.axis-config-group input[type="text"],
+.axis-config-group input[type="number"],
+.axis-config-group select {
+  width: 110px;
+  font-size: 0.8rem;
+  padding: 3px 6px;
+}
+
+/* --- Responsive --- */
+@media (max-width: 960px) {
+  .header {
+    padding: var(--s-3) var(--s-4);
+  }
+  h1 { font-size: 1.15rem; }
+  #zonaDrop { margin: var(--s-3); }
+}
+
+/* --- Scrollbars (webkit) --- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--c-border-strong);
+  border-radius: 5px;
+  border: 2px solid var(--c-bg);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--c-text-3); }
+
+/* --- Role Panel layout --- */
+#rolePanel {
+  display: none;
+  flex-direction: column;
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+}
+
+#rolePanel > h3 {
+  margin: 0 0 var(--s-1) 0;
 }

@@ -3,11 +3,62 @@ import { t } from '../i18n.js';
 
 let lastRenderCtx = null;
 
-// Estilos con overrides fuertes para vencer cualquier regla global
-const BTN_STYLE = 'width: auto !important; flex: 0 0 auto !important; display: inline-flex; align-items: center; justify-content: center; padding: 1px 6px; cursor: pointer; border: 1px solid #ccc; background: #f8f8f8; border-radius: 3px; font-size: 0.7rem; line-height: 1; min-width: 28px; height: 20px; box-sizing: border-box;';
-const INPUT_STYLE = 'flex: 0 0 auto; padding: 2px 4px; font-family: monospace; font-size: 0.75rem; border: 1px solid #ccc; border-radius: 3px; background: #fff; height: 20px; box-sizing: border-box;';
+const ROW_STYLE = 'display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; white-space: nowrap; min-width: 0; height: 24px;';
+const LABEL_STYLE = 'color: #888; font-weight: bold; font-size: 0.8rem; line-height: 22px;';
 
-const ROW_STYLE = 'display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; white-space: nowrap; min-width: 0;';
+const INPUT_STYLE = `
+  flex: 0 0 auto;
+  width: 72px;
+  height: 22px;
+  padding: 0 4px;
+  font-family: monospace;
+  font-size: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: #fff;
+  color: #333;
+  line-height: 20px;
+  box-sizing: border-box;
+  vertical-align: middle;
+`.replace(/\s+/g, ' ');
+
+const SHIFT_STYLE = `
+  flex: 0 0 auto;
+  width: 55px;
+  height: 22px;
+  padding: 0 4px;
+  font-family: monospace;
+  font-size: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: #fff;
+  color: #333;
+  line-height: 20px;
+  box-sizing: border-box;
+  vertical-align: middle;
+`.replace(/\s+/g, ' ');
+
+const BTN_STYLE = `
+  width: auto !important;
+  flex: 0 0 auto !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  height: 22px !important;
+  padding: 0 8px !important;
+  margin: 0 !important;
+  cursor: pointer;
+  border: 1px solid #ccc !important;
+  background: #f8f8f8 !important;
+  color: #333 !important;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.75rem !important;
+  line-height: 1 !important;
+  min-width: 32px;
+  box-sizing: border-box !important;
+  vertical-align: middle;
+`.replace(/\s+/g, ' ');
 
 export function initRangePanel(redraw) {
   const container = document.getElementById('rangePanel');
@@ -18,12 +69,12 @@ export function initRangePanel(redraw) {
     const label = isX ? 'X' : 'Y';
     return `
       <div style="${ROW_STYLE}">
-        <span style="color:#888; font-weight:bold;">${label}:</span>
-        <input type="number" id="range${label}Min" step="any" style="${INPUT_STYLE} width: 70px;">
-        <span style="color:#888;">→</span>
-        <input type="number" id="range${label}Max" step="any" style="${INPUT_STYLE} width: 70px;">
-        <span style="color:#0055cc; font-weight:bold;">Δ</span>
-        <input type="number" id="range${label}Shift" step="any" placeholder="0" style="${INPUT_STYLE} width: 55px;" title="${t(isX ? 'range_shift_x' : 'range_shift_y')}">
+        <span style="${LABEL_STYLE}">${label}:</span>
+        <input type="number" id="range${label}Min" step="any" style="${INPUT_STYLE}">
+        <span style="${LABEL_STYLE}">→</span>
+        <input type="number" id="range${label}Max" step="any" style="${INPUT_STYLE}">
+        <span style="color:#0055cc; font-weight:bold; font-size: 0.8rem; line-height: 22px;">Δ</span>
+        <input type="number" id="range${label}Shift" step="any" placeholder="0" style="${SHIFT_STYLE}" title="${t(isX ? 'range_shift_x' : 'range_shift_y')}">
         <button id="rangeUndo${label}" style="${BTN_STYLE}" title="${t(isX ? 'undo_x' : 'undo_y')}">↶${label}</button>
         <button id="rangeReset${label}" style="${BTN_STYLE}" title="${t(isX ? 'reset_x' : 'reset_y')}">↺${label}</button>
       </div>
