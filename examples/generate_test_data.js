@@ -10,8 +10,12 @@
 // Default: 100,000 rows x 50 columns (~20 MB)
 // ============================================================
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const rows = parseInt(process.argv[2]) || 100000;
 const cols = parseInt(process.argv[3]) || 50;
