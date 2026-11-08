@@ -3,14 +3,13 @@ import { state, clearPin, pushHistory } from './state.js';
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 export function attachInteraction(ctx) {
-  const { svg, dataPoints, yIndices, mapX, unmapX, unmapY, plotWidth, plotHeight, margin, width, height, redraw } = ctx;
+  const { svg, dataPoints, yIndices, mapX, unmapX, unmapY, plotWidth, plotHeight, margin, width, height, baseWidth, baseHeight, redraw } = ctx;
 
   const hoverGroup = document.createElementNS(SVG_NS, 'g');
   hoverGroup.setAttribute('style', 'display: none; pointer-events: none;');
   const crosshair = document.createElementNS(SVG_NS, 'line');
-  crosshair.setAttribute('y1', margin.top); crosshair.setAttribute('y2', height - margin.bottom);
-  crosshair.setAttribute('stroke', '#666'); crosshair.setAttribute('stroke-width', '1');
-  crosshair.setAttribute('stroke-dasharray', '4 4');
+  crosshair.setAttribute('y1', margin.top); crosshair.setAttribute('y2', baseHeight - margin.bottom);
+  crosshair.setAttribute('stroke', '#666'); crosshair.setAttribute('stroke-width', '1'); crosshair.setAttribute('stroke-dasharray', '4 4');
   hoverGroup.appendChild(crosshair);
   svg.appendChild(hoverGroup);
 
@@ -26,17 +25,19 @@ export function attachInteraction(ctx) {
   svg.appendChild(overlay);
 
   const zoomRect = document.createElementNS(SVG_NS, 'rect');
-  zoomRect.setAttribute('fill', 'rgba(0, 85, 204, 0.15)');
-  zoomRect.setAttribute('stroke', '#0055cc'); zoomRect.setAttribute('stroke-width', '1');
-  zoomRect.setAttribute('stroke-dasharray', '4 4'); zoomRect.setAttribute('style', 'display: none; pointer-events: none;');
+  zoomRect.setAttribute('fill', 'rgba(0, 85, 204, 0.15)'); zoomRect.setAttribute('stroke', '#0055cc'); zoomRect.setAttribute('stroke-width', '1'); zoomRect.setAttribute('stroke-dasharray', '4 4'); zoomRect.setAttribute('style', 'display: none; pointer-events: none;');
   svg.appendChild(zoomRect);
 
   const getMousePos = (e) => {
     const rect = svg.getBoundingClientRect();
     return {
-      x: ((e.clientX - rect.left) / rect.width) * width,
-      y: ((e.clientY - rect.top) / rect.height) * height
+      x: (e.clientX - rect.left) * (width / rect.width),
+      y: (e.clientY - rect.top) * (height / rect.height)
     };
+  };
+
+  const inPlotArea = (pos) => {
+    return pos.x >= margin.left && pos.x <= baseWidth - margin.right;
   };
 
   const updateCrosshair = (mouseX) => {
@@ -49,7 +50,6 @@ export function attachInteraction(ctx) {
       const dist = Math.abs(mouseX - mapX(dataPoints[i].x));
       if (dist < minDist) { minDist = dist; closestPoint = dataPoints[i]; }
     }
-
     updateDOMValues(closestPoint, yIndices);
     return closestPoint;
   };
@@ -80,10 +80,9 @@ export function attachInteraction(ctx) {
 
   overlay.addEventListener('mousedown', (e) => {
     const pos = getMousePos(e);
-    if (pos.x < margin.left || pos.x > width - margin.right) return;
+    if (!inPlotArea(pos)) return;
 
     if (state.currentTool === 'crosshair') {
-      // En modo crosshair, no hacemos drag, solo permitimos el clic
       state.isDragging = false;
     } else {
       state.isDragging = true;
@@ -100,13 +99,15 @@ export function attachInteraction(ctx) {
       window.addEventListener('mousemove', onMouseMoveWindow);
       window.addEventListener('mouseup', onMouseUpWindow);
     }
-
     e.preventDefault();
   });
 
   const onMouseMoveWindow = (e) => {
     if (!state.isDragging) return;
     const pos = getMousePos(e);
+    // Clamp a los límites del plot
+    pos.x = Math.max(margin.left, Math.min(baseWidth - margin.right, pos.x));
+    pos.y = Math.max(margin.top, Math.min(baseHeight - margin.bottom, pos.y));
 
     if (state.currentTool === 'zoom') {
       const minXpx = Math.min(state.dragStart.x, pos.x), maxXpx = Math.max(state.dragStart.x, pos.x);
@@ -126,7 +127,6 @@ export function attachInteraction(ctx) {
         minY: state.panStartLimits.minY + yShift,
         maxY: state.panStartLimits.maxY + yShift
       };
-
       redraw();
     }
   };
@@ -146,12 +146,14 @@ export function attachInteraction(ctx) {
     } else if (state.currentTool === 'zoom') {
       zoomRect.setAttribute('style', 'display: none; pointer-events: none;');
       const pos = getMousePos(e);
+      pos.x = Math.max(margin.left, Math.min(baseWidth - margin.right, pos.x));
+      pos.y = Math.max(margin.top, Math.min(baseHeight - margin.bottom, pos.y));
+
       const dx = Math.abs(pos.x - state.dragStart.x);
       const dy = Math.abs(pos.y - state.dragStart.y);
 
       if (dx < 15 && dy < 15) {
-        // CLIC SIN DRAG = PIN
-        if (pos.x < margin.left || pos.x > width - margin.right) return;
+        if (!inPlotArea(pos)) return;
         state.isPinned = !state.isPinned;
         if (state.isPinned) {
           hoverGroup.setAttribute('style', 'display: block; pointer-events: none;');
@@ -163,7 +165,6 @@ export function attachInteraction(ctx) {
           hoverGroup.setAttribute('style', 'display: none; pointer-events: none;');
         }
       } else {
-        // DRAG = ZOOM
         const minPxX = Math.min(state.dragStart.x, pos.x), maxPxX = Math.max(state.dragStart.x, pos.x);
         const minPxY = Math.min(state.dragStart.y, pos.y), maxPxY = Math.max(state.dragStart.y, pos.y);
 
@@ -180,12 +181,10 @@ export function attachInteraction(ctx) {
     }
   };
 
-  // Eventos para el modo CROSSHAIR (Hover y Clic)
   overlay.addEventListener('mousemove', (e) => {
     if (state.isDragging) return;
-
     const pos = getMousePos(e);
-    if (pos.x < margin.left || pos.x > width - margin.right) {
+    if (!inPlotArea(pos)) {
       if (!state.isPinned) {
         hoverGroup.setAttribute('style', 'display: none; pointer-events: none;');
         const spans = document.querySelectorAll('.y-val-display');
@@ -193,7 +192,6 @@ export function attachInteraction(ctx) {
       }
       return;
     }
-
     if (state.currentTool === 'crosshair' && !state.isPinned) {
       hoverGroup.setAttribute('style', 'display: block; pointer-events: none;');
       updateCrosshair(pos.x);
@@ -202,9 +200,8 @@ export function attachInteraction(ctx) {
 
   overlay.addEventListener('click', (e) => {
     if (state.currentTool !== 'crosshair') return;
-
     const pos = getMousePos(e);
-    if (pos.x < margin.left || pos.x > width - margin.right) return;
+    if (!inPlotArea(pos)) return;
 
     state.isPinned = !state.isPinned;
     if (state.isPinned) {

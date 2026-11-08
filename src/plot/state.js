@@ -11,16 +11,16 @@ export const state = {
   panStartLimits: null,
 
   axisConfig: {
-    x: { scale: 'linear', mode: 'auto', count: 5, step: 0.5, format: 'auto', minor: 0, label: '' },
-    y: { scale: 'linear', mode: 'auto', count: 5, step: 0.5, format: 'auto', minor: 0, label: '' }
+    x: { scale: 'linear', mode: 'auto', count: 5, step: 0.5, format: 'auto', minor: 0, label: '', showMinorLabels: false },
+    y: { scale: 'linear', mode: 'auto', count: 5, step: 0.5, format: 'auto', minor: 0, label: '', showMinorLabels: false }
   },
 
-  // NUEVO: Configuración global del gráfico
   graphConfig: {
     title: '',
     legend: {
       show: false,
-      position: 'top-right'
+      position: 'top-right',
+      layout: 'vertical'
     }
   },
 

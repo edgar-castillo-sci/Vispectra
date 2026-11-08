@@ -10,23 +10,24 @@ function getNiceNumber(x) {
 }
 
 export function generateTicks(min, max, config, isLog = false) {
-  if (min === max) return { ticks: [min], decimals: 2, minorTicks: [] };
+  if (min === max) return { ticks: [min], minorTicks: [], decimals: 2 };
 
   let ticks = [];
   let minorTicks = [];
   const range = max - min;
 
+  // --- LÓGICA PARA ESCALA LOGARÍTMICA ---
   if (isLog) {
     const startExp = Math.floor(min);
     const endExp = Math.ceil(max);
 
+    // Ticks mayores: potencias de 10
     for (let i = startExp; i <= endExp; i++) {
       if (i >= min - 0.1 && i <= max + 0.1) ticks.push(i);
     }
-
     if (ticks.length === 0) ticks = [startExp, endExp];
 
-    // Dibujar minors SOLO si config.minor > 0
+    // Ticks menores: Solo si config.minor > 0
     if (config.minor > 0) {
       for (let i = startExp; i < endExp; i++) {
         for (let j = 2; j <= 9; j++) {
@@ -38,7 +39,7 @@ export function generateTicks(min, max, config, isLog = false) {
     return { ticks, minorTicks, decimals: 2 };
   }
 
-  // ... (resto de lógica lineal igual) ...
+  // --- LÓGICA PARA ESCALA LINEAL ---
   if (config.mode === 'count') {
     const step = range / (config.count - 1);
     for (let i = 0; i < config.count; i++) ticks.push(min + step * i);

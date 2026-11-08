@@ -8,8 +8,12 @@ export function drawPlot(columns, xIndex = 0, yIndices = [1]) {
   if (!svg) return;
 
   while (svg.firstChild) svg.removeChild(svg.firstChild);
-  svg.setAttribute('viewBox', '0 0 800 500');
-  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+  const canvas = document.getElementById('plotCanvas');
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
 
   if (!columns || !columns[xIndex] || columns[xIndex].length === 0) {
     state.viewLimits = { minX: null, maxX: null, minY: null, maxY: null };
@@ -47,14 +51,21 @@ export function drawPlot(columns, xIndex = 0, yIndices = [1]) {
   if (dataPoints.length === 0) return;
   dataPoints.sort((a, b) => a.x - b.x);
 
-  const width = 800;
-  const height = 500;
-  const margin = { top: 40, right: 40, bottom: 60, left: 70 };
+  const baseWidth = 800;
+  const baseHeight = 500;
+  const defaultMargin = { top: 40, right: 40, bottom: 60, left: 70 };
 
-  const ctx = render(svg, dataPoints, ySeries, state.viewLimits, margin, width, height, yIndices);
+  // Render devuelve el margen efectivo y las dimensiones totales
+  const ctx = render(svg, dataPoints, ySeries, state.viewLimits, defaultMargin, baseWidth, baseHeight, yIndices);
 
+  // Interacción con las dimensiones totales (para getMousePos) y baseWidth (para bounds)
   attachInteraction({
-    ...ctx, svg, dataPoints, yIndices, margin, width, height,
+    ...ctx,
+    svg,
+    dataPoints,
+    yIndices,
+    width: ctx.totalWidth,
+    height: ctx.totalHeight,
     redraw: () => drawPlot(columns, xIndex, yIndices)
   });
 

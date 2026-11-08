@@ -30,27 +30,39 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
     selectX.appendChild(opt);
   }
 
-  let onlyModeContainer = document.getElementById('onlyModeContainer');
-  if (!onlyModeContainer) {
-    onlyModeContainer = document.createElement('div');
-    onlyModeContainer.id = 'onlyModeContainer';
-    onlyModeContainer.style.cssText = 'margin: 10px 0; padding: 6px 0; border-top: 1px solid #eee; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 6px;';
+  let controlsContainer = document.getElementById('yControlsContainer');
+  if (!controlsContainer) {
+    controlsContainer = document.createElement('div');
+    controlsContainer.id = 'yControlsContainer';
+    controlsContainer.style.cssText = 'margin: 10px 0; padding: 6px 0; border-top: 1px solid #eee; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;';
 
+    const onlyDiv = document.createElement('div');
+    onlyDiv.style.cssText = 'display: flex; align-items: center; gap: 6px;';
     const toggle = document.createElement('input');
     toggle.type = 'checkbox';
     toggle.id = 'onlyModeToggle';
+    const onlyLabel = document.createElement('label');
+    onlyLabel.htmlFor = 'onlyModeToggle';
+    onlyLabel.textContent = t('only_mode') || 'Only Mode';
+    onlyLabel.style.cssText = 'font-size: 0.85rem; font-weight: bold; color: #555; cursor: pointer; user-select: none;';
+    onlyDiv.appendChild(toggle);
+    onlyDiv.appendChild(onlyLabel);
 
-    const label = document.createElement('label');
-    label.htmlFor = 'onlyModeToggle';
-    label.textContent = t('only_mode') || 'Only Mode';
-    label.style.cssText = 'font-size: 0.9rem; font-weight: bold; color: #555; cursor: pointer; user-select: none;';
+    const bulkDiv = document.createElement('div');
+    bulkDiv.style.cssText = 'display: flex; gap: 6px;';
+    bulkDiv.innerHTML = `
+      <button id="btnSelectAll" style="background:none; border:none; color:#0055cc; cursor:pointer; font-size:0.75rem; text-decoration:underline;">All</button>
+      <button id="btnSelectNone" style="background:none; border:none; color:#0055cc; cursor:pointer; font-size:0.75rem; text-decoration:underline;">None</button>
+    `;
 
-    onlyModeContainer.appendChild(toggle);
-    onlyModeContainer.appendChild(label);
-    checkboxesY.parentNode.insertBefore(onlyModeContainer, checkboxesY);
+    controlsContainer.appendChild(onlyDiv);
+    controlsContainer.appendChild(bulkDiv);
+    checkboxesY.parentNode.insertBefore(controlsContainer, checkboxesY);
   }
 
   const onlyModeToggle = document.getElementById('onlyModeToggle');
+  const btnSelectAll = document.getElementById('btnSelectAll');
+  const btnSelectNone = document.getElementById('btnSelectNone');
 
   for (let i = 0; i < numColumnas; i++) {
     const row = document.createElement('div');
@@ -70,8 +82,8 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
     cb.id = cbId;
 
     if (isNewFile) {
-        if (autoSelect) cb.checked = (i !== 0);
-        else cb.checked = (i === 1);
+        // CAMBIO: Seleccionar todas las Y por defecto
+        cb.checked = (i !== 0);
     } else {
         const activeChecked = onlyModeActive ? onlyChecked : normalChecked;
         cb.checked = activeChecked.includes(i);
@@ -90,12 +102,7 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
     if (i !== 0 && !state.seriesConfig[i]) {
       const colorIdx = i % state.defaultColors.length;
       const styleIdx = Math.floor(i / state.defaultColors.length) % state.defaultStyles.length;
-      state.seriesConfig[i] = {
-        color: state.defaultColors[colorIdx],
-        style: state.defaultStyles[styleIdx],
-        width: 1.5,
-        label: defaultName
-      };
+      state.seriesConfig[i] = { color: state.defaultColors[colorIdx], style: state.defaultStyles[styleIdx], width: 1.5, label: defaultName };
     }
 
     const nameSpan = document.createElement('span');
@@ -109,11 +116,8 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
       const newLabel = nameSpan.textContent.trim() || defaultName;
       nameSpan.textContent = newLabel;
 
-      if (i === 0) {
-        state.axisConfig.x.label = newLabel;
-      } else {
-        state.seriesConfig[i].label = newLabel;
-      }
+      if (i === 0) state.axisConfig.x.label = newLabel;
+      else state.seriesConfig[i].label = newLabel;
       onSelectionChange();
     });
     nameSpan.addEventListener('keydown', (e) => {
@@ -173,6 +177,22 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
           boxes.forEach(cb => { cb.checked = normalChecked.includes(parseInt(cb.value)); });
       }
       onSelectionChange();
+  };
+
+  btnSelectAll.onclick = () => {
+    const boxes = Array.from(document.querySelectorAll('.checkbox-y'));
+    boxes.forEach(cb => { cb.checked = true; });
+    if (onlyModeActive) onlyChecked = boxes.map(cb => parseInt(cb.value));
+    else normalChecked = boxes.map(cb => parseInt(cb.value));
+    onSelectionChange();
+  };
+
+  btnSelectNone.onclick = () => {
+    const boxes = Array.from(document.querySelectorAll('.checkbox-y'));
+    boxes.forEach(cb => { cb.checked = false; });
+    if (onlyModeActive) onlyChecked = [];
+    else normalChecked = [];
+    onSelectionChange();
   };
 
   if (isNewFile) {

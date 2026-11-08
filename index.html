@@ -5,10 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="css/styles.css">
     <title>Vispectra</title>
-
-    <!-- Librerías para exportación -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/svg2pdf.js/2.2.0/svg2pdf.min.js"></script>
+
+    <style>
+      @media (max-width: 960px) {
+        .container { grid-template-columns: 1fr !important; }
+        .main-plot { position: static !important; }
+      }
+      /* Estilos para el menú flotante */
+      .floating-zoom-controls {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: none; /* Oculto por defecto, se activa desde JS */
+        flex-direction: column;
+        gap: 4px;
+        padding: 6px;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 20;
+        backdrop-filter: blur(4px);
+      }
+    </style>
 </head>
 <body>
 
@@ -25,70 +46,111 @@
 </div>
 <input type="file" id="entradaArchivos" multiple accept=".txt,.csv,.tsv,.dat,.asc,.xlsx,text/plain,text/csv" style="display: none;">
 
-<div class="container">
-    <div class="sidebar">
-        <div class="btn-row">
-            <button id="botonProcesar" data-i18n="btn_process">Process File</button>
-            <button id="botonExportCsvRaw" style="background: #777; display: none;" data-i18n="btn_export_csv_raw">Raw CSV</button>
-        </div>
+<div class="container" style="display: grid; grid-template-columns: 400px 1fr; gap: 20px; padding: 20px; max-width: 1600px; margin: 0 auto; align-items: start;">
 
-        <div id="rolePanel" style="display: none; margin-top: 1.5rem;">
-            <h3 style="margin-top: 0; font-size: 1.1rem;" data-i18n="role_title">Role Assignment</h3>
+  <!-- COLUMNA IZQUIERDA: Controles -->
+  <div class="sidebar">
 
-            <div class="auto-plot-toggle">
-                <label>
-                    <input type="checkbox" id="toggleAutoPlot" checked>
-                    <span data-i18n="auto_plot">Auto-plot</span>
-                </label>
-            </div>
+    <div style="background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 15px;">
+      <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+        <button id="botonProcesar" data-i18n="btn_process" style="flex: 1;">Process File</button>
+        <button id="botonExportCsvRaw" style="background: #777; display: none;" data-i18n="btn_export_csv_raw">Raw CSV</button>
+      </div>
 
-            <div class="role-selector">
-                <label for="selectX" data-i18n="select_x">X-Axis:</label>
-                <select id="selectX"></select>
-            </div>
+      <div id="salida" data-i18n="status_waiting" style="font-size: 0.85rem; color: #555; min-height: 20px; margin-bottom: 8px;">Waiting for files...</div>
 
-            <div class="role-selector">
-                <label data-i18n="select_y">Y-Series:</label>
-                <div id="checkboxesY"></div>
-            </div>
-
-            <div class="role-selector" style="background: #fff8e1; border-color: #ffecb3;">
-                <label data-i18n="math_pipeline">Math Pipeline (Top to Bottom):</label>
-                <div id="pipelineContainer"></div>
-                <button id="btnAddOp" style="background: #ff9800; margin-top: 0.5rem;" data-i18n="btn_add_op">+ Add Operation</button>
-            </div>
-
-            <!-- NUEVO PANEL DE CONFIGURACIÓN DE EJES -->
-            <div class="role-selector" style="background: #f0f8ff; border-color: #b3e5fc;">
-                <label style="font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-                    <span>⚙️ Axis Settings</span>
-                    <input type="checkbox" id="toggleAxesPanel" style="margin: 0; cursor: pointer;">
-                </label>
-                <div id="axesPanel" style="display: none; margin-top: 10px; font-size: 0.85rem;"></div>
-            </div>
-
-            <button id="botonGraficar" style="display: none; background: #009933;" data-i18n="btn_update_plot">Update Plot</button>
-
-            <div class="export-group">
-                <select id="selectFormat">
-                    <option value="svg">SVG (Vector)</option>
-                    <option value="png">PNG (High Res)</option>
-                    <option value="jpeg">JPEG</option>
-                    <option value="pdf">PDF (Vector)</option>
-                </select>
-                <button id="botonExportar" data-i18n="btn_export_graph">Export Graph</button>
-            </div>
-
-            <button id="botonExportCsvProcessed" style="background: #555;" data-i18n="btn_export_csv_proc">Processed CSV</button>
-        </div>
-
-        <div id="salida" data-i18n="status_waiting">Waiting for files...</div>
+      <div id="exportGroup" style="display: none; gap: 5px; flex-wrap: wrap;">
+        <select id="selectFormat" style="flex: 1; min-width: 100px;">
+          <option value="svg">SVG (Vector)</option>
+          <option value="png">PNG (High Res)</option>
+          <option value="jpeg">JPEG</option>
+          <option value="pdf">PDF (Vector)</option>
+        </select>
+        <button id="botonExportar" data-i18n="btn_export_graph">Export</button>
+        <button id="botonExportCsvProcessed" style="background: #555;" data-i18n="btn_export_csv_proc">CSV</button>
+      </div>
     </div>
 
-    <div class="main-plot" style="display: flex; gap: 10px; align-items: stretch; width: 100%;">
-        <div id="zoomControls" style="display: none; flex-direction: column; gap: 6px; justify-content: center; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; flex-shrink: 0;"></div>
-        <svg id="spectrumSvg" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg" style="flex: 1; width: 100%; max-width: 800px; border: 1px solid #eee; border-radius: 8px;"></svg>
+    <div id="rolePanel" style="display: none;">
+      <h3 style="margin-top: 0; font-size: 1.1rem;" data-i18n="role_title">Role Assignment</h3>
+
+      <div class="auto-plot-toggle" style="margin-bottom: 8px;">
+        <label>
+          <input type="checkbox" id="toggleAutoPlot" checked>
+          <span data-i18n="auto_plot">Auto-plot</span>
+        </label>
+      </div>
+
+      <!-- BOTÓN UPDATE PLOT AQUÍ -->
+      <button id="botonGraficar" style="display: none; background: #009933; width: 100%; margin-bottom: 12px;" data-i18n="btn_update_plot">Update Plot</button>
+
+      <div class="role-selector">
+        <label for="selectX" data-i18n="select_x">X-Axis:</label>
+        <select id="selectX"></select>
+      </div>
+
+      <div class="role-selector">
+        <label data-i18n="select_y">Y-Series:</label>
+        <div id="checkboxesY"></div>
+      </div>
+
+      <div class="role-selector" style="background: #fff8e1; border-color: #ffecb3;">
+        <label style="font-weight: bold;">🔬 Math Pipeline</label>
+        <div id="pipelineContainer"></div>
+        <button id="btnAddOp" style="background: #ff9800; margin-top: 0.5rem;" data-i18n="btn_add_op">+ Add Operation</button>
+      </div>
+
+      <div class="role-selector" style="background: #f0f8ff; border-color: #b3e5fc;">
+        <label style="font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+          <span>⚙️ Axis Settings</span>
+          <input type="checkbox" id="toggleAxesPanel" style="margin: 0; cursor: pointer;">
+        </label>
+        <div id="axesPanel" style="display: none; margin-top: 10px; font-size: 0.85rem;"></div>
+      </div>
+
+      <div class="role-selector" style="background: #e8f5e9; border-color: #c8e6c9;">
+        <label style="font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+          <span>📊 Graph Appearance</span>
+          <input type="checkbox" id="toggleAppearancePanel" style="margin: 0; cursor: pointer;">
+        </label>
+        <div id="appearancePanel" style="display: none; margin-top: 10px; font-size: 0.85rem;">
+          <label>Title:
+            <input type="text" id="inputGraphTitle" placeholder="My Graph Title" style="width: 100%; padding: 4px; margin-top: 4px;">
+          </label>
+          <hr style="border:0; border-top:1px solid #ddd; margin: 8px 0;">
+          <label><input type="checkbox" id="chkShowLegend"> Show Legend</label>
+          <label style="margin-top: 4px; display: block;">Position:
+            <select id="selectLegendPos" style="width: 100%;">
+              <option value="top-right">Top Right (Box)</option>
+              <option value="top-left">Top Left (Box)</option>
+              <option value="bottom-right">Bottom Right (Box)</option>
+              <option value="bottom-left">Bottom Left (Box)</option>
+              <option value="right">Right (Columns)</option>
+              <option value="bottom">Bottom (Rows)</option>
+            </select>
+          </label>
+          <label id="legendLayoutRow" style="margin-top: 4px; display: block;">Layout:
+            <select id="selectLegendLayout" style="width: 100%;">
+              <option value="vertical">Vertical</option>
+              <option value="horizontal">Horizontal</option>
+            </select>
+          </label>
+        </div>
+      </div>
     </div>
+  </div>
+
+  <!-- COLUMNA DERECHA: Plot pegajoso -->
+  <div class="main-plot" style="position: sticky; top: 20px; display: flex; align-items: flex-start;">
+    <div id="plotWrapper" style="position: relative; flex: 1; width: 100%; aspect-ratio: 8 / 5; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff;">
+
+      <!-- MENÚ FLOTANTE DENTRO DEL WRAPPER -->
+      <div id="zoomControls" class="floating-zoom-controls"></div>
+
+      <svg id="spectrumSvg" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg" style="display: block; width: 100%; height: 100%;"></svg>
+    </div>
+  </div>
+
 </div>
 
 <script type="module" src="src/main.js"></script>

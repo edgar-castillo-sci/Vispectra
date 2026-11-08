@@ -7,7 +7,7 @@ import { openColumnsModal } from './ui/columnsModal.js';
 import { prepararRolePanel } from './ui/rolePanel.js';
 import { agregarPasoPipeline, getMathPipeline } from './ui/pipelinePanel.js';
 import { initAxesPanel } from './ui/axesPanel.js';
-import { state } from './plot/state.js'; // Necesitamos el estado aquí
+import { state, resetView } from './plot/state.js';
 
 let archivos = [];
 let onProcesar = null;
@@ -28,6 +28,7 @@ export function initUI(procesarFn, graficarFn) {
   const selectFormat = document.getElementById('selectFormat');
   const salida = document.getElementById('salida');
   const rolePanel = document.getElementById('rolePanel');
+  const exportGroup = document.getElementById('exportGroup');
   const toggleAutoPlot = document.getElementById('toggleAutoPlot');
   const langSelector = document.getElementById('langSelector');
   const btnAddOp = document.getElementById('btnAddOp');
@@ -49,12 +50,13 @@ export function initUI(procesarFn, graficarFn) {
     });
   }
 
-  // --- Inicializar Panel de Apariencia ---
   const toggleAppearancePanel = document.getElementById('toggleAppearancePanel');
   const appearancePanel = document.getElementById('appearancePanel');
   const inputGraphTitle = document.getElementById('inputGraphTitle');
   const chkShowLegend = document.getElementById('chkShowLegend');
   const selectLegendPos = document.getElementById('selectLegendPos');
+  const selectLegendLayout = document.getElementById('selectLegendLayout');
+  const legendLayoutRow = document.getElementById('legendLayoutRow');
 
   if (toggleAppearancePanel && appearancePanel) {
     toggleAppearancePanel.addEventListener('change', (e) => {
@@ -77,10 +79,26 @@ export function initUI(procesarFn, graficarFn) {
   }
 
   if (selectLegendPos) {
+    const updateLayoutVisibility = () => {
+      const pos = state.graphConfig.legend.position;
+      const isCorner = ['top-right', 'top-left', 'bottom-right', 'bottom-left'].includes(pos);
+      if (legendLayoutRow) legendLayoutRow.style.display = isCorner ? 'block' : 'none';
+    };
+
     selectLegendPos.addEventListener('change', (e) => {
       state.graphConfig.legend.position = e.target.value;
+      updateLayoutVisibility();
       onSelectionChange();
     });
+
+    if (selectLegendLayout) {
+      selectLegendLayout.addEventListener('change', (e) => {
+        state.graphConfig.legend.layout = e.target.value;
+        onSelectionChange();
+      });
+    }
+
+    updateLayoutVisibility();
   }
 
   if (langSelector) {
@@ -140,12 +158,14 @@ export function initUI(procesarFn, graficarFn) {
         }
 
         columnasGlobales = finalColumns;
+        resetView();
 
         salida.textContent = `✓ ${archivos[0].name}\n  status: ${result.status}\n  columns: ${finalColumns.length} (from ${result.columns.length})\n  rows: ${result.totalRows} (failed: ${result.failedRows})\n`;
 
         prepararRolePanel(finalColumns.length, finalIndices, autoSelect, onSelectionChange);
 
         if (rolePanel) rolePanel.style.display = 'block';
+        if (exportGroup) exportGroup.style.display = 'flex'; // <-- NUEVO
         if (botonExportCsvRaw) botonExportCsvRaw.style.display = 'block';
         if (toggleAutoPlot && toggleAutoPlot.checked) actualizarGrafico();
       }

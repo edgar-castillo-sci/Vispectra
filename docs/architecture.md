@@ -207,6 +207,24 @@ So the compiler is language-agnostic. The UI translates via `i18n.js`.
 
 Phase 10: Data Treatment Engine. Performs mathematical operations (smoothing, baseline) guided by a configuration file. All math operations preserve `nulls` and do not mutate the original input.
 
+## Visualization Engine (`src/plot/`)
+
+The plotting module is fully decoupled from the compiler and the UI logic. It is designed for high-performance scientific visualization.
+
+### Architecture
+- **`state.js`**: Centralized state for zoom history, axis configuration, series styling, and graph metadata (titles, legend).
+- **`axes.js`**: Pure functions for generating ticks (Linear/Log10, Auto/Count/Step/Nice) and formatting labels.
+- **`renderer.js`**: The core engine. Uses a **Hybrid SVG/Canvas** approach. Axes, grid, and text are drawn in SVG (for perfect vector sharpness), while dense data lines are drawn in a Canvas overlay.
+- **`downsampler.js`**: Implements the **MinMaxLTTB** algorithm. Reduces datasets with >2,000 points to a target size while preserving visual peaks and valleys, allowing smooth rendering of 100,000+ point files.
+- **`interaction.js`**: Handles mouse events (Box Zoom, Pan, Crosshair/Pin) and coordinate mapping.
+- **`controls.js`**: Manages the floating zoom toolbar.
+
+### Key Features
+- **Dynamic Viewport:** Uses **Binary Search** to isolate only the data points within the current zoom window, ensuring 60fps interaction even on massive files.
+- **Smart Legend:** Supports different positions (Inside Box, Right Columns, Bottom Rows). When placed outside, the SVG expands its viewBox rather than compressing the plot area.
+- **Inline Customization:** Users can rename series directly from the sidebar, changing the axis labels and the legend in real-time.
+- **Vector/Canvas Toggle:** Automatically switches between SVG (for <2,000 points) and Canvas (for >2,000 points) to balance crispness and performance.
+
 ## Out of Scope
 
 - **R84**: thousands notation (`1.234,56`).

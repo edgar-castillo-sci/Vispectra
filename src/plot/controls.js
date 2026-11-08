@@ -12,6 +12,7 @@ export function updateControls(redraw) {
     return;
   }
 
+  // El contenedor es flotante
   container.style.display = 'flex';
 
   const isZoomActive = state.currentTool === 'zoom' ? 'active' : '';
@@ -21,32 +22,19 @@ export function updateControls(redraw) {
   const redoDisabled = state.historyIndex === state.viewHistory.length - 1 ? 'disabled' : '';
 
   container.innerHTML = `
-    <div class="zoom-header">TOOLS</div>
+    <div style="display: flex; gap: 4px; margin-bottom: 4px;">
+      <button id="tool-zoom" class="zoom-btn ${isZoomActive}" title="Box Zoom" style="padding: 4px 8px; font-size: 12px;">🔍</button>
+      <button id="tool-pan" class="zoom-btn ${isPanActive}" title="Pan" style="padding: 4px 8px; font-size: 12px;">✋</button>
+      <button id="tool-cross" class="zoom-btn ${isCrossActive}" title="Crosshair" style="padding: 4px 8px; font-size: 12px;">➕</button>
+    </div>
 
-    <button id="tool-zoom" class="zoom-btn ${isZoomActive}">
-      <span>🔍</span> Zoom
-    </button>
-    <button id="tool-pan" class="zoom-btn ${isPanActive}">
-      <span>✋</span> Pan
-    </button>
-    <button id="tool-cross" class="zoom-btn ${isCrossActive}">
-      <span>➕</span> Cross
-    </button>
+    <hr style="width:100%; border:0; border-top:1px solid #ddd; margin: 4px 0;">
 
-    <hr class="zoom-divider">
-
-    <button id="z-undo" class="zoom-btn" ${undoDisabled}>
-      <span>⬅️</span> Undo
-    </button>
-    <button id="z-redo" class="zoom-btn" ${redoDisabled}>
-      <span>➡️</span> Redo
-    </button>
-
-    <hr class="zoom-divider">
-
-    <button id="z-reset" class="zoom-btn reset-btn">
-      <span>❌</span> Reset
-    </button>
+    <div style="display: flex; gap: 4px;">
+      <button id="z-undo" class="zoom-btn" ${undoDisabled} title="Undo" style="padding: 4px 8px; font-size: 12px;">⬅️</button>
+      <button id="z-redo" class="zoom-btn" ${redoDisabled} title="Redo" style="padding: 4px 8px; font-size: 12px;">➡️</button>
+      <button id="z-reset" class="zoom-btn reset-btn" title="Reset" style="padding: 4px 8px; font-size: 12px; color: #d32f2f;">❌</button>
+    </div>
   `;
 
   const handleToolChange = (tool) => {
