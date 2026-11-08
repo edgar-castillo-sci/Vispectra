@@ -1,4 +1,5 @@
 import { state, undo, redo, clearPin } from './state.js';
+import { t } from '../i18n.js';
 
 export function updateControls(redraw) {
   const container = document.getElementById('zoomControls');
@@ -6,7 +7,6 @@ export function updateControls(redraw) {
 
   const isZoomed = state.viewHistory.length > 1;
 
-  // Si no hay zoom, o el usuario ocultó el toolbar, no mostrar
   if (!isZoomed || state.zoomControlsHidden) {
     container.style.display = 'none';
     if (!isZoomed) container.innerHTML = '';
@@ -30,9 +30,14 @@ export function updateControls(redraw) {
 
     <hr style="width:100%; border:0; border-top:1px solid #ddd; margin: 4px 0;">
 
+    <div style="display: flex; gap: 4px; margin-bottom: 4px;">
+      <button id="z-undo" class="zoom-btn" ${undoDisabled} title="${t('undo_all')}" style="padding: 4px 8px; font-size: 12px;">↶</button>
+      <button id="z-redo" class="zoom-btn" ${redoDisabled} title="${t('redo_all')}" style="padding: 4px 8px; font-size: 12px;">↷</button>
+    </div>
+
+    <hr style="width:100%; border:0; border-top:1px solid #ddd; margin: 4px 0;">
+
     <div style="display: flex; gap: 4px;">
-      <button id="z-undo" class="zoom-btn" ${undoDisabled} title="Undo" style="padding: 4px 8px; font-size: 12px;">⬅️</button>
-      <button id="z-redo" class="zoom-btn" ${redoDisabled} title="Redo" style="padding: 4px 8px; font-size: 12px;">➡️</button>
       <button id="z-hide" class="zoom-btn" title="Hide toolbar" style="padding: 4px 8px; font-size: 12px; color: #999;">✖️</button>
     </div>
   `;
@@ -50,12 +55,10 @@ export function updateControls(redraw) {
   document.getElementById('z-undo').onclick = () => {
     if (undo()) { clearPin(); redraw(); }
   };
-
   document.getElementById('z-redo').onclick = () => {
     if (redo()) { clearPin(); redraw(); }
   };
 
-  // ✖️ Solo oculta el toolbar. No toca el zoom.
   document.getElementById('z-hide').onclick = () => {
     state.zoomControlsHidden = true;
     container.style.display = 'none';

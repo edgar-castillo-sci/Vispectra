@@ -9,6 +9,8 @@ import { agregarPasoPipeline, getMathPipeline } from './ui/pipelinePanel.js';
 import { initAxesPanel } from './ui/axesPanel.js';
 import { initFramePanel } from './ui/framePanel.js';
 import { state, resetView } from './plot/state.js';
+import { initConfigPanel } from './ui/configPanel.js';
+import { initRangePanel } from './ui/rangePanel.js';
 
 let archivos = [];
 let onProcesar = null;
@@ -59,6 +61,20 @@ export function initUI(procesarFn, graficarFn) {
       framePanel.style.display = e.target.checked ? 'block' : 'none';
     });
   }
+
+const rangePanelEl = document.getElementById('rangePanel');
+if (rangePanelEl) {
+  initRangePanel(() => actualizarGrafico());
+}
+
+   const toggleConfigPanel = document.getElementById('toggleConfigPanel');
+const configPanelEl = document.getElementById('configPanel');
+if (toggleConfigPanel && configPanelEl) {
+  initConfigPanel(() => actualizarGrafico());
+  toggleConfigPanel.addEventListener('change', (e) => {
+    configPanelEl.style.display = e.target.checked ? 'block' : 'none';
+  });
+}
 
   const toggleAppearancePanel = document.getElementById('toggleAppearancePanel');
   const appearancePanel = document.getElementById('appearancePanel');

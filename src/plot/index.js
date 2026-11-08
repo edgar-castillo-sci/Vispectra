@@ -2,6 +2,7 @@ import { state } from './state.js';
 import { render } from './renderer.js';
 import { attachInteraction } from './interaction.js';
 import { updateControls } from './controls.js';
+import { updateRangePanel } from '../ui/rangePanel.js';
 
 export function drawPlot(columns, xIndex = 0, yIndices = [1]) {
   const svg = document.getElementById('spectrumSvg');
@@ -11,13 +12,14 @@ export function drawPlot(columns, xIndex = 0, yIndices = [1]) {
 
   const canvas = document.getElementById('plotCanvas');
   if (canvas) {
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const ctx2d = canvas.getContext('2d');
+    ctx2d.clearRect(0, 0, canvas.width, canvas.height);
   }
 
   if (!columns || !columns[xIndex] || columns[xIndex].length === 0) {
     state.viewLimits = { minX: null, maxX: null, minY: null, maxY: null };
-    state.viewHistory = [null]; state.historyIndex = 0;
+    state.viewHistory = [null];
+    state.historyIndex = 0;
     updateControls(() => drawPlot(columns, xIndex, yIndices));
     return;
   }
@@ -51,21 +53,22 @@ export function drawPlot(columns, xIndex = 0, yIndices = [1]) {
   if (dataPoints.length === 0) return;
   dataPoints.sort((a, b) => a.x - b.x);
 
-    const baseWidth = state.frame.width;
-    const baseHeight = state.frame.height;
+  const baseWidth = state.frame.width;
+  const baseHeight = state.frame.height;
   const defaultMargin = { top: 40, right: 40, bottom: 60, left: 70 };
 
-  // Render devuelve el margen efectivo y las dimensiones totales
-  const ctx = render(svg, dataPoints, ySeries, state.viewLimits, defaultMargin, baseWidth, baseHeight, yIndices);
+  const renderCtx = render(svg, dataPoints, ySeries, state.viewLimits, defaultMargin, baseWidth, baseHeight, yIndices);
 
-  // Interacción con las dimensiones totales (para getMousePos) y baseWidth (para bounds)
+  // Actualizar el panel de rango debajo del plot
+  updateRangePanel(renderCtx);
+
   attachInteraction({
-    ...ctx,
+    ...renderCtx,
     svg,
     dataPoints,
     yIndices,
-    width: ctx.totalWidth,
-    height: ctx.totalHeight,
+    width: renderCtx.totalWidth,
+    height: renderCtx.totalHeight,
     redraw: () => drawPlot(columns, xIndex, yIndices)
   });
 

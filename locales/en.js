@@ -40,6 +40,7 @@ export default {
   panel_math: "Math Pipeline",
   panel_axes: "Axis Settings",
   panel_frame: "Canvas & Frame",
+  panel_config: "Config (YAML)",
   panel_appearance: "Graph Appearance",
 
   // === Axis Panel ===
@@ -96,8 +97,35 @@ export default {
   appearance_layout_vertical: "Vertical",
   appearance_layout_horizontal: "Horizontal",
 
+  // === Config Panel ===
+  config_save: "Save .yaml",
+  config_load: "Load .yaml",
+  config_apply: "Apply",
+  config_placeholder: "# Paste YAML config here, or load a file above",
+  config_saved: "Config saved.",
+  config_loaded: "Config loaded into textarea. Press Apply.",
+  config_applied: "Config applied.",
+  config_empty: "Config is empty.",
+
+  // === Range Display ===
+  range_x: "X",
+  range_y: "Y",
+
   // === Export ===
   export_preparing: "Preparing SVG export...",
   export_exporting: "Exporting...",
-  export_failed: "Export failed"
+    export_failed: "Export failed",
+  // === Range Panel ===
+  range_pan_left: "Pan left",
+  range_pan_right: "Pan right",
+  range_pan_up: "Pan up",
+  range_pan_down: "Pan down",
+    range_reset: "Reset view",
+    range_shift_x: "Shift X by this amount (Enter to apply)",
+    range_shift_y: "Shift Y by this amount (Enter to apply)",
+      // === Toolbar ===
+  undo_all: "Undo (any axis)",
+  undo_x: "Undo X only",
+  undo_y: "Undo Y only",
+  redo_all: "Redo",
 };

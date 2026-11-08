@@ -40,6 +40,7 @@ export default {
   panel_math: "Pipeline Matemático",
   panel_axes: "Ajustes de Ejes",
   panel_frame: "Lienzo y Marco",
+  panel_config: "Config (YAML)",
   panel_appearance: "Apariencia del Gráfico",
 
   // === Axis Panel ===
@@ -96,8 +97,33 @@ export default {
   appearance_layout_vertical: "Vertical",
   appearance_layout_horizontal: "Horizontal",
 
+  // === Config Panel ===
+  config_save: "Guardar .yaml",
+  config_load: "Cargar .yaml",
+  config_apply: "Aplicar",
+  config_placeholder: "# Pega aquí la configuración YAML, o carga un archivo arriba",
+  config_saved: "Configuración guardada.",
+  config_loaded: "Configuración cargada en el área de texto. Presiona Aplicar.",
+  config_applied: "Configuración aplicada.",
+  config_empty: "La configuración está vacía.",
+
+  // === Range Display ===
+  range_x: "X",
+  range_y: "Y",
+
   // === Export ===
   export_preparing: "Preparando exportación SVG...",
   export_exporting: "Exportando...",
-  export_failed: "Exportación fallida"
+    export_failed: "Exportación fallida",
+      range_pan_left: "Mover a la izquierda",
+  range_pan_right: "Mover a la derecha",
+  range_pan_up: "Mover arriba",
+  range_pan_down: "Mover abajo",
+    range_reset: "Reiniciar vista",
+      range_shift_x: "Desplazar X por esta cantidad (Enter para aplicar)",
+    range_shift_y: "Desplazar Y por esta cantidad (Enter para aplicar)",
+      undo_all: "Deshacer (cualquier eje)",
+  undo_x: "Deshacer solo X",
+  undo_y: "Deshacer solo Y",
+  redo_all: "Rehacer",
 };

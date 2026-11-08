@@ -121,6 +121,15 @@
         <div id="framePanel" style="display: none; margin-top: 10px; font-size: 0.85rem;"></div>
       </div>
 
+      <!-- Config (YAML) -->
+      <div class="role-selector" style="background: #ede7f6; border-color: #d1c4e9;">
+        <label style="font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+          <span>📄 <span data-i18n="panel_config">Config (YAML)</span></span>
+          <input type="checkbox" id="toggleConfigPanel" style="margin: 0; cursor: pointer;">
+        </label>
+        <div id="configPanel" style="display: none; margin-top: 10px; font-size: 0.85rem;"></div>
+      </div>
+
       <!-- Graph Appearance -->
       <div class="role-selector" style="background: #e8f5e9; border-color: #c8e6c9;">
         <label style="font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
@@ -155,13 +164,14 @@
   </div>
 
   <!-- ============================================== -->
-  <!-- COLUMNA DERECHA: Plot (sticky)                 -->
+  <!-- COLUMNA DERECHA: Plot (sticky) + Range Display -->
   <!-- ============================================== -->
-  <div class="main-plot" style="position: sticky; top: 20px; display: flex; align-items: flex-start;">
-    <div id="plotWrapper" style="position: relative; flex: 1; width: 100%; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff;">
+  <div class="main-plot" style="position: sticky; top: 20px; display: flex; flex-direction: column; gap: 8px; align-items: stretch;">
+    <div id="plotWrapper" style="position: relative; width: 100%; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff;">
       <div id="zoomControls" class="floating-zoom-controls"></div>
       <svg id="spectrumSvg" xmlns="http://www.w3.org/2000/svg" style="display: block; width: 100%; height: 100%;"></svg>
     </div>
+<div id="rangePanel" style="padding: 8px; background: #f8f9fa; border: 1px solid #eee; border-radius: 6px; font-family: monospace; font-size: 0.8rem; color: #555; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center;"></div>
   </div>
 
 </div>

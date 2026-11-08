@@ -1,6 +1,6 @@
 export const state = {
   viewLimits: { minX: null, maxX: null, minY: null, maxY: null },
-  viewHistory: [null],
+  viewHistory: [{ limits: { minX: null, maxX: null, minY: null, maxY: null }, axis: 'xy' }],
   historyIndex: 0,
   currentTool: 'zoom',
   isPinned: false,
@@ -32,7 +32,7 @@ export const state = {
 
 export function resetView() {
   state.viewLimits = { minX: null, maxX: null, minY: null, maxY: null };
-  state.viewHistory = [null];
+  state.viewHistory = [{ limits: { minX: null, maxX: null, minY: null, maxY: null }, axis: 'xy' }];
   state.historyIndex = 0;
   state.zoomControlsHidden = false;
 }
@@ -45,16 +45,17 @@ export function clearPin() {
   spans.forEach(span => span.textContent = '');
 }
 
-export function pushHistory(newLimits) {
+// axis: 'x' | 'y' | 'xy' (cambios de zoom/pan afectan ambos ejes)
+export function pushHistory(newLimits, axis = 'xy') {
   state.viewHistory = state.viewHistory.slice(0, state.historyIndex + 1);
-  state.viewHistory.push(newLimits);
+  state.viewHistory.push({ limits: { ...newLimits }, axis });
   state.historyIndex = state.viewHistory.length - 1;
 }
 
 export function undo() {
   if (state.historyIndex > 0) {
     state.historyIndex--;
-    state.viewLimits = state.viewHistory[state.historyIndex] || { minX: null, maxX: null, minY: null, maxY: null };
+    state.viewLimits = { ...state.viewHistory[state.historyIndex].limits };
     return true;
   }
   return false;
@@ -63,8 +64,28 @@ export function undo() {
 export function redo() {
   if (state.historyIndex < state.viewHistory.length - 1) {
     state.historyIndex++;
-    state.viewLimits = state.viewHistory[state.historyIndex] || { minX: null, maxX: null, minY: null, maxY: null };
+    state.viewLimits = { ...state.viewHistory[state.historyIndex].limits };
     return true;
+  }
+  return false;
+}
+
+// Revierte SOLO el eje indicado, buscando hacia atrás el último step que lo afectó.
+export function undoAxis(axis) {
+  const keys = axis === 'x' ? ['minX', 'maxX'] : ['minY', 'maxY'];
+
+  for (let i = state.historyIndex - 1; i >= 0; i--) {
+    const step = state.viewHistory[i];
+    if (step.axis === axis || step.axis === 'xy') {
+      const newLimits = { ...state.viewLimits };
+      keys.forEach(k => { newLimits[k] = step.limits[k]; });
+
+      state.viewLimits = newLimits;
+      state.viewHistory = state.viewHistory.slice(0, state.historyIndex + 1);
+      state.viewHistory.push({ limits: { ...newLimits }, axis });
+      state.historyIndex = state.viewHistory.length - 1;
+      return true;
+    }
   }
   return false;
 }

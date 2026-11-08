@@ -160,7 +160,7 @@ export function attachInteraction(ctx) {
 
     if (state.currentTool === 'pan') {
       overlay.setAttribute('style', 'cursor: grab;');
-      pushHistory({ ...state.viewLimits });
+      pushHistory({ ...state.viewLimits }, 'xy');
       clearPin();
       redraw();
     } else if (state.currentTool === 'zoom') {
@@ -193,7 +193,7 @@ export function attachInteraction(ctx) {
           minY: unmapY(maxPxY), maxY: unmapY(minPxY)
         };
 
-        pushHistory(newLimits);
+        pushHistory(newLimits, 'xy');
         state.viewLimits = newLimits;
         clearPin();
         redraw();
@@ -237,7 +237,8 @@ export function attachInteraction(ctx) {
 
   overlay.addEventListener('dblclick', (e) => {
     e.preventDefault();
-    state.viewHistory = [null]; state.historyIndex = 0;
+    state.viewHistory = [{ limits: { minX: null, maxX: null, minY: null, maxY: null }, axis: 'xy' }];
+    state.historyIndex = 0;
     state.viewLimits = { minX: null, maxX: null, minY: null, maxY: null };
     state.currentTool = 'zoom';
     state.isDragging = false;
