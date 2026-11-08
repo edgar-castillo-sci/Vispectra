@@ -6,13 +6,13 @@ export function updateControls(redraw) {
 
   const isZoomed = state.viewHistory.length > 1;
 
-  if (!isZoomed) {
+  // Si no hay zoom, o el usuario ocultó el toolbar, no mostrar
+  if (!isZoomed || state.zoomControlsHidden) {
     container.style.display = 'none';
-    container.innerHTML = '';
+    if (!isZoomed) container.innerHTML = '';
     return;
   }
 
-  // El contenedor es flotante
   container.style.display = 'flex';
 
   const isZoomActive = state.currentTool === 'zoom' ? 'active' : '';
@@ -33,7 +33,7 @@ export function updateControls(redraw) {
     <div style="display: flex; gap: 4px;">
       <button id="z-undo" class="zoom-btn" ${undoDisabled} title="Undo" style="padding: 4px 8px; font-size: 12px;">⬅️</button>
       <button id="z-redo" class="zoom-btn" ${redoDisabled} title="Redo" style="padding: 4px 8px; font-size: 12px;">➡️</button>
-      <button id="z-reset" class="zoom-btn reset-btn" title="Reset" style="padding: 4px 8px; font-size: 12px; color: #d32f2f;">❌</button>
+      <button id="z-hide" class="zoom-btn" title="Hide toolbar" style="padding: 4px 8px; font-size: 12px; color: #999;">✖️</button>
     </div>
   `;
 
@@ -55,11 +55,9 @@ export function updateControls(redraw) {
     if (redo()) { clearPin(); redraw(); }
   };
 
-  document.getElementById('z-reset').onclick = () => {
-    state.viewHistory = [null]; state.historyIndex = 0;
-    state.viewLimits = { minX: null, maxX: null, minY: null, maxY: null };
-    state.currentTool = 'zoom';
-    clearPin();
-    redraw();
+  // ✖️ Solo oculta el toolbar. No toca el zoom.
+  document.getElementById('z-hide').onclick = () => {
+    state.zoomControlsHidden = true;
+    container.style.display = 'none';
   };
 }

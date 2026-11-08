@@ -238,12 +238,23 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
   }
 
   // =========================================================
-  // 5. LÍNEAS (SVG o Canvas) - USANDO drawableDataPoints
+  // 5. LÍNEAS (SVG o Canvas)
   // =========================================================
-  const MAX_POINTS_FOR_SVG = 2000;
-  const useCanvas = drawableDataPoints.length > MAX_POINTS_FOR_SVG;
+  const MAX_POINTS_FOR_SVG_INTERACTIVE = 2000;
+  const MAX_POINTS_FOR_SVG_EXPORT = 10000;
+  const isExportMode = state.exportMode === true;
+
+  // En modo export se fuerza SVG, aunque haya muchos puntos
+  const useCanvas = !isExportMode && (drawableDataPoints.length > MAX_POINTS_FOR_SVG_INTERACTIVE);
 
   if (!useCanvas) {
+    // SVG path. Si es export y los datos son gigantes, downsamplear
+    // a un presupuesto mayor para no matar al navegador.
+    let sourceData = drawableDataPoints;
+    if (isExportMode && sourceData.length > MAX_POINTS_FOR_SVG_EXPORT) {
+      sourceData = downsampleForCanvas(sourceData, ySeries, MAX_POINTS_FOR_SVG_EXPORT);
+    }
+
     for (let j = 0; j < ySeries.length; j++) {
       const originalIndex = yIndices[j];
       const colorIdx = originalIndex % state.defaultColors.length;
@@ -257,9 +268,9 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
 
       let pathData = '';
       let penDown = false;
-      for (let i = 0; i < drawableDataPoints.length; i++) {
-        const xVal = drawableDataPoints[i].x;
-        const yVal = drawableDataPoints[i].ys[j];
+      for (let i = 0; i < sourceData.length; i++) {
+        const xVal = sourceData[i].x;
+        const yVal = sourceData[i].ys[j];
         if (yVal === null || (isLogY && yVal <= 0) || (isLogX && xVal <= 0)) { penDown = false; continue; }
         const px = mapX(xVal);
         const py = mapY(yVal);

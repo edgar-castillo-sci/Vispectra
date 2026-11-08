@@ -51,8 +51,8 @@ export function drawPlot(columns, xIndex = 0, yIndices = [1]) {
   if (dataPoints.length === 0) return;
   dataPoints.sort((a, b) => a.x - b.x);
 
-  const baseWidth = 800;
-  const baseHeight = 500;
+    const baseWidth = state.frame.width;
+    const baseHeight = state.frame.height;
   const defaultMargin = { top: 40, right: 40, bottom: 60, left: 70 };
 
   // Render devuelve el margen efectivo y las dimensiones totales

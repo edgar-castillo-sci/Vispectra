@@ -23,6 +23,10 @@ export function translateDOM() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     const translation = t(key);
-    el.textContent = translation;
+    if (el.tagName === 'INPUT' && el.hasAttribute('placeholder')) {
+      el.placeholder = translation;
+    } else {
+      el.textContent = translation;
+    }
   });
 }

@@ -1,4 +1,4 @@
-import { t, setLanguage } from './i18n.js';
+import { t, setLanguage, translateDOM } from './i18n.js';
 import { deduplicateColumns } from './services/columns.js';
 import { applyPipeline } from './services/pipeline.js';
 import { exportarCSV, exportarPlot } from './services/export.js';
@@ -7,6 +7,7 @@ import { openColumnsModal } from './ui/columnsModal.js';
 import { prepararRolePanel } from './ui/rolePanel.js';
 import { agregarPasoPipeline, getMathPipeline } from './ui/pipelinePanel.js';
 import { initAxesPanel } from './ui/axesPanel.js';
+import { initFramePanel } from './ui/framePanel.js';
 import { state, resetView } from './plot/state.js';
 
 let archivos = [];
@@ -40,13 +41,22 @@ export function initUI(procesarFn, graficarFn) {
     if (toggleAutoPlot && toggleAutoPlot.checked) actualizarGrafico();
   };
 
-  // --- Inicializar Paneles ---
+  // --- Inicializar Paneles Colapsables ---
   const toggleAxesPanel = document.getElementById('toggleAxesPanel');
   const axesPanel = document.getElementById('axesPanel');
   if (toggleAxesPanel && axesPanel) {
     initAxesPanel(() => actualizarGrafico());
     toggleAxesPanel.addEventListener('change', (e) => {
       axesPanel.style.display = e.target.checked ? 'block' : 'none';
+    });
+  }
+
+  const toggleFramePanel = document.getElementById('toggleFramePanel');
+  const framePanel = document.getElementById('framePanel');
+  if (toggleFramePanel && framePanel) {
+    initFramePanel(() => actualizarGrafico());
+    toggleFramePanel.addEventListener('change', (e) => {
+      framePanel.style.display = e.target.checked ? 'block' : 'none';
     });
   }
 
@@ -101,9 +111,18 @@ export function initUI(procesarFn, graficarFn) {
     updateLayoutVisibility();
   }
 
+  // --- Selector de idioma ---
   if (langSelector) {
     langSelector.addEventListener('change', (e) => {
       setLanguage(e.target.value);
+
+      // Re-traducir el DOM estático
+      translateDOM();
+
+      // Re-renderizar paneles dinámicos con i18n
+      initAxesPanel(() => actualizarGrafico());
+      initFramePanel(() => actualizarGrafico());
+
       if (columnasGlobales) {
         prepararRolePanel(columnasGlobales.length, null, false, onSelectionChange);
         const currentPipeline = getMathPipeline();
@@ -113,11 +132,13 @@ export function initUI(procesarFn, graficarFn) {
     });
   }
 
+  // --- Drag & Drop ---
   zona.addEventListener('click', () => input.click());
   input.addEventListener('change', (e) => { actualizarArchivos(e.target.files, salida); input.value = ''; });
   ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => zona.addEventListener(ev, e => e.preventDefault()));
   zona.addEventListener('drop', (e) => actualizarArchivos(e.dataTransfer.files, salida));
 
+  // --- Botón Procesar ---
   botonProcesar.addEventListener('click', async () => {
     if (archivos.length === 0) return (salida.textContent = t('status_waiting'));
     salida.textContent = t('status_processing');
@@ -165,7 +186,7 @@ export function initUI(procesarFn, graficarFn) {
         prepararRolePanel(finalColumns.length, finalIndices, autoSelect, onSelectionChange);
 
         if (rolePanel) rolePanel.style.display = 'block';
-        if (exportGroup) exportGroup.style.display = 'flex'; // <-- NUEVO
+        if (exportGroup) exportGroup.style.display = 'flex';
         if (botonExportCsvRaw) botonExportCsvRaw.style.display = 'block';
         if (toggleAutoPlot && toggleAutoPlot.checked) actualizarGrafico();
       }
@@ -175,6 +196,7 @@ export function initUI(procesarFn, graficarFn) {
     }
   });
 
+  // --- Add Operation ---
   if (btnAddOp) {
     btnAddOp.addEventListener('click', () => {
       agregarPasoPipeline(pipelineContainer, null, onSelectionChange);
@@ -182,6 +204,7 @@ export function initUI(procesarFn, graficarFn) {
     });
   }
 
+  // --- Auto-plot toggle ---
   if (toggleAutoPlot) {
     toggleAutoPlot.addEventListener('change', (e) => {
       if (botonGraficar) botonGraficar.style.display = e.target.checked ? 'none' : 'block';
@@ -189,13 +212,34 @@ export function initUI(procesarFn, graficarFn) {
     });
   }
 
+  // --- Export Plot (con modo SVG forzado) ---
   if (botonExportar) {
-    botonExportar.addEventListener('click', () => {
-      const svg = document.getElementById('spectrumSvg');
-      exportarPlot(svg, selectFormat.value);
+    botonExportar.addEventListener('click', async () => {
+      const prevText = salida.textContent;
+      botonExportar.disabled = true;
+      salida.textContent = t('export_preparing');
+
+      try {
+        state.exportMode = true;
+        actualizarGrafico();
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+        salida.textContent = t('export_exporting');
+        const svg = document.getElementById('spectrumSvg');
+        exportarPlot(svg, selectFormat.value);
+        salida.textContent = prevText;
+      } catch (err) {
+        console.error('Export failed:', err);
+        salida.textContent = `${t('export_failed')}: ${err.message}`;
+      } finally {
+        botonExportar.disabled = false;
+        state.exportMode = false;
+        actualizarGrafico();
+      }
     });
   }
 
+  // --- Export CSV Raw ---
   if (botonExportCsvRaw) {
     botonExportCsvRaw.addEventListener('click', () => {
       const selectX = document.getElementById('selectX');
@@ -206,6 +250,7 @@ export function initUI(procesarFn, graficarFn) {
     });
   }
 
+  // --- Export CSV Processed ---
   if (botonExportCsvProcessed) {
     botonExportCsvProcessed.addEventListener('click', () => {
       const selectX = document.getElementById('selectX');

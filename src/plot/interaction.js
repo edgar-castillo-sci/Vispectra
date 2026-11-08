@@ -28,8 +28,12 @@ export function attachInteraction(ctx) {
   zoomRect.setAttribute('fill', 'rgba(0, 85, 204, 0.15)'); zoomRect.setAttribute('stroke', '#0055cc'); zoomRect.setAttribute('stroke-width', '1'); zoomRect.setAttribute('stroke-dasharray', '4 4'); zoomRect.setAttribute('style', 'display: none; pointer-events: none;');
   svg.appendChild(zoomRect);
 
+  // Rect congelado durante el drag para evitar drift subpixel
+  let frozenRect = null;
+  let panRafScheduled = false;
+
   const getMousePos = (e) => {
-    const rect = svg.getBoundingClientRect();
+    const rect = frozenRect || svg.getBoundingClientRect();
     return {
       x: (e.clientX - rect.left) * (width / rect.width),
       y: (e.clientY - rect.top) * (height / rect.height)
@@ -82,12 +86,20 @@ export function attachInteraction(ctx) {
     const pos = getMousePos(e);
     if (!inPlotArea(pos)) return;
 
+    // Re-mostrar el toolbar si estaba oculto
+    if (state.zoomControlsHidden) {
+      state.zoomControlsHidden = false;
+      const container = document.getElementById('zoomControls');
+      if (container && state.viewHistory.length > 1) container.style.display = 'flex';
+    }
+
     if (state.currentTool === 'crosshair') {
       state.isDragging = false;
     } else {
       state.isDragging = true;
       state.dragStart = pos;
       state.panStartLimits = { ...state.viewLimits };
+      frozenRect = svg.getBoundingClientRect();
 
       if (state.currentTool === 'zoom') {
         zoomRect.setAttribute('x', pos.x); zoomRect.setAttribute('y', pos.y);
@@ -105,7 +117,6 @@ export function attachInteraction(ctx) {
   const onMouseMoveWindow = (e) => {
     if (!state.isDragging) return;
     const pos = getMousePos(e);
-    // Clamp a los límites del plot
     pos.x = Math.max(margin.left, Math.min(baseWidth - margin.right, pos.x));
     pos.y = Math.max(margin.top, Math.min(baseHeight - margin.bottom, pos.y));
 
@@ -127,13 +138,22 @@ export function attachInteraction(ctx) {
         minY: state.panStartLimits.minY + yShift,
         maxY: state.panStartLimits.maxY + yShift
       };
-      redraw();
+
+      // Throttle: solo redraw una vez por frame
+      if (!panRafScheduled) {
+        panRafScheduled = true;
+        requestAnimationFrame(() => {
+          panRafScheduled = false;
+          redraw();
+        });
+      }
     }
   };
 
   const onMouseUpWindow = (e) => {
     window.removeEventListener('mousemove', onMouseMoveWindow);
     window.removeEventListener('mouseup', onMouseUpWindow);
+    frozenRect = null;
 
     if (!state.isDragging) return;
     state.isDragging = false;
@@ -221,6 +241,7 @@ export function attachInteraction(ctx) {
     state.viewLimits = { minX: null, maxX: null, minY: null, maxY: null };
     state.currentTool = 'zoom';
     state.isDragging = false;
+    state.zoomControlsHidden = false;
     clearPin();
     redraw();
   });
