@@ -73,7 +73,7 @@ Modular DOM components for the browser.
 
 ## Implementation Status
 
-**Current Version:** `v0.5.0-alpha-dev` (Visualization Complete, Config System Ready)
+**Current Version:** `v0.1.0-alpha` (First Public Release)
 
 **Canonical model (v5.7):** Two-level canon.
 

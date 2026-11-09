@@ -1,6 +1,6 @@
 {
   "name": "vispectra",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Compilador y visualizador de espectros (UV-Vis, XRD, XPS, Raman, IR)",
   "type": "module",
   "private": true,
