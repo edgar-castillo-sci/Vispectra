@@ -1,7 +1,6 @@
 import { state } from './state.js';
 import { render } from './renderer.js';
 import { attachInteraction } from './interaction.js';
-import { updateControls } from './controls.js';
 import { updateRangePanel } from '../ui/rangePanel.js';
 
 export function drawPlot(columns, xIndex = 0, yIndices = [1]) {
@@ -18,9 +17,8 @@ export function drawPlot(columns, xIndex = 0, yIndices = [1]) {
 
   if (!columns || !columns[xIndex] || columns[xIndex].length === 0) {
     state.viewLimits = { minX: null, maxX: null, minY: null, maxY: null };
-    state.viewHistory = [null];
+    state.viewHistory = [{ limits: { minX: null, maxX: null, minY: null, maxY: null }, axis: 'xy' }];
     state.historyIndex = 0;
-    updateControls(() => drawPlot(columns, xIndex, yIndices));
     return;
   }
   if (!yIndices || yIndices.length === 0) return;
@@ -59,9 +57,10 @@ export function drawPlot(columns, xIndex = 0, yIndices = [1]) {
 
   const renderCtx = render(svg, dataPoints, ySeries, state.viewLimits, defaultMargin, baseWidth, baseHeight, yIndices);
 
-  // Actualizar el panel de rango debajo del plot
+  // Update range panel
   updateRangePanel(renderCtx);
 
+  // Attach interaction (hover, pin, box zoom, dblclick reset)
   attachInteraction({
     ...renderCtx,
     svg,
@@ -71,6 +70,4 @@ export function drawPlot(columns, xIndex = 0, yIndices = [1]) {
     height: renderCtx.totalHeight,
     redraw: () => drawPlot(columns, xIndex, yIndices)
   });
-
-  updateControls(() => drawPlot(columns, xIndex, yIndices));
 }
