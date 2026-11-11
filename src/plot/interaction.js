@@ -18,6 +18,24 @@ export function attachInteraction(ctx) {
   hoverGroup.appendChild(crosshair);
   svg.appendChild(hoverGroup);
 
+  // Floating X tooltip (no layout impact)
+  const xTooltip = document.createElementNS(SVG_NS, 'g');
+  xTooltip.setAttribute('style', 'display: none; pointer-events: none;');
+  const xtBg = document.createElementNS(SVG_NS, 'rect');
+  xtBg.setAttribute('fill', 'rgba(255, 255, 255, 0.95)');
+  xtBg.setAttribute('stroke', '#999');
+  xtBg.setAttribute('stroke-width', '1');
+  xtBg.setAttribute('rx', '3');
+  xtBg.setAttribute('height', '18');
+  const xtText = document.createElementNS(SVG_NS, 'text');
+  xtText.setAttribute('font-size', '11px');
+  xtText.setAttribute('font-family', 'monospace');
+  xtText.setAttribute('fill', '#222');
+  xtText.setAttribute('y', '13');
+  xTooltip.appendChild(xtBg);
+  xTooltip.appendChild(xtText);
+  svg.appendChild(xTooltip);
+
   const overlay = document.createElementNS(SVG_NS, 'rect');
   overlay.setAttribute('x', margin.left);
   overlay.setAttribute('y', margin.top);
@@ -50,9 +68,18 @@ export function attachInteraction(ctx) {
 
   const inPlotArea = (pos) => pos.x >= margin.left && pos.x <= baseWidth - margin.right;
 
-  const updateDOMValues = (point, yIdxArray) => {
-    const spans = document.querySelectorAll('.y-val-display');
-    spans.forEach((span) => {
+  const findClosestPoint = (xReal) => {
+    let closest = dataPoints[0];
+    let minDist = Math.abs(xReal - closest.x);
+    for (let i = 1; i < dataPoints.length; i++) {
+      const dist = Math.abs(xReal - dataPoints[i].x);
+      if (dist < minDist) { minDist = dist; closest = dataPoints[i]; }
+    }
+    return closest;
+  };
+
+  const updateSidebarValues = (point, yIdxArray) => {
+    document.querySelectorAll('.y-val-display').forEach(span => {
       const colIdx = parseInt(span.dataset.col);
       const yIdxInSeries = yIdxArray.indexOf(colIdx);
       if (yIdxInSeries !== -1) {
@@ -64,50 +91,55 @@ export function attachInteraction(ctx) {
     });
   };
 
-  const updateLegendWithValues = (point, yIdxArray) => {
-    const xLabel = document.getElementById('legend-x-label');
-    if (xLabel) {
-      xLabel.textContent = `X = ${point.x.toFixed(2)}`;
-      xLabel.setAttribute('opacity', '1');
-    }
-    const texts = document.querySelectorAll('[data-legend-col]');
-    texts.forEach(el => {
+  const updateLegendValues = (point, yIdxArray) => {
+    document.querySelectorAll('[data-legend-col]').forEach(el => {
       const colIdx = parseInt(el.getAttribute('data-legend-col'));
-      const base = el.getAttribute('data-legend-label') || '';
       const yIdxInSeries = yIdxArray.indexOf(colIdx);
       if (yIdxInSeries !== -1) {
         const val = point.ys[yIdxInSeries];
-        el.textContent = val !== null ? `${base}: ${val.toFixed(3)}` : `${base}: —`;
+        el.textContent = val !== null ? val.toFixed(3) : '—';
       } else {
-        el.textContent = base;
+        el.textContent = el.getAttribute('data-legend-label') || '';
       }
     });
   };
 
   const clearLegendValues = () => {
-    const xLabel = document.getElementById('legend-x-label');
-    if (xLabel) {
-      xLabel.textContent = '';
-      xLabel.setAttribute('opacity', '0');
-    }
-    const texts = document.querySelectorAll('[data-legend-col]');
-    texts.forEach(el => {
-      const base = el.getAttribute('data-legend-label') || '';
-      el.textContent = base;
+    document.querySelectorAll('[data-legend-col]').forEach(el => {
+      el.textContent = el.getAttribute('data-legend-label') || '';
     });
   };
 
-  const findClosestPoint = (xReal) => {
-    let closestPoint = dataPoints[0];
-    let minDist = Math.abs(xReal - dataPoints[0].x);
-    for (let i = 1; i < dataPoints.length; i++) {
-      const dist = Math.abs(xReal - dataPoints[i].x);
-      if (dist < minDist) {
-        minDist = dist;
-        closestPoint = dataPoints[i];
-      }
-    }
-    return closestPoint;
+  const showXTooltip = (mouseX, point) => {
+    const label = `X = ${point.x.toFixed(2)}`;
+    xtText.textContent = label;
+    const textWidth = label.length * 7;
+    const boxWidth = textWidth + 12;
+
+    // Clamp X so tooltip stays inside the plot
+    let boxX = mouseX - boxWidth / 2;
+    if (boxX < margin.left + 2) boxX = margin.left + 2;
+    if (boxX + boxWidth > baseWidth - margin.right - 2) boxX = baseWidth - margin.right - boxWidth - 2;
+
+    const boxY = margin.top + 4;
+
+    xtBg.setAttribute('x', boxX);
+    xtBg.setAttribute('y', boxY);
+    xtBg.setAttribute('width', boxWidth);
+    xtText.setAttribute('x', boxX + 6);
+    xtText.setAttribute('y', boxY + 13);
+
+    xTooltip.setAttribute('style', 'display: block; pointer-events: none;');
+  };
+
+  const hideXTooltip = () => {
+    xTooltip.setAttribute('style', 'display: none; pointer-events: none;');
+  };
+
+  const clearAll = () => {
+    document.querySelectorAll('.y-val-display').forEach(span => (span.textContent = ''));
+    clearLegendValues();
+    hideXTooltip();
   };
 
   const updateCrosshair = (mouseX) => {
@@ -115,22 +147,24 @@ export function attachInteraction(ctx) {
     crosshair.setAttribute('x2', mouseX);
 
     const xReal = unmapX(mouseX);
-    const closestPoint = findClosestPoint(xReal);
+    const closest = findClosestPoint(xReal);
 
-    updateDOMValues(closestPoint, yIndices);
-    updateLegendWithValues(closestPoint, yIndices);
-    return closestPoint;
+    updateSidebarValues(closest, yIndices);
+    updateLegendValues(closest, yIndices);
+    showXTooltip(mouseX, closest);
+    return closest;
   };
 
-  // Restore pin if active
+  // Restore pin on redraw
   if (state.isPinned && state.pinnedX !== null) {
-    const closestPoint = findClosestPoint(state.pinnedX);
+    const closest = findClosestPoint(state.pinnedX);
     hoverGroup.setAttribute('style', 'display: block; pointer-events: none;');
-    const px = mapX(closestPoint.x);
+    const px = mapX(closest.x);
     crosshair.setAttribute('x1', px);
     crosshair.setAttribute('x2', px);
-    updateDOMValues(closestPoint, yIndices);
-    updateLegendWithValues(closestPoint, yIndices);
+    updateSidebarValues(closest, yIndices);
+    updateLegendValues(closest, yIndices);
+    showXTooltip(px, closest);
   }
 
   const onMouseMoveWindow = (e) => {
@@ -174,7 +208,7 @@ export function attachInteraction(ctx) {
       overlay.setAttribute('style', 'cursor: grab;');
       pushHistory({ ...state.viewLimits }, 'xy');
       clearPin();
-      clearLegendValues();
+      clearAll();
       redraw();
       return;
     }
@@ -199,7 +233,7 @@ export function attachInteraction(ctx) {
         } else {
           clearPin();
           hoverGroup.setAttribute('style', 'display: none; pointer-events: none;');
-          clearLegendValues();
+          clearAll();
         }
       } else {
         const minPxX = Math.min(state.dragStart.x, pos.x), maxPxX = Math.max(state.dragStart.x, pos.x);
@@ -213,7 +247,7 @@ export function attachInteraction(ctx) {
         pushHistory(newLimits, 'xy');
         state.viewLimits = newLimits;
         clearPin();
-        clearLegendValues();
+        clearAll();
         redraw();
       }
     }
@@ -242,6 +276,9 @@ export function attachInteraction(ctx) {
         zoomRect.setAttribute('x', pos.x); zoomRect.setAttribute('y', pos.y);
         zoomRect.setAttribute('width', 0); zoomRect.setAttribute('height', 0);
         zoomRect.setAttribute('style', 'display: block; pointer-events: none;');
+        // Hide hover feedback while drawing zoom box
+        hoverGroup.setAttribute('style', 'display: none; pointer-events: none;');
+        hideXTooltip();
       } else if (state.currentTool === 'pan') {
         overlay.setAttribute('style', 'cursor: grabbing;');
       }
@@ -253,21 +290,23 @@ export function attachInteraction(ctx) {
 
   overlay.addEventListener('mousemove', (e) => {
     if (state.isDragging) return;
+    if (state.isPinned) return;
     const pos = getMousePos(e);
 
     if (!inPlotArea(pos)) {
-      if (!state.isPinned) {
-        hoverGroup.setAttribute('style', 'display: none; pointer-events: none;');
-        const spans = document.querySelectorAll('.y-val-display');
-        spans.forEach(span => (span.textContent = ''));
-        clearLegendValues();
-      }
+      hoverGroup.setAttribute('style', 'display: none; pointer-events: none;');
+      clearAll();
       return;
     }
 
-    if (state.currentTool === 'crosshair' && !state.isPinned) {
-      hoverGroup.setAttribute('style', 'display: block; pointer-events: none;');
-      updateCrosshair(pos.x);
+    hoverGroup.setAttribute('style', 'display: block; pointer-events: none;');
+    updateCrosshair(pos.x);
+  });
+
+  overlay.addEventListener('mouseleave', () => {
+    if (!state.isPinned) {
+      hoverGroup.setAttribute('style', 'display: none; pointer-events: none;');
+      clearAll();
     }
   });
 
@@ -286,9 +325,7 @@ export function attachInteraction(ctx) {
     } else {
       clearPin();
       hoverGroup.setAttribute('style', 'display: none; pointer-events: none;');
-      const spans = document.querySelectorAll('.y-val-display');
-      spans.forEach(span => (span.textContent = ''));
-      clearLegendValues();
+      clearAll();
     }
   });
 
@@ -301,7 +338,7 @@ export function attachInteraction(ctx) {
     state.isDragging = false;
     state.zoomControlsHidden = false;
     clearPin();
-    clearLegendValues();
+    clearAll();
     redraw();
   });
 }

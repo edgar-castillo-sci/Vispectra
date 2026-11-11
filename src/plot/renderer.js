@@ -8,6 +8,9 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
   const plotWidth = baseWidth - margin.left - margin.right;
   const plotHeight = baseHeight - margin.top - margin.bottom;
 
+  // =========================================================
+  // 1. Espacio extra para la leyenda
+  // =========================================================
   const legendCfg = state.graphConfig.legend;
   const showLegend = legendCfg.show && ySeries.length > 0;
 
@@ -16,16 +19,18 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
 
   if (showLegend) {
     if (legendCfg.position === 'right') {
-      const ROW_H = 22, COL_W = 170;
-      const itemsPerCol = Math.max(1, Math.floor((plotHeight - 32) / ROW_H));
+      const ROW_H = 22;
+      const COL_W = 170;
+      const itemsPerCol = Math.max(1, Math.floor(plotHeight / ROW_H));
       const numCols = Math.ceil(ySeries.length / itemsPerCol);
       extraW = 30 + numCols * COL_W;
       legendMeta = { itemsPerCol, numCols, ROW_H, COL_W };
     } else if (legendCfg.position === 'bottom') {
-      const ROW_H = 22, ITEM_W = 170;
+      const ROW_H = 22;
+      const ITEM_W = 170;
       const itemsPerRow = Math.max(1, Math.floor(plotWidth / ITEM_W));
       const numRows = Math.ceil(ySeries.length / itemsPerRow);
-      extraH = 30 + numRows * ROW_H + 22;
+      extraH = 30 + numRows * ROW_H;
       legendMeta = { itemsPerRow, numRows, ROW_H, ITEM_W };
     }
   }
@@ -38,13 +43,18 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
   wrapper.style.maxWidth = `${totalWidth}px`;
   wrapper.style.aspectRatio = `${totalWidth} / ${totalHeight}`;
 
+  // =========================================================
+  // 2. Canvas
+  // =========================================================
   let canvas = document.getElementById('plotCanvas');
   if (!canvas) {
     canvas = document.createElement('canvas');
     canvas.id = 'plotCanvas';
     canvas.style.position = 'absolute';
-    canvas.style.top = '0'; canvas.style.left = '0';
-    canvas.style.width = '100%'; canvas.style.height = '100%';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
     canvas.style.pointerEvents = 'none';
     canvas.style.zIndex = '1';
     svg.parentNode.appendChild(canvas);
@@ -53,6 +63,9 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
     ctx0.clearRect(0, 0, canvas.width, canvas.height);
   }
 
+  // =========================================================
+  // 3. Escalas y límites
+  // =========================================================
   const configX = state.axisConfig.x;
   const configY = state.axisConfig.y;
   const isLogX = configX.scale === 'log10';
@@ -83,7 +96,8 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
   let minY = viewLimits.minY;
   let maxY = viewLimits.maxY;
   if (minY === null || maxY === null) {
-    minY = Infinity; maxY = -Infinity;
+    minY = Infinity;
+    maxY = -Infinity;
     for (let i = 0; i < limitsForY.length; i++) {
       const p = limitsForY[i];
       for (let j = 0; j < ySeries.length; j++) {
@@ -125,6 +139,9 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
     ? (py) => inverseTransformY(tMinY + ((py - margin.top) / plotHeight) * (tMaxY - tMinY))
     : (py) => inverseTransformY(tMaxY - ((py - margin.top) / plotHeight) * (tMaxY - tMinY));
 
+  // =========================================================
+  // 4. Ejes, cuadrícula, texto
+  // =========================================================
   const clipId = "plot-clip-area";
   const defs = document.createElementNS(SVG_NS, 'defs');
   defs.innerHTML = `<clipPath id="${clipId}"><rect x="${margin.left}" y="${margin.top}" width="${plotWidth}" height="${plotHeight}" /></clipPath>`;
@@ -146,17 +163,31 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
       const p = isXAxis ? mapX(actualVal) : mapY(actualVal);
       if (p >= (isXAxis ? margin.left : margin.top) - 1 && p <= (isXAxis ? baseWidth - margin.right : baseHeight - margin.bottom) + 1) {
         const line = document.createElementNS(SVG_NS, 'line');
-        if (isXAxis) { line.setAttribute('x1', p); line.setAttribute('x2', p); line.setAttribute('y1', margin.top); line.setAttribute('y2', baseHeight - margin.bottom); }
-        else { line.setAttribute('y1', p); line.setAttribute('y2', p); line.setAttribute('x1', margin.left); line.setAttribute('x2', baseWidth - margin.right); }
-        line.setAttribute('stroke', '#ebebeb'); line.setAttribute('stroke-width', '1');
+        if (isXAxis) {
+          line.setAttribute('x1', p); line.setAttribute('x2', p);
+          line.setAttribute('y1', margin.top); line.setAttribute('y2', baseHeight - margin.bottom);
+        } else {
+          line.setAttribute('y1', p); line.setAttribute('y2', p);
+          line.setAttribute('x1', margin.left); line.setAttribute('x2', baseWidth - margin.right);
+        }
+        line.setAttribute('stroke', '#ebebeb');
+        line.setAttribute('stroke-width', '1');
         clippedGroup.appendChild(line);
         if (activeConfig.showMinorLabels) {
           const text = document.createElementNS(SVG_NS, 'text');
           const labelStr = formatLabel(actualVal, ticksData.decimals, activeConfig.format, isLog);
-          if (isXAxis) { text.setAttribute('x', p); text.setAttribute('y', baseHeight - margin.bottom + 20); text.setAttribute('text-anchor', 'middle'); }
-          else { text.setAttribute('x', margin.left - 10); text.setAttribute('y', p + 4); text.setAttribute('text-anchor', 'end'); }
-          text.setAttribute('font-size', '9px'); text.setAttribute('font-family', 'sans-serif'); text.setAttribute('fill', '#999');
-          text.textContent = labelStr; svg.appendChild(text);
+          if (isXAxis) {
+            text.setAttribute('x', p); text.setAttribute('y', baseHeight - margin.bottom + 20);
+            text.setAttribute('text-anchor', 'middle');
+          } else {
+            text.setAttribute('x', margin.left - 10); text.setAttribute('y', p + 4);
+            text.setAttribute('text-anchor', 'end');
+          }
+          text.setAttribute('font-size', '9px');
+          text.setAttribute('font-family', 'sans-serif');
+          text.setAttribute('fill', '#999');
+          text.textContent = labelStr;
+          svg.appendChild(text);
         }
       }
     });
@@ -166,22 +197,42 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
       const p = isXAxis ? mapX(actualVal) : mapY(actualVal);
       if (p >= (isXAxis ? margin.left : margin.top) - 1 && p <= (isXAxis ? baseWidth - margin.right : baseHeight - margin.bottom) + 1) {
         const line = document.createElementNS(SVG_NS, 'line');
-        if (isXAxis) { line.setAttribute('x1', p); line.setAttribute('x2', p); line.setAttribute('y1', margin.top); line.setAttribute('y2', baseHeight - margin.bottom); }
-        else { line.setAttribute('y1', p); line.setAttribute('y2', p); line.setAttribute('x1', margin.left); line.setAttribute('x2', baseWidth - margin.right); }
-        line.setAttribute('stroke', '#e0e0e0'); line.setAttribute('stroke-dasharray', '3 3');
+        if (isXAxis) {
+          line.setAttribute('x1', p); line.setAttribute('x2', p);
+          line.setAttribute('y1', margin.top); line.setAttribute('y2', baseHeight - margin.bottom);
+        } else {
+          line.setAttribute('y1', p); line.setAttribute('y2', p);
+          line.setAttribute('x1', margin.left); line.setAttribute('x2', baseWidth - margin.right);
+        }
+        line.setAttribute('stroke', '#e0e0e0');
+        line.setAttribute('stroke-dasharray', '3 3');
         clippedGroup.appendChild(line);
 
         const tick = document.createElementNS(SVG_NS, 'line');
-        if (isXAxis) { tick.setAttribute('x1', p); tick.setAttribute('x2', p); tick.setAttribute('y1', baseHeight - margin.bottom); tick.setAttribute('y2', baseHeight - margin.bottom + 5); }
-        else { tick.setAttribute('y1', p); tick.setAttribute('y2', p); tick.setAttribute('x1', margin.left - 5); tick.setAttribute('x2', margin.left); }
-        tick.setAttribute('stroke', '#000'); svg.appendChild(tick);
+        if (isXAxis) {
+          tick.setAttribute('x1', p); tick.setAttribute('x2', p);
+          tick.setAttribute('y1', baseHeight - margin.bottom); tick.setAttribute('y2', baseHeight - margin.bottom + 5);
+        } else {
+          tick.setAttribute('y1', p); tick.setAttribute('y2', p);
+          tick.setAttribute('x1', margin.left - 5); tick.setAttribute('x2', margin.left);
+        }
+        tick.setAttribute('stroke', '#000');
+        svg.appendChild(tick);
 
         const text = document.createElementNS(SVG_NS, 'text');
         const labelStr = formatLabel(actualVal, ticksData.decimals, activeConfig.format, isLog);
-        if (isXAxis) { text.setAttribute('x', p); text.setAttribute('y', baseHeight - margin.bottom + 20); text.setAttribute('text-anchor', 'middle'); }
-        else { text.setAttribute('x', margin.left - 10); text.setAttribute('y', p + 4); text.setAttribute('text-anchor', 'end'); }
-        text.setAttribute('font-size', '12px'); text.setAttribute('font-family', 'sans-serif'); text.setAttribute('fill', '#555');
-        text.textContent = labelStr; svg.appendChild(text);
+        if (isXAxis) {
+          text.setAttribute('x', p); text.setAttribute('y', baseHeight - margin.bottom + 20);
+          text.setAttribute('text-anchor', 'middle');
+        } else {
+          text.setAttribute('x', margin.left - 10); text.setAttribute('y', p + 4);
+          text.setAttribute('text-anchor', 'end');
+        }
+        text.setAttribute('font-size', '12px');
+        text.setAttribute('font-family', 'sans-serif');
+        text.setAttribute('fill', '#555');
+        text.textContent = labelStr;
+        svg.appendChild(text);
       }
     });
   };
@@ -194,35 +245,52 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
   xAxis.setAttribute('x1', margin.left); xAxis.setAttribute('y1', baseHeight - margin.bottom);
   xAxis.setAttribute('x2', baseWidth - margin.right); xAxis.setAttribute('y2', baseHeight - margin.bottom);
   xAxis.setAttribute('stroke', '#000'); xAxis.setAttribute('stroke-width', '1.5');
+
   const yAxis = document.createElementNS(SVG_NS, 'line');
   yAxis.setAttribute('x1', margin.left); yAxis.setAttribute('y1', margin.top);
   yAxis.setAttribute('x2', margin.left); yAxis.setAttribute('y2', baseHeight - margin.bottom);
   yAxis.setAttribute('stroke', '#000'); yAxis.setAttribute('stroke-width', '1.5');
-  axisGroup.appendChild(xAxis); axisGroup.appendChild(yAxis);
+  axisGroup.appendChild(xAxis);
+  axisGroup.appendChild(yAxis);
   svg.appendChild(axisGroup);
 
   const xLabel = document.createElementNS(SVG_NS, 'text');
-  xLabel.setAttribute('x', margin.left + plotWidth / 2); xLabel.setAttribute('y', baseHeight - 15);
-  xLabel.setAttribute('text-anchor', 'middle'); xLabel.setAttribute('font-size', '14px');
-  xLabel.setAttribute('font-family', 'sans-serif'); xLabel.setAttribute('font-weight', 'bold');
-  xLabel.textContent = configX.label || "X Axis"; svg.appendChild(xLabel);
+  xLabel.setAttribute('x', margin.left + plotWidth / 2);
+  xLabel.setAttribute('y', baseHeight - 15);
+  xLabel.setAttribute('text-anchor', 'middle');
+  xLabel.setAttribute('font-size', '14px');
+  xLabel.setAttribute('font-family', 'sans-serif');
+  xLabel.setAttribute('font-weight', 'bold');
+  xLabel.textContent = configX.label || "X Axis";
+  svg.appendChild(xLabel);
 
   const yLabel = document.createElementNS(SVG_NS, 'text');
-  yLabel.setAttribute('x', -margin.top - plotHeight / 2); yLabel.setAttribute('y', 20);
-  yLabel.setAttribute('transform', 'rotate(-90)'); yLabel.setAttribute('text-anchor', 'middle');
-  yLabel.setAttribute('font-size', '14px'); yLabel.setAttribute('font-family', 'sans-serif');
+  yLabel.setAttribute('x', -margin.top - plotHeight / 2);
+  yLabel.setAttribute('y', 20);
+  yLabel.setAttribute('transform', 'rotate(-90)');
+  yLabel.setAttribute('text-anchor', 'middle');
+  yLabel.setAttribute('font-size', '14px');
+  yLabel.setAttribute('font-family', 'sans-serif');
   yLabel.setAttribute('font-weight', 'bold');
-  yLabel.textContent = configY.label || "Y Axis"; svg.appendChild(yLabel);
+  yLabel.textContent = configY.label || "Y Axis";
+  svg.appendChild(yLabel);
 
   if (state.graphConfig.title) {
     const titleEl = document.createElementNS(SVG_NS, 'text');
-    titleEl.setAttribute('x', margin.left + plotWidth / 2); titleEl.setAttribute('y', 25);
-    titleEl.setAttribute('text-anchor', 'middle'); titleEl.setAttribute('font-size', '16px');
-    titleEl.setAttribute('font-family', 'sans-serif'); titleEl.setAttribute('font-weight', 'bold');
-    titleEl.setAttribute('fill', '#222'); titleEl.textContent = state.graphConfig.title;
+    titleEl.setAttribute('x', margin.left + plotWidth / 2);
+    titleEl.setAttribute('y', 25);
+    titleEl.setAttribute('text-anchor', 'middle');
+    titleEl.setAttribute('font-size', '16px');
+    titleEl.setAttribute('font-family', 'sans-serif');
+    titleEl.setAttribute('font-weight', 'bold');
+    titleEl.setAttribute('fill', '#222');
+    titleEl.textContent = state.graphConfig.title;
     svg.appendChild(titleEl);
   }
 
+  // =========================================================
+  // 5. Líneas (SVG o Canvas)
+  // =========================================================
   const MAX_POINTS_FOR_SVG_INTERACTIVE = 2000;
   const MAX_POINTS_FOR_SVG_EXPORT = 10000;
   const isExportMode = state.exportMode === true;
@@ -242,6 +310,7 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
       if (sConf.style === 'dashed') dashArray = '6 4';
       if (sConf.style === 'dotted') dashArray = '2 4';
       if (sConf.style === 'dashdot') dashArray = '6 4 2 4';
+
       let pathData = '';
       let penDown = false;
       for (let i = 0; i < sourceData.length; i++) {
@@ -255,9 +324,12 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
       }
       if (pathData !== '') {
         const path = document.createElementNS(SVG_NS, 'path');
-        path.setAttribute('d', pathData.trim()); path.setAttribute('fill', 'none');
-        path.setAttribute('stroke', sConf.color); path.setAttribute('stroke-width', sConf.width);
-        path.setAttribute('stroke-dasharray', dashArray); path.setAttribute('stroke-linejoin', 'round');
+        path.setAttribute('d', pathData.trim());
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', sConf.color);
+        path.setAttribute('stroke-width', sConf.width);
+        path.setAttribute('stroke-dasharray', dashArray);
+        path.setAttribute('stroke-linejoin', 'round');
         clippedGroup.appendChild(path);
       }
     }
@@ -276,6 +348,7 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
       ctx.beginPath();
       ctx.rect(margin.left, margin.top, plotWidth, plotHeight);
       ctx.clip();
+
       for (let j = 0; j < ySeries.length; j++) {
         const originalIndex = yIndices[j];
         const colorIdx = originalIndex % state.defaultColors.length;
@@ -304,6 +377,9 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
     });
   }
 
+  // =========================================================
+  // 6. Leyenda (sin espacio reservado para header)
+  // =========================================================
   if (showLegend) {
     const legendGroup = document.createElementNS(SVG_NS, 'g');
     const labels = ySeries.map((_, j) => state.seriesConfig[yIndices[j]]?.label || `Col ${yIndices[j]}`);
@@ -327,22 +403,14 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
 
       const text = document.createElementNS(SVG_NS, 'text');
       text.setAttribute('x', x + 30); text.setAttribute('y', y + 4);
-      text.setAttribute('font-size', '12px'); text.setAttribute('font-family', 'sans-serif');
+      text.setAttribute('font-size', '12px');
+      text.setAttribute('font-family', 'sans-serif');
       text.setAttribute('fill', '#333');
       text.setAttribute('data-legend-col', String(origIdx));
       text.setAttribute('data-legend-label', labels[index]);
       text.textContent = labels[index];
       group.appendChild(text);
     };
-
-    const xHeader = document.createElementNS(SVG_NS, 'text');
-    xHeader.setAttribute('id', 'legend-x-label');
-    xHeader.setAttribute('font-size', '12px');
-    xHeader.setAttribute('font-family', 'sans-serif');
-    xHeader.setAttribute('font-weight', 'bold');
-    xHeader.setAttribute('fill', '#222');
-    xHeader.setAttribute('opacity', '0');
-    xHeader.textContent = '';
 
     const pos = legendCfg.position;
 
@@ -357,16 +425,11 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
 
       const { itemsPerCol, numCols, ROW_H, COL_W } = legendMeta;
       const startX = baseWidth + 30;
-      const startY = margin.top + 32;
-
-      xHeader.setAttribute('x', startX);
-      xHeader.setAttribute('y', margin.top + 16);
-      svg.appendChild(xHeader);
 
       for (let j = 0; j < ySeries.length; j++) {
         const col = Math.floor(j / itemsPerCol);
         const row = j % itemsPerCol;
-        drawItem(legendGroup, startX + col * COL_W, startY + row * ROW_H, j);
+        drawItem(legendGroup, startX + col * COL_W, margin.top + row * ROW_H + 15, j);
       }
     } else if (pos === 'bottom' && legendMeta) {
       const sepY = baseHeight + 12;
@@ -378,11 +441,7 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
       svg.appendChild(sep);
 
       const { itemsPerRow, numRows, ROW_H, ITEM_W } = legendMeta;
-      const startY = baseHeight + 48;
-
-      xHeader.setAttribute('x', margin.left);
-      xHeader.setAttribute('y', baseHeight + 32);
-      svg.appendChild(xHeader);
+      const startY = baseHeight + 30;
 
       for (let j = 0; j < ySeries.length; j++) {
         const row = Math.floor(j / itemsPerRow);
@@ -394,14 +453,15 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
       const itemWidth = 120;
       const itemHeight = 20;
       const maxLen = Math.max(...labels.map(t => t.length));
+      const maxLabelWidth = Math.max(120, maxLen * 7 + 60);
 
       let boxWidth, boxHeight;
       if (layout === 'horizontal') {
-        boxWidth = ySeries.length * Math.max(itemWidth, maxLen * 7 + 60) + 20;
-        boxHeight = itemHeight + 10 + 22;
+        boxWidth = ySeries.length * maxLabelWidth + 20;
+        boxHeight = itemHeight + 10;
       } else {
-        boxWidth = Math.max(140, maxLen * 7 + 90);
-        boxHeight = ySeries.length * itemHeight + 10 + 22;
+        boxWidth = maxLabelWidth;
+        boxHeight = ySeries.length * itemHeight + 10;
       }
 
       let boxX = 0, boxY = 0;
@@ -419,18 +479,14 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
       rect.setAttribute('rx', '4');
       legendGroup.appendChild(rect);
 
-      xHeader.setAttribute('x', boxX + 10);
-      xHeader.setAttribute('y', boxY + 14);
-      svg.appendChild(xHeader);
-
       for (let j = 0; j < ySeries.length; j++) {
         let x, y;
         if (layout === 'horizontal') {
-          x = boxX + 10 + j * Math.max(itemWidth, maxLen * 7 + 60);
-          y = boxY + 22 + 15;
+          x = boxX + 10 + j * maxLabelWidth;
+          y = boxY + 15;
         } else {
           x = boxX + 10;
-          y = boxY + 22 + 15 + j * itemHeight;
+          y = boxY + 15 + j * itemHeight;
         }
         drawItem(legendGroup, x, y, j);
       }
@@ -448,35 +504,51 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
   };
 }
 
+// =========================================================
+// Búsqueda binaria
+// =========================================================
 function findFirstIndexGreaterThan(arr, val) {
   let low = 0, high = arr.length - 1, result = arr.length;
   while (low <= high) {
     const mid = Math.floor((low + high) / 2);
-    if (arr[mid].x >= val) { result = mid; high = mid - 1; } else { low = mid + 1; }
+    if (arr[mid].x >= val) { result = mid; high = mid - 1; }
+    else { low = mid + 1; }
   }
   return result;
 }
+
 function findLastIndexLessThan(arr, val) {
   let low = 0, high = arr.length - 1, result = -1;
   while (low <= high) {
     const mid = Math.floor((low + high) / 2);
-    if (arr[mid].x <= val) { result = mid; low = mid + 1; } else { high = mid - 1; }
+    if (arr[mid].x <= val) { result = mid; low = mid + 1; }
+    else { high = mid - 1; }
   }
   return result;
 }
+
+// =========================================================
+// Downsampler para Canvas
+// =========================================================
 function downsampleForCanvas(dataPoints, ySeries, targetPoints) {
   if (dataPoints.length <= targetPoints) return dataPoints;
   const selectedIndices = new Set();
   const xToIndex = new Map();
   dataPoints.forEach((p, idx) => xToIndex.set(p.x, idx));
+
   for (let j = 0; j < ySeries.length; j++) {
     const seriesPoints = [];
     for (let i = 0; i < dataPoints.length; i++) {
-      if (dataPoints[i].ys[j] !== null) seriesPoints.push({ x: dataPoints[i].x, y: dataPoints[i].ys[j] });
+      if (dataPoints[i].ys[j] !== null) {
+        seriesPoints.push({ x: dataPoints[i].x, y: dataPoints[i].ys[j] });
+      }
     }
     if (seriesPoints.length > targetPoints) {
       const down = downsampleMinMaxLTTB(seriesPoints, targetPoints, 4);
-      down.forEach(dp => { const origIdx = xToIndex.get(dp.x); if (origIdx !== undefined) selectedIndices.add(origIdx); });
+      down.forEach(dp => {
+        const origIdx = xToIndex.get(dp.x);
+        if (origIdx !== undefined) selectedIndices.add(origIdx);
+      });
     } else {
       for (let i = 0; i < dataPoints.length; i++) {
         if (dataPoints[i].ys[j] !== null) selectedIndices.add(i);

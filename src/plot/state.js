@@ -26,7 +26,7 @@ export const state = {
     y: { scale: 'linear', mode: 'auto', count: 5, step: 0.5, format: 'auto', minor: 0, label: '', showMinorLabels: false, invert: false }
   },
 
-  graphConfig: {
+    graphConfig: {
     title: '',
     legend: { show: true, position: 'top-right', layout: 'vertical' }
   },
