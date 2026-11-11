@@ -1,13 +1,10 @@
 export default {
-  // === App ===
   app_title: "Vispectra",
   drop_zone: "Drag your spectra here or click to browse",
 
-  // === Status ===
   status_waiting: "Waiting for files...",
   status_processing: "Processing...",
 
-  // === Buttons ===
   btn_process: "Process File",
   btn_export_csv_raw: "Raw CSV",
   btn_add_op: "+ Add Operation",
@@ -15,7 +12,6 @@ export default {
   btn_export_graph: "Export Graph",
   btn_export_csv_proc: "Processed CSV",
 
-  // === Role Panel ===
   role_title: "Role Assignment",
   auto_plot: "Auto-plot",
   select_x: "X-Axis:",
@@ -23,8 +19,9 @@ export default {
   only_mode: "Only Mode",
   col_prefix: "Column",
   alert_select_y: "Select at least one Y-series.",
+  show_empty: "Show empty",
+  lock_styles: "Lock styles",
 
-  // === Math Pipeline ===
   math_pipeline: "Math Pipeline (Top to Bottom):",
   op_none: "None",
   op_smooth: "Smooth (Gaussian)",
@@ -36,14 +33,12 @@ export default {
   param_start: "Start:",
   param_end: "End:",
 
-  // === Panels ===
   panel_math: "Math Pipeline",
   panel_axes: "Axis Settings",
   panel_frame: "Canvas & Frame",
   panel_config: "Config (YAML)",
   panel_appearance: "Graph Appearance",
 
-  // === Axis Panel ===
   axis_x: "X Axis",
   axis_y: "Y Axis",
   axis_label: "Label",
@@ -63,8 +58,8 @@ export default {
   axis_format_auto: "Auto",
   axis_format_fixed: "Fixed Decimals",
   axis_format_scientific: "Scientific (1e-2)",
+  axis_invert: "Invert axis",
 
-  // === Frame Panel ===
   frame_preset: "Preset",
   frame_preset_16_10: "Landscape 16:10 (Default)",
   frame_preset_16_9: "Landscape 16:9 (Presentations)",
@@ -82,7 +77,6 @@ export default {
   frame_mode_extend: "Extend (show more when bigger)",
   frame_mode_crop: "Crop (show less when smaller)",
 
-  // === Appearance Panel ===
   appearance_title: "Title",
   appearance_title_placeholder: "My Graph Title",
   appearance_show_legend: "Show Legend",
@@ -97,7 +91,28 @@ export default {
   appearance_layout_vertical: "Vertical",
   appearance_layout_horizontal: "Horizontal",
 
-  // === Config Panel ===
+  // ── Style (new) ──
+  style_title: "Style",
+  style_font: "Font",
+  style_font_cm: "Computer Modern",
+  style_font_serif: "Serif (Times)",
+  style_font_sans: "Sans-serif",
+  style_frame: "Frame (box around plot)",
+  style_tick_direction: "Tick direction",
+  style_tick_in: "Inward",
+  style_tick_out: "Outward",
+  style_tick_inout: "In + Out",
+  style_mirror_ticks: "Mirror ticks (top/right)",
+  style_grid: "Grid",
+  style_grid_none: "None",
+  style_grid_major: "Major only",
+  style_grid_both: "Major + Minor",
+  style_legend_frame: "Legend frame",
+  style_legend_frame_none: "None",
+  style_legend_frame_thin: "Thin",
+  style_legend_frame_default: "Default",
+  style_super_exponent: "Superscript ×10ⁿ",
+
   config_save: "Save .yaml",
   config_load: "Load .yaml",
   config_apply: "Apply",
@@ -107,31 +122,17 @@ export default {
   config_applied: "Config applied.",
   config_empty: "Config is empty.",
 
-  // === Range Display ===
-  range_x: "X",
-  range_y: "Y",
-
-  // === Export ===
-  export_preparing: "Preparing SVG export...",
-  export_exporting: "Exporting...",
-    export_failed: "Export failed",
-  // === Range Panel ===
-  range_pan_left: "Pan left",
-  range_pan_right: "Pan right",
-  range_pan_up: "Pan up",
-  range_pan_down: "Pan down",
-    range_reset: "Reset view",
-    range_shift_x: "Shift X by this amount (Enter to apply)",
-    range_shift_y: "Shift Y by this amount (Enter to apply)",
-      // === Toolbar ===
+  range_shift_x: "Shift X by this amount (Enter to apply)",
+  range_shift_y: "Shift Y by this amount (Enter to apply)",
+  range_reset: "Reset view",
   undo_all: "Undo (any axis)",
   undo_x: "Undo X only",
   undo_y: "Undo Y only",
-    redo_all: "Redo",
-      reset_x: "Reset X range",
-    reset_y: "Reset Y range",
-    show_empty: "Show empty",
-    axis_invert: "Invert axis",
-    axis_flip: "Flip data",
-      lock_styles: "Lock styles",
+  redo_all: "Redo",
+  reset_x: "Reset X range",
+  reset_y: "Reset Y range",
+
+  export_preparing: "Preparing SVG export...",
+  export_exporting: "Exporting...",
+  export_failed: "Export failed"
 };

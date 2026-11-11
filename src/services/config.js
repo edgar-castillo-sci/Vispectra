@@ -21,6 +21,13 @@ export function stateToConfig() {
     graph: {
       title: state.graphConfig.title || '',
       legend: { ...state.graphConfig.legend },
+      fontFamily: state.graphConfig.fontFamily,
+      frame: state.graphConfig.frame,
+      tickDirection: state.graphConfig.tickDirection,
+      mirrorTicks: state.graphConfig.mirrorTicks,
+      grid: state.graphConfig.grid,
+      legendFrame: state.graphConfig.legendFrame,
+      useSuperExponent: state.graphConfig.useSuperExponent,
     },
     series: Object.fromEntries(
       Object.entries(state.seriesConfig).map(([k, v]) => [k, { ...v }])
@@ -68,8 +75,16 @@ export function configToState(config) {
   }
 
   if (config.graph) {
-    if (typeof config.graph.title === 'string') state.graphConfig.title = config.graph.title;
-    if (config.graph.legend) Object.assign(state.graphConfig.legend, config.graph.legend);
+    const g = config.graph;
+    if (typeof g.title === 'string') state.graphConfig.title = g.title;
+    if (g.legend) Object.assign(state.graphConfig.legend, g.legend);
+    if (['cm', 'serif', 'sans'].includes(g.fontFamily)) state.graphConfig.fontFamily = g.fontFamily;
+    if (typeof g.frame === 'boolean') state.graphConfig.frame = g.frame;
+    if (['in', 'out', 'inout'].includes(g.tickDirection)) state.graphConfig.tickDirection = g.tickDirection;
+    if (typeof g.mirrorTicks === 'boolean') state.graphConfig.mirrorTicks = g.mirrorTicks;
+    if (['none', 'major', 'both'].includes(g.grid)) state.graphConfig.grid = g.grid;
+    if (['none', 'thin', 'default'].includes(g.legendFrame)) state.graphConfig.legendFrame = g.legendFrame;
+    if (typeof g.useSuperExponent === 'boolean') state.graphConfig.useSuperExponent = g.useSuperExponent;
   }
 
   if (config.series) {

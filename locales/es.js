@@ -1,13 +1,10 @@
 export default {
-  // === App ===
   app_title: "Vispectra",
   drop_zone: "Arrastra tus espectros aquí o haz clic para explorar",
 
-  // === Status ===
   status_waiting: "Esperando archivos...",
   status_processing: "Procesando...",
 
-  // === Buttons ===
   btn_process: "Procesar Archivo",
   btn_export_csv_raw: "CSV Crudo",
   btn_add_op: "+ Agregar Operación",
@@ -15,7 +12,6 @@ export default {
   btn_export_graph: "Exportar Gráfico",
   btn_export_csv_proc: "CSV Procesado",
 
-  // === Role Panel ===
   role_title: "Asignación de Roles",
   auto_plot: "Auto-graficar",
   select_x: "Eje X:",
@@ -23,8 +19,9 @@ export default {
   only_mode: "Modo Solo",
   col_prefix: "Columna",
   alert_select_y: "Selecciona al menos una serie Y.",
+  show_empty: "Mostrar vacías",
+  lock_styles: "Fijar estilos",
 
-  // === Math Pipeline ===
   math_pipeline: "Pipeline Matemático (Arriba a Abajo):",
   op_none: "Ninguna",
   op_smooth: "Suavizado (Gaussiano)",
@@ -36,14 +33,12 @@ export default {
   param_start: "Inicio:",
   param_end: "Fin:",
 
-  // === Panels ===
   panel_math: "Pipeline Matemático",
   panel_axes: "Ajustes de Ejes",
   panel_frame: "Lienzo y Marco",
   panel_config: "Config (YAML)",
   panel_appearance: "Apariencia del Gráfico",
 
-  // === Axis Panel ===
   axis_x: "Eje X",
   axis_y: "Eje Y",
   axis_label: "Etiqueta",
@@ -63,8 +58,8 @@ export default {
   axis_format_auto: "Auto",
   axis_format_fixed: "Decimales fijos",
   axis_format_scientific: "Científico (1e-2)",
+  axis_invert: "Invertir eje",
 
-  // === Frame Panel ===
   frame_preset: "Preajuste",
   frame_preset_16_10: "Horizontal 16:10 (Default)",
   frame_preset_16_9: "Horizontal 16:9 (Presentaciones)",
@@ -82,7 +77,6 @@ export default {
   frame_mode_extend: "Extender (ver más al agrandar)",
   frame_mode_crop: "Recortar (ver menos al reducir)",
 
-  // === Appearance Panel ===
   appearance_title: "Título",
   appearance_title_placeholder: "Título de mi gráfico",
   appearance_show_legend: "Mostrar Leyenda",
@@ -97,7 +91,27 @@ export default {
   appearance_layout_vertical: "Vertical",
   appearance_layout_horizontal: "Horizontal",
 
-  // === Config Panel ===
+  style_title: "Estilo",
+  style_font: "Fuente",
+  style_font_cm: "Computer Modern",
+  style_font_serif: "Serif (Times)",
+  style_font_sans: "Sans-serif",
+  style_frame: "Marco (caja alrededor del plot)",
+  style_tick_direction: "Dirección de las marcas",
+  style_tick_in: "Hacia adentro",
+  style_tick_out: "Hacia afuera",
+  style_tick_inout: "Adentro + Afuera",
+  style_mirror_ticks: "Marcas espejo (arriba/derecha)",
+  style_grid: "Cuadrícula",
+  style_grid_none: "Ninguna",
+  style_grid_major: "Solo mayores",
+  style_grid_both: "Mayores + Menores",
+  style_legend_frame: "Marco de la leyenda",
+  style_legend_frame_none: "Ninguno",
+  style_legend_frame_thin: "Delgado",
+  style_legend_frame_default: "Predeterminado",
+  style_super_exponent: "Superíndice ×10ⁿ",
+
   config_save: "Guardar .yaml",
   config_load: "Cargar .yaml",
   config_apply: "Aplicar",
@@ -107,29 +121,17 @@ export default {
   config_applied: "Configuración aplicada.",
   config_empty: "La configuración está vacía.",
 
-  // === Range Display ===
-  range_x: "X",
-  range_y: "Y",
-
-  // === Export ===
-  export_preparing: "Preparando exportación SVG...",
-  export_exporting: "Exportando...",
-    export_failed: "Exportación fallida",
-      range_pan_left: "Mover a la izquierda",
-  range_pan_right: "Mover a la derecha",
-  range_pan_up: "Mover arriba",
-  range_pan_down: "Mover abajo",
-    range_reset: "Reiniciar vista",
-      range_shift_x: "Desplazar X por esta cantidad (Enter para aplicar)",
-    range_shift_y: "Desplazar Y por esta cantidad (Enter para aplicar)",
-      undo_all: "Deshacer (cualquier eje)",
+  range_shift_x: "Desplazar X por esta cantidad (Enter para aplicar)",
+  range_shift_y: "Desplazar Y por esta cantidad (Enter para aplicar)",
+  range_reset: "Reiniciar vista",
+  undo_all: "Deshacer (cualquier eje)",
   undo_x: "Deshacer solo X",
   undo_y: "Deshacer solo Y",
-    redo_all: "Rehacer",
-      reset_x: "Reiniciar rango de X",
-    reset_y: "Reiniciar rango de Y",
-    show_empty: "Mostrar vacías",
-    axis_invert: "Invertir eje",
-    axis_flip: "Invertir datos",
-      lock_styles: "Fijar estilos",
+  redo_all: "Rehacer",
+  reset_x: "Reiniciar rango de X",
+  reset_y: "Reiniciar rango de Y",
+
+  export_preparing: "Preparando exportación SVG...",
+  export_exporting: "Exportando...",
+  export_failed: "Exportación fallida"
 };

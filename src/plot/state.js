@@ -26,9 +26,17 @@ export const state = {
     y: { scale: 'linear', mode: 'auto', count: 5, step: 0.5, format: 'auto', minor: 0, label: '', showMinorLabels: false, invert: false }
   },
 
-    graphConfig: {
+  graphConfig: {
     title: '',
-    legend: { show: true, position: 'top-right', layout: 'vertical' }
+    legend: { show: true, position: 'top-right', layout: 'vertical' },
+    // ── Style (Tier 1 + 2) ──
+    fontFamily: 'cm',          // 'cm' | 'serif' | 'sans'
+    frame: true,               // full box around plot
+    tickDirection: 'in',       // 'in' | 'out' | 'inout'
+    mirrorTicks: true,         // ticks on top + right (no labels)
+    grid: 'none',              // 'none' | 'major' | 'both'
+    legendFrame: 'thin',       // 'none' | 'thin' | 'default'
+    useSuperExponent: true,    // ×10ⁿ with real superscript (else 1.5e-3)
   },
 
   seriesConfig: {},

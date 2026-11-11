@@ -1,317 +1,160 @@
-import { t, setLanguage, translateDOM } from './i18n.js';
-import { deduplicateColumns } from './services/columns.js';
-import { applyPipeline } from './services/pipeline.js';
-import { exportarCSV, exportarPlot } from './services/export.js';
-import { openDisambiguationModal } from './ui/disambiguationModal.js';
-import { openColumnsModal } from './ui/columnsModal.js';
-import { prepararRolePanel, recompactSeriesConfig, refreshRolePanelFromState } from './ui/rolePanel.js';
-import { agregarPasoPipeline, getMathPipeline } from './ui/pipelinePanel.js';
-import { initAxesPanel } from './ui/axesPanel.js';
-import { initFramePanel } from './ui/framePanel.js';
-import { initConfigPanel } from './ui/configPanel.js';
-import { initRangePanel } from './ui/rangePanel.js';
-import { state, resetView } from './plot/state.js';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/styles.css">
+    <title>Vispectra</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/svg2pdf.js/2.2.0/svg2pdf.min.js"></script>
 
-let archivos = [];
-let onProcesar = null;
-let onGraficar = null;
-let columnasGlobales = null;
-let currentOriginalIndices = null;
-
-function bindCollapsiblePanel(checkboxId, panelId) {
-  const checkbox = document.getElementById(checkboxId);
-  const panel = document.getElementById(panelId);
-  if (!checkbox || !panel) return;
-  checkbox.addEventListener('change', (e) => {
-    panel.style.display = e.target.checked ? 'block' : 'none';
-    if (e.target.checked) {
-      requestAnimationFrame(() => panel.scrollIntoView({ behavior: 'smooth', block: 'end' }));
-    }
-  });
-}
-
-export function initUI(procesarFn, graficarFn) {
-  onProcesar = procesarFn;
-  onGraficar = graficarFn;
-
-  const zona = document.getElementById('zonaDrop');
-  const input = document.getElementById('entradaArchivos');
-  const botonProcesar = document.getElementById('botonProcesar');
-  const botonExportCsvRaw = document.getElementById('botonExportCsvRaw');
-  const botonGraficar = document.getElementById('botonGraficar');
-  const botonExportar = document.getElementById('botonExportar');
-  const botonExportCsvProcessed = document.getElementById('botonExportCsvProcessed');
-  const selectFormat = document.getElementById('selectFormat');
-  const salida = document.getElementById('salida');
-  const rolePanel = document.getElementById('rolePanel');
-  const exportGroup = document.getElementById('exportGroup');
-  const toggleAutoPlot = document.getElementById('toggleAutoPlot');
-  const langSelector = document.getElementById('langSelector');
-  const btnAddOp = document.getElementById('btnAddOp');
-  const pipelineContainer = document.getElementById('pipelineContainer');
-
-  if (!zona || !input || !botonProcesar) return;
-
-  const getActiveYIndices = () => {
-    return Array.from(document.querySelectorAll('.checkbox-y:checked'))
-      .map(cb => parseInt(cb.value))
-      .filter(i => {
-        const col = columnasGlobales?.[i];
-        if (!col) return false;
-        for (let k = 0; k < col.length; k++) {
-          if (col[k] !== null && col[k] !== undefined) return true;
-        }
-        return false;
-      });
-  };
-
-  const onSelectionChange = () => {
-    if (toggleAutoPlot && toggleAutoPlot.checked) actualizarGrafico();
-  };
-
-  const onSeriesToggle = () => {
-    const active = getActiveYIndices();
-    // Persist current selection into state so YAML captures it
-    state.columnConfig.selectedY = active;
-
-    if (!state.seriesConfigLocked && columnasGlobales) {
-      recompactSeriesConfig(columnasGlobales, active);
-    }
-    refreshRolePanelFromState();
-    onSelectionChange();
-  };
-
-  if (document.getElementById('toggleAxesPanel')) initAxesPanel(() => actualizarGrafico());
-  if (document.getElementById('toggleFramePanel')) initFramePanel(() => actualizarGrafico());
-  if (document.getElementById('toggleConfigPanel')) {
-    initConfigPanel(() => {
-      // YAML applied: refresh role panel from state, then redraw
-      refreshRolePanelFromState();
-      actualizarGrafico();
-    });
-  }
-  if (document.getElementById('rangePanel')) initRangePanel(() => actualizarGrafico());
-
-  bindCollapsiblePanel('toggleAxesPanel', 'axesPanel');
-  bindCollapsiblePanel('toggleFramePanel', 'framePanel');
-  bindCollapsiblePanel('toggleConfigPanel', 'configPanel');
-  bindCollapsiblePanel('toggleAppearancePanel', 'appearancePanel');
-
-  const inputGraphTitle = document.getElementById('inputGraphTitle');
-  const chkShowLegend = document.getElementById('chkShowLegend');
-  const selectLegendPos = document.getElementById('selectLegendPos');
-  const selectLegendLayout = document.getElementById('selectLegendLayout');
-  const legendLayoutRow = document.getElementById('legendLayoutRow');
-
-  if (inputGraphTitle) {
-    inputGraphTitle.addEventListener('input', (e) => {
-      state.graphConfig.title = e.target.value;
-      onSelectionChange();
-    });
-  }
-
-  if (chkShowLegend) {
-    chkShowLegend.addEventListener('change', (e) => {
-      state.graphConfig.legend.show = e.target.checked;
-      onSelectionChange();
-    });
-  }
-
-  if (selectLegendPos) {
-    const updateLayoutVisibility = () => {
-      const pos = state.graphConfig.legend.position;
-      const isCorner = ['top-right', 'top-left', 'bottom-right', 'bottom-left'].includes(pos);
-      if (legendLayoutRow) legendLayoutRow.style.display = isCorner ? 'block' : 'none';
-    };
-
-    selectLegendPos.addEventListener('change', (e) => {
-      state.graphConfig.legend.position = e.target.value;
-      updateLayoutVisibility();
-      onSelectionChange();
-    });
-
-    if (selectLegendLayout) {
-      selectLegendLayout.addEventListener('change', (e) => {
-        state.graphConfig.legend.layout = e.target.value;
-        onSelectionChange();
-      });
-    }
-
-    updateLayoutVisibility();
-  }
-
-  if (langSelector) {
-    langSelector.addEventListener('change', (e) => {
-      setLanguage(e.target.value);
-      translateDOM();
-      initAxesPanel(() => actualizarGrafico());
-      initFramePanel(() => actualizarGrafico());
-      initConfigPanel(() => {
-        refreshRolePanelFromState();
-        actualizarGrafico();
-      });
-      initRangePanel(() => actualizarGrafico());
-
-      if (columnasGlobales) {
-        prepararRolePanel(columnasGlobales.length, currentOriginalIndices, false, onSelectionChange, columnasGlobales, onSeriesToggle);
-        const currentPipeline = getMathPipeline();
-        pipelineContainer.innerHTML = '';
-        currentPipeline.forEach(op => agregarPasoPipeline(pipelineContainer, op, onSelectionChange));
+    <style>
+      @media (max-width: 960px) {
+        .container { grid-template-columns: 1fr !important; }
+        .main-plot { position: static !important; }
       }
-    });
-  }
-
-  zona.addEventListener('click', () => input.click());
-  input.addEventListener('change', (e) => {
-    actualizarArchivos(e.target.files, salida);
-    input.value = '';
-  });
-  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev =>
-    zona.addEventListener(ev, e => e.preventDefault())
-  );
-  zona.addEventListener('drop', (e) => actualizarArchivos(e.dataTransfer.files, salida));
-
-  botonProcesar.addEventListener('click', async () => {
-    if (archivos.length === 0) return (salida.textContent = t('status_waiting'));
-    salida.textContent = t('status_processing');
-
-    try {
-      let result = await onProcesar(archivos[0], {});
-
-      if (result && result.status === 'needs_disambiguation') {
-        const resolutions = await openDisambiguationModal(result.ambiguities);
-        if (!resolutions) return (salida.textContent = `✗ Disambiguation cancelled\n`);
-        salida.textContent = t('status_processing');
-        result = await onProcesar(archivos[0], { resolutions });
+      .floating-zoom-controls {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: none;
+        flex-direction: column;
+        gap: 4px;
+        padding: 6px;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 20;
+        backdrop-filter: blur(4px);
       }
+    </style>
+</head>
+<body>
 
-      if (!result || result.status === 'failed') {
-        salida.textContent = `✗ ${archivos[0].name}: failed\n`;
-        if (result && result.diagnostics) {
-          const errors = result.diagnostics.filter(d => d.severity === 'error').slice(0, 5);
-          for (const e of errors) salida.textContent += `    ${e.code}\n`;
-        }
-        return;
-      }
+<div class="header">
+    <h1 data-i18n="app_title">Vispectra</h1>
+    <select id="langSelector" class="lang-selector">
+        <option value="en">English</option>
+        <option value="es">Español</option>
+    </select>
+</div>
 
-      if (result.status === 'ok' || result.status === 'partial') {
-        const { unique, originalIndices } = deduplicateColumns(result.columns);
-        let autoSelect = false;
-        let finalColumns = unique;
-        let finalIndices = originalIndices;
+<div id="zonaDrop" data-i18n="drop_zone">
+  Drag your spectra here or click to browse
+</div>
+<input type="file" id="entradaArchivos" multiple accept=".txt,.csv,.tsv,.dat,.asc,.xlsx,text/plain,text/csv" style="display: none;">
 
-        if (unique.length < result.columns.length) {
-          const shouldCollapse = await openColumnsModal(
-            result.columns.length - unique.length,
-            unique.length,
-            result.columns.length
-          );
-          if (shouldCollapse) {
-            autoSelect = true;
-          } else {
-            finalColumns = result.columns;
-            finalIndices = result.columns.map((_, i) => i);
-          }
-        }
+<div class="container" style="display: grid; grid-template-columns: 340px 1fr; gap: 24px; padding: 2rem; max-width: 1600px; margin: 0 auto; align-items: start;">
 
-        columnasGlobales = finalColumns;
-        currentOriginalIndices = finalIndices;
-        resetView();
+  <!-- ============================================================ -->
+  <!-- COLUMNA IZQUIERDA: Controles                                 -->
+  <!-- ============================================================ -->
+  <div class="sidebar">
 
-        salida.textContent =
-          `✓ ${archivos[0].name}\n` +
-          `  status: ${result.status}\n` +
-          `  columns: ${finalColumns.length} (from ${result.columns.length})\n` +
-          `  rows: ${result.totalRows} (failed: ${result.failedRows})\n`;
+    <!-- File panel -->
+    <div style="background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 15px;">
+      <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+        <button id="botonProcesar" data-i18n="btn_process" style="flex: 1;">Process File</button>
+        <button id="botonExportCsvRaw" style="background: #777; display: none;" data-i18n="btn_export_csv_raw">Raw CSV</button>
+      </div>
 
-        prepararRolePanel(finalColumns.length, finalIndices, autoSelect, onSelectionChange, finalColumns, onSeriesToggle);
+      <div id="salida" data-i18n="status_waiting" style="font-size: 0.85rem; color: #555; min-height: 20px; margin-bottom: 8px;">Waiting for files...</div>
 
-        if (rolePanel) rolePanel.style.display = 'flex';
-        if (exportGroup) exportGroup.style.display = 'flex';
-        if (botonExportCsvRaw) botonExportCsvRaw.style.display = 'block';
-        if (toggleAutoPlot && toggleAutoPlot.checked) actualizarGrafico();
-      }
-    } catch (err) {
-      console.error(err);
-      salida.textContent = `✗ Error inesperado: ${err.message}`;
-    }
-  });
+      <div id="exportGroup" style="display: none; gap: 5px; flex-wrap: wrap;">
+        <select id="selectFormat" style="flex: 1; min-width: 100px;">
+          <option value="svg">SVG (Vector)</option>
+          <option value="png">PNG (High Res)</option>
+          <option value="jpeg">JPEG</option>
+          <option value="pdf">PDF (Vector)</option>
+        </select>
+        <button id="botonExportar" data-i18n="btn_export_graph">Export</button>
+        <button id="botonExportCsvProcessed" style="background: #555;" data-i18n="btn_export_csv_proc">CSV</button>
+      </div>
+    </div>
 
-  if (btnAddOp) {
-    btnAddOp.addEventListener('click', () => {
-      agregarPasoPipeline(pipelineContainer, null, onSelectionChange);
-      onSelectionChange();
-    });
-  }
+    <!-- Role panel -->
+    <div id="rolePanel" style="display: none;">
+      <h3 style="margin-top: 0; font-size: 1.1rem;" data-i18n="role_title">Role Assignment</h3>
 
-  if (toggleAutoPlot) {
-    toggleAutoPlot.addEventListener('change', (e) => {
-      if (botonGraficar) botonGraficar.style.display = e.target.checked ? 'none' : 'block';
-      if (e.target.checked) actualizarGrafico();
-    });
-  }
+      <div class="auto-plot-toggle" style="margin-bottom: 8px;">
+        <label>
+          <input type="checkbox" id="toggleAutoPlot" checked>
+          <span data-i18n="auto_plot">Auto-plot</span>
+        </label>
+      </div>
 
-  if (botonExportar) {
-    botonExportar.addEventListener('click', async () => {
-      const prevText = salida.textContent;
-      botonExportar.disabled = true;
-      salida.textContent = t('export_preparing');
+      <button id="botonGraficar" style="display: none; background: #009933; width: 100%; margin-bottom: 12px;" data-i18n="btn_update_plot">Update Plot</button>
 
-      try {
-        state.exportMode = true;
-        actualizarGrafico();
-        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      <div class="role-selector">
+        <label for="selectX" data-i18n="select_x">X-Axis:</label>
+        <select id="selectX"></select>
+      </div>
 
-        salida.textContent = t('export_exporting');
-        const svg = document.getElementById('spectrumSvg');
-        exportarPlot(svg, selectFormat.value);
-        salida.textContent = prevText;
-      } catch (err) {
-        console.error('Export failed:', err);
-        salida.textContent = `${t('export_failed')}: ${err.message}`;
-      } finally {
-        botonExportar.disabled = false;
-        state.exportMode = false;
-        actualizarGrafico();
-      }
-    });
-  }
+      <div class="role-selector">
+        <label data-i18n="select_y">Y-Series:</label>
+        <div id="checkboxesY"></div>
+      </div>
 
-  if (botonExportCsvRaw) {
-    botonExportCsvRaw.addEventListener('click', () => {
-      const selectX = document.getElementById('selectX');
-      if (!selectX) return;
-      const xIndex = parseInt(selectX.value);
-      const yIndices = getActiveYIndices();
-      exportarCSV(columnasGlobales, xIndex, yIndices, getMathPipeline(), false);
-    });
-  }
+      <!-- Math Pipeline -->
+      <div class="role-selector" style="background: #fff8e1; border-color: #ffecb3;">
+        <label style="font-weight: bold;">🔬 <span data-i18n="panel_math">Math Pipeline</span></label>
+        <div id="pipelineContainer"></div>
+        <button id="btnAddOp" style="background: #ff9800; margin-top: 0.5rem;" data-i18n="btn_add_op">+ Add Operation</button>
+      </div>
 
-  if (botonExportCsvProcessed) {
-    botonExportCsvProcessed.addEventListener('click', () => {
-      const selectX = document.getElementById('selectX');
-      if (!selectX) return;
-      const xIndex = parseInt(selectX.value);
-      const yIndices = getActiveYIndices();
-      exportarCSV(columnasGlobales, xIndex, yIndices, getMathPipeline(), true);
-    });
-  }
+      <!-- Axis Settings -->
+      <div class="role-selector" style="background: #f0f8ff; border-color: #b3e5fc;">
+        <label style="font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+          <span>⚙️ <span data-i18n="panel_axes">Axis Settings</span></span>
+          <input type="checkbox" id="toggleAxesPanel" style="margin: 0; cursor: pointer;">
+        </label>
+        <div id="axesPanel" style="display: none; margin-top: 10px; font-size: 0.85rem;"></div>
+      </div>
 
-  function actualizarGrafico() {
-    if (!columnasGlobales) return;
-    const selectX = document.getElementById('selectX');
-    if (!selectX) return;
-    const xIndex = parseInt(selectX.value);
-    const yIndices = getActiveYIndices();
+      <!-- Canvas & Frame -->
+      <div class="role-selector" style="background: #fce4ec; border-color: #f8bbd0;">
+        <label style="font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+          <span>🖼️ <span data-i18n="panel_frame">Canvas & Frame</span></span>
+          <input type="checkbox" id="toggleFramePanel" style="margin: 0; cursor: pointer;">
+        </label>
+        <div id="framePanel" style="display: none; margin-top: 10px; font-size: 0.85rem;"></div>
+      </div>
 
-    const pipeline = getMathPipeline();
-    const processedColumns = applyPipeline(columnasGlobales, xIndex, yIndices, pipeline);
-    onGraficar(processedColumns, xIndex, yIndices);
-  }
-}
+      <!-- Config (YAML) -->
+      <div class="role-selector" style="background: #ede7f6; border-color: #d1c4e9;">
+        <label style="font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+          <span>📄 <span data-i18n="panel_config">Config (YAML)</span></span>
+          <input type="checkbox" id="toggleConfigPanel" style="margin: 0; cursor: pointer;">
+        </label>
+        <div id="configPanel" style="display: none; margin-top: 10px; font-size: 0.85rem;"></div>
+      </div>
 
-function actualizarArchivos(fileList, salida) {
-  archivos = Array.from(fileList);
-  if (archivos.length === 0) return (salida.textContent = t('status_waiting'));
-  salida.textContent = `${archivos.length} file(s) ready.`;
-}
+      <!-- Graph Appearance -->
+      <div class="role-selector" style="background: #e8f5e9; border-color: #c8e6c9;">
+        <label style="font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+          <span>📊 <span data-i18n="panel_appearance">Graph Appearance</span></span>
+          <input type="checkbox" id="toggleAppearancePanel" style="margin: 0; cursor: pointer;">
+        </label>
+        <div id="appearancePanel" style="display: none; margin-top: 10px; font-size: 0.85rem;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- COLUMNA DERECHA: Plot + range panel                          -->
+  <!-- ============================================================ -->
+  <div class="main-plot" style="position: sticky; top: 20px; display: flex; flex-direction: column; gap: 8px; align-items: stretch;">
+    <div id="plotWrapper" style="position: relative; width: 100%; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff;">
+      <div id="zoomControls" class="floating-zoom-controls"></div>
+      <svg id="spectrumSvg" xmlns="http://www.w3.org/2000/svg" style="display: block; width: 100%; height: 100%;"></svg>
+    </div>
+    <div id="rangePanel" style="padding: 8px; background: #f8f9fa; border: 1px solid #eee; border-radius: 6px; font-family: monospace; font-size: 0.8rem; color: #555; display: flex; flex-direction: column; gap: 4px; overflow-x: auto;"></div>
+  </div>
+
+</div>
+
+<script type="module" src="src/main.js"></script>
+
+</body>
+</html>
