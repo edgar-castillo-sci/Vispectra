@@ -1,7 +1,5 @@
 // ============================================================
-
-// ============================================================
-// PHASE 04c — BLOCK CANON (v5.3)
+// PHASE 04c — BLOCK CANON (v5.4)
 // ============================================================
 
 import { lex } from './02_lexer.js';
@@ -128,7 +126,16 @@ function applyResolution(structure, commas) {
     }
   }
 
-  if (pending !== null) slots.push(pending);
+  if (pending !== null) {
+    slots.push(pending);
+  } else if (structure.length > 0) {
+    const lastCh = structure[structure.length - 1];
+    if (lastCh === '|') {
+      slots.push('v');
+    } else if (lastCh === ',' && commaIdx > 0 && commas[commaIdx - 1] === 'sep') {
+      slots.push('v');
+    }
+  }
 
   return slots;
 }

@@ -1,5 +1,5 @@
 // ============================================================
-// PHASE 04b — DISAMBIGUATION (v5.3)
+// PHASE 04b — DISAMBIGUATION (v5.4)
 // ============================================================
 
 import { lex } from './02_lexer.js';
@@ -20,8 +20,6 @@ export function detectAmbiguities(blocks, lines) {
       continue;
     }
 
-    // R98: si el bloque contiene 'n' (punto decimal), las comas solo
-    // pueden ser separadoras. No hay ambigüedad posible.
     const hasN = structures.some(s => s.includes('n'));
     if (hasN) {
       const allSep = Array(commaCount).fill('sep');
@@ -38,7 +36,6 @@ export function detectAmbiguities(blocks, lines) {
       continue;
     }
 
-    // Safety cap
     if (commaCount > MAX_COMMAS) {
       const allSep = Array(commaCount).fill('sep');
       let columns = -1;
@@ -208,6 +205,16 @@ function countColumns(structure, resolution) {
     }
   }
 
-  if (pending) columns++;
+  if (pending) {
+    columns++;
+  } else if (structure.length > 0) {
+    const lastCh = structure[structure.length - 1];
+    if (lastCh === '|') {
+      columns++;
+    } else if (lastCh === ',' && commaIdx > 0 && resolution[commaIdx - 1] === 'sep') {
+      columns++;
+    }
+  }
+
   return { ok: true, columns };
 }

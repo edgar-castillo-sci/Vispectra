@@ -1,39 +1,5 @@
 // ============================================================
-// PHASE 04 — CANON (v5.0)
-// ============================================================
-// Function: buildCanon(ir, lines, centralBlock)
-//
-// Input: IR from 03_ir (totalCount, frequencies, lengths),
-//        all lines, central block.
-// Output: {
-//   canonLiteral: string,           // dominant literal pattern
-//   body: { start, end },
-//   blocks: [
-//     {
-//       pattern: string,            // '_,_,_' shape (n/z → _, v and , preserved)
-//       instances: [int],           // line indices
-//       hasAmbiguity: boolean,      // needs editor
-//     },
-//   ],
-//   diagnostics: [diag],
-// }
-//
-// Does:
-//   - Computes the dominant literal pattern from the sample.
-//   - Expands the body from the center while structures match
-//     any pattern seen in the sample.
-//   - Groups ALL body lines into blocks by comma pattern.
-//
-// Ambiguity:
-//   A block is ambiguous if:
-//     - its pattern contains at least one comma,
-//     - it contains no 'v' (explicit empty slots disambiguate),
-//     - at least one row contains 'z' (integer),
-//     - no row contains 'n' (dot-decimal disambiguates).
-//
-// Does NOT:
-//   - Resolve ambiguity (04b does).
-//   - Build abstract column canon (04c does).
+// PHASE 04 — CANON (v5.4)
 // ============================================================
 
 import { lex } from './02_lexer.js';
@@ -47,8 +13,6 @@ export function buildCanon(ir, lines, centralBlock) {
   }
 
   const canonLiteral = entries[0][0];
-
-  // Reference patterns for body expansion (all distinct patterns in sample).
   const samplePatterns = new Set(entries.map(([struct]) => patternOf(struct)));
 
   const lexLine = (i) => lex(lines[i].content).structure;
@@ -64,7 +28,6 @@ export function buildCanon(ir, lines, centralBlock) {
   while (start > 0 && matchesSample(start - 1)) start--;
   while (end < lines.length && matchesSample(end)) end++;
 
-  // Re-scan ALL body lines to group into blocks (not just sample).
   const bodyRows = [];
   for (let i = start; i < end; i++) {
     const struct = lexLine(i);
@@ -82,7 +45,13 @@ export function buildCanon(ir, lines, centralBlock) {
 // ------------------------------------------------------------
 
 function patternOf(structure) {
-  return structure.replace(/[nz]/g, '_');
+  let p = structure.replace(/[nz]/g, '_');
+  // Trailing separator implies an extra empty slot at the end.
+  // (e.g. '_,_,_' with trailing ',' becomes '_,_,_,_').
+  if (p.endsWith(',') || p.endsWith('|')) {
+    p += '_';
+  }
+  return p;
 }
 
 function groupIntoBlocks(rows) {
@@ -108,13 +77,9 @@ function groupIntoBlocks(rows) {
 }
 
 function isAmbiguous(pattern, structures) {
-  // Si no hay comas originales, no es ambiguo
   if (!pattern.includes(',')) return false;
-
-  // Si hay comas, verificamos si hay números enteros (z)
-  // Si solo hay n, la coma no puede ser decimal (ya hay punto).
+  if (pattern.includes('v')) return false;
   const hasZ = structures.some((s) => s.includes('z'));
   const hasN = structures.some((s) => s.includes('n'));
-
   return hasZ && !hasN;
 }
