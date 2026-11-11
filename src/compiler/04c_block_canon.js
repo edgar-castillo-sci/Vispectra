@@ -1,4 +1,6 @@
 // ============================================================
+
+// ============================================================
 // PHASE 04c — BLOCK CANON (v5.3)
 // ============================================================
 
@@ -69,19 +71,11 @@ export function buildBlockCanon(block, lines, resolution) {
     columns.push({ type, completeness: { filled, total, gapIndices } });
 
     if (type === 'i') {
-      diagnostics.push({
-        severity: 'info',
-        code: 'MIXED_NOTATION',
-        params: { pattern: block.pattern, column: j },
-      });
+      diagnostics.push({ severity: 'info', code: 'MIXED_NOTATION', params: { pattern: block.pattern, column: j } });
     }
 
     if (filled < total) {
-      diagnostics.push({
-        severity: 'info',
-        code: 'COLUMN_GAPS',
-        params: { pattern: block.pattern, column: j, gaps: total - filled, total },
-      });
+      diagnostics.push({ severity: 'info', code: 'COLUMN_GAPS', params: { pattern: block.pattern, column: j, gaps: total - filled, total } });
     }
   }
 
@@ -134,17 +128,7 @@ function applyResolution(structure, commas) {
     }
   }
 
-  if (pending !== null) {
-    slots.push(pending);
-  } else if (structure.length > 0) {
-    // Coma/separador trailing → campo vacío final.
-    const lastCh = structure[structure.length - 1];
-    if (lastCh === '|') {
-      slots.push('v');
-    } else if (lastCh === ',' && commaIdx > 0 && commas[commaIdx - 1] === 'sep') {
-      slots.push('v');
-    }
-  }
+  if (pending !== null) slots.push(pending);
 
   return slots;
 }

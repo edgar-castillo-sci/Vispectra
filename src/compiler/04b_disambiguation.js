@@ -38,7 +38,7 @@ export function detectAmbiguities(blocks, lines) {
       continue;
     }
 
-    // Safety cap: bloques con muchas comas explotan exponencialmente.
+    // Safety cap
     if (commaCount > MAX_COMMAS) {
       const allSep = Array(commaCount).fill('sep');
       let columns = -1;
@@ -49,12 +49,7 @@ export function detectAmbiguities(blocks, lines) {
       diagnostics.push({
         severity: 'warn',
         code: 'TOO_MANY_COMMAS',
-        params: {
-          pattern: block.pattern.substring(0, 60) + '...',
-          commas: commaCount,
-          max: MAX_COMMAS,
-          fallback: 'all-sep',
-        },
+        params: { pattern: block.pattern.substring(0, 60) + '...', commas: commaCount, max: MAX_COMMAS, fallback: 'all-sep' },
       });
       enriched.push({
         ...block,
@@ -82,11 +77,7 @@ export function detectAmbiguities(blocks, lines) {
     }
 
     if (resolutions.length === 0) {
-      diagnostics.push({
-        severity: 'error',
-        code: 'NO_VALID_RESOLUTION',
-        params: { pattern: block.pattern },
-      });
+      diagnostics.push({ severity: 'error', code: 'NO_VALID_RESOLUTION', params: { pattern: block.pattern } });
       enriched.push({ ...block, resolutions: [], isAmbiguous: true });
       continue;
     }
@@ -108,10 +99,6 @@ export function detectAmbiguities(blocks, lines) {
     diagnostics,
   };
 }
-
-// ------------------------------------------------------------
-// Helpers
-// ------------------------------------------------------------
 
 function countCommas(pattern) {
   let n = 0;
@@ -221,18 +208,6 @@ function countColumns(structure, resolution) {
     }
   }
 
-  if (pending) {
-    columns++;
-  } else if (structure.length > 0) {
-    // Coma/separador trailing → campo vacío al final.
-    // (dec al final ya falla en el loop, así que aquí solo puede ser sep o |)
-    const lastCh = structure[structure.length - 1];
-    if (lastCh === '|') {
-      columns++;
-    } else if (lastCh === ',' && commaIdx > 0 && resolution[commaIdx - 1] === 'sep') {
-      columns++;
-    }
-  }
-
+  if (pending) columns++;
   return { ok: true, columns };
 }
