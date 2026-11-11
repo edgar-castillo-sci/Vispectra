@@ -47,21 +47,19 @@ export function configToState(config) {
       state.columnConfig.x = null;
     }
     if (Array.isArray(c.discard)) {
-      state.columnConfig.discard = c.discard
-        .map(v => parseInt(v))
-        .filter(v => Number.isInteger(v));
+      state.columnConfig.discard = c.discard.map(v => parseInt(v)).filter(v => Number.isInteger(v));
     }
-    if (c.selected_y !== undefined) {
+    if (c.selected_y === null || c.selected_y === 'all' || c.selected_y === 'first') {
       state.columnConfig.selectedY = c.selected_y;
+    } else if (Array.isArray(c.selected_y)) {
+      state.columnConfig.selectedY = c.selected_y.map(v => parseInt(v)).filter(v => Number.isInteger(v));
     }
   }
 
   if (config.frame) {
     if (typeof config.frame.width === 'number') state.frame.width = config.frame.width;
     if (typeof config.frame.height === 'number') state.frame.height = config.frame.height;
-    if (['stretch', 'extend', 'crop'].includes(config.frame.mode)) {
-      state.frame.mode = config.frame.mode;
-    }
+    if (['stretch', 'extend', 'crop'].includes(config.frame.mode)) state.frame.mode = config.frame.mode;
   }
 
   if (config.axis) {

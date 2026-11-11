@@ -4,7 +4,7 @@ import { applyPipeline } from './services/pipeline.js';
 import { exportarCSV, exportarPlot } from './services/export.js';
 import { openDisambiguationModal } from './ui/disambiguationModal.js';
 import { openColumnsModal } from './ui/columnsModal.js';
-import { prepararRolePanel, recompactSeriesConfig } from './ui/rolePanel.js';
+import { prepararRolePanel, recompactSeriesConfig, refreshRolePanelFromState } from './ui/rolePanel.js';
 import { agregarPasoPipeline, getMathPipeline } from './ui/pipelinePanel.js';
 import { initAxesPanel } from './ui/axesPanel.js';
 import { initFramePanel } from './ui/framePanel.js';
@@ -16,6 +16,7 @@ let archivos = [];
 let onProcesar = null;
 let onGraficar = null;
 let columnasGlobales = null;
+let currentOriginalIndices = null;
 
 function bindCollapsiblePanel(checkboxId, panelId) {
   const checkbox = document.getElementById(checkboxId);
@@ -24,9 +25,7 @@ function bindCollapsiblePanel(checkboxId, panelId) {
   checkbox.addEventListener('change', (e) => {
     panel.style.display = e.target.checked ? 'block' : 'none';
     if (e.target.checked) {
-      requestAnimationFrame(() => {
-        panel.scrollIntoView({ behavior: 'smooth', block: 'end' });
-      });
+      requestAnimationFrame(() => panel.scrollIntoView({ behavior: 'smooth', block: 'end' }));
     }
   });
 }
@@ -71,15 +70,26 @@ export function initUI(procesarFn, graficarFn) {
   };
 
   const onSeriesToggle = () => {
+    const active = getActiveYIndices();
+    // Persist current selection into state so YAML captures it
+    state.columnConfig.selectedY = active;
+
     if (!state.seriesConfigLocked && columnasGlobales) {
-      recompactSeriesConfig(columnasGlobales, getActiveYIndices());
+      recompactSeriesConfig(columnasGlobales, active);
     }
+    refreshRolePanelFromState();
     onSelectionChange();
   };
 
   if (document.getElementById('toggleAxesPanel')) initAxesPanel(() => actualizarGrafico());
   if (document.getElementById('toggleFramePanel')) initFramePanel(() => actualizarGrafico());
-  if (document.getElementById('toggleConfigPanel')) initConfigPanel(() => actualizarGrafico());
+  if (document.getElementById('toggleConfigPanel')) {
+    initConfigPanel(() => {
+      // YAML applied: refresh role panel from state, then redraw
+      refreshRolePanelFromState();
+      actualizarGrafico();
+    });
+  }
   if (document.getElementById('rangePanel')) initRangePanel(() => actualizarGrafico());
 
   bindCollapsiblePanel('toggleAxesPanel', 'axesPanel');
@@ -136,11 +146,14 @@ export function initUI(procesarFn, graficarFn) {
       translateDOM();
       initAxesPanel(() => actualizarGrafico());
       initFramePanel(() => actualizarGrafico());
-      initConfigPanel(() => actualizarGrafico());
+      initConfigPanel(() => {
+        refreshRolePanelFromState();
+        actualizarGrafico();
+      });
       initRangePanel(() => actualizarGrafico());
 
       if (columnasGlobales) {
-        prepararRolePanel(columnasGlobales.length, null, false, onSelectionChange, columnasGlobales, onSeriesToggle);
+        prepararRolePanel(columnasGlobales.length, currentOriginalIndices, false, onSelectionChange, columnasGlobales, onSeriesToggle);
         const currentPipeline = getMathPipeline();
         pipelineContainer.innerHTML = '';
         currentPipeline.forEach(op => agregarPasoPipeline(pipelineContainer, op, onSelectionChange));
@@ -202,6 +215,7 @@ export function initUI(procesarFn, graficarFn) {
         }
 
         columnasGlobales = finalColumns;
+        currentOriginalIndices = finalIndices;
         resetView();
 
         salida.textContent =

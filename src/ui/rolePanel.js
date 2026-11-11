@@ -77,8 +77,6 @@ function guessXColumn(rawColumns, numColumns, discardSet) {
   }
 }
 
-// Reassigns colors and styles sequentially to active non-empty Y-series.
-// Called only when the selection changes (not on manual color/style edits).
 export function recompactSeriesConfig(columns, activeYIndices) {
   if (state.seriesConfigLocked) return;
   if (!Array.isArray(columns) || !Array.isArray(activeYIndices)) return;
@@ -95,6 +93,36 @@ export function recompactSeriesConfig(columns, activeYIndices) {
     state.seriesConfig[colIdx].color = state.defaultColors[k % state.defaultColors.length];
     state.seriesConfig[colIdx].style = state.defaultStyles[Math.floor(k / state.defaultColors.length) % state.defaultStyles.length];
     k++;
+  }
+}
+
+// Refresh DOM pickers and checkboxes from state, without full re-render.
+export function refreshRolePanelFromState() {
+  // Color pickers
+  document.querySelectorAll('.y-color-input').forEach(input => {
+    const idx = parseInt(input.dataset.col);
+    if (state.seriesConfig[idx] && state.seriesConfig[idx].color) {
+      input.value = state.seriesConfig[idx].color;
+    }
+  });
+  // Style selects
+  document.querySelectorAll('.y-style-select').forEach(sel => {
+    const idx = parseInt(sel.dataset.col);
+    if (state.seriesConfig[idx] && state.seriesConfig[idx].style) {
+      sel.value = state.seriesConfig[idx].style;
+    }
+  });
+  // Checkboxes (only if selectedY is a concrete array)
+  if (Array.isArray(state.columnConfig?.selectedY)) {
+    const set = new Set(state.columnConfig.selectedY);
+    document.querySelectorAll('.checkbox-y').forEach(cb => {
+      const idx = parseInt(cb.value);
+      if (!cb.disabled) cb.checked = set.has(idx);
+    });
+    // Also sync normalChecked
+    normalChecked = Array.from(document.querySelectorAll('.checkbox-y'))
+      .filter(cb => cb.checked)
+      .map(cb => parseInt(cb.value));
   }
 }
 
@@ -213,26 +241,35 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
   const btnSelectNone = document.getElementById('btnSelectNone');
   const chkShowEmpty = document.getElementById('chkShowEmpty');
 
-  // Initialize initial seriesConfig for active non-empty columns.
+  // Initial series config: assign compacted colors ONLY to active non-empty Y,
+  // and preserve YAML colors when present.
   if (isNewFile && !state.seriesConfigLocked) {
-    const activeY = [];
+    let k = 0;
     for (const i of visibleIndices) {
       if (i === xIndex) continue;
       const col = rawColumns?.[i];
       if (isColumnEmpty(col)) continue;
-      if (selectedYFn(i, false)) activeY.push(i);
-    }
-    let k = 0;
-    for (const i of activeY) {
+
+      const isActive = selectedYFn(i, false);
+
       if (!state.seriesConfig[i]) {
-        state.seriesConfig[i] = {
-          width: 1.5,
-          label: `${t('col_prefix')} ${originalIndices ? originalIndices[i] : i}`,
-        };
+        state.seriesConfig[i] = {};
       }
-      state.seriesConfig[i].color = state.defaultColors[k % state.defaultColors.length];
-      state.seriesConfig[i].style = state.defaultStyles[Math.floor(k / state.defaultColors.length) % state.defaultStyles.length];
-      k++;
+
+      if (!state.seriesConfig[i].width) state.seriesConfig[i].width = 1.5;
+      if (!state.seriesConfig[i].label) {
+        state.seriesConfig[i].label = `${t('col_prefix')} ${originalIndices ? originalIndices[i] : i}`;
+      }
+
+      if (isActive) {
+        if (!state.seriesConfig[i].color) {
+          state.seriesConfig[i].color = state.defaultColors[k % state.defaultColors.length];
+        }
+        if (!state.seriesConfig[i].style) {
+          state.seriesConfig[i].style = state.defaultStyles[Math.floor(k / state.defaultColors.length) % state.defaultStyles.length];
+        }
+        k++;
+      }
     }
   }
 
@@ -281,14 +318,6 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
     leftGroup.appendChild(cb);
 
     const defaultName = `${t('col_prefix')} ${originalIndices ? originalIndices[i] : i}`;
-    if (i !== xIndex && !isEmpty && !state.seriesConfig[i]) {
-      state.seriesConfig[i] = {
-        color: '#888',
-        style: 'solid',
-        width: 1.5,
-        label: defaultName,
-      };
-    }
 
     const nameSpan = document.createElement('span');
     nameSpan.contentEditable = 'true';
@@ -328,7 +357,7 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
     topRow.appendChild(valSpan);
     row.appendChild(topRow);
 
-    // Only show color/style pickers for active, non-empty Y-series.
+    // Color/style pickers: only for non-empty Y (empty has no config, no picker).
     if (i !== xIndex && !isEmpty && state.seriesConfig[i]) {
       const bottomRow = document.createElement('div');
       bottomRow.style.cssText = 'display: flex; gap: 4px; margin-top: 4px; align-items: center; justify-content: flex-end;';
@@ -337,9 +366,11 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
       colorInput.type = 'color';
       colorInput.id = `y-color-${i}`;
       colorInput.name = `y-color-${i}`;
+      colorInput.className = 'y-color-input';
+      colorInput.dataset.col = i;
       colorInput.setAttribute('aria-label', `Color for Y-series ${i}`);
       colorInput.style.cssText = 'width: 20px; height: 20px; padding: 0; border: none; cursor: pointer;';
-      colorInput.value = state.seriesConfig[i].color;
+      colorInput.value = state.seriesConfig[i].color || '#888';
       colorInput.addEventListener('input', (e) => {
         state.seriesConfig[i].color = e.target.value;
         onSelectionChange();
@@ -348,6 +379,8 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
       const styleSelect = document.createElement('select');
       styleSelect.id = `y-style-${i}`;
       styleSelect.name = `y-style-${i}`;
+      styleSelect.className = 'y-style-select';
+      styleSelect.dataset.col = i;
       styleSelect.setAttribute('aria-label', `Line style for Y-series ${i}`);
       styleSelect.style.cssText = 'font-size: 10px; padding: 0; height: 20px; border: 1px solid #ccc; border-radius: 2px; cursor: pointer; width: 40px;';
       styleSelect.innerHTML = `
@@ -356,7 +389,7 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
         <option value="dotted">··</option>
         <option value="dashdot">-·</option>
       `;
-      styleSelect.value = state.seriesConfig[i].style;
+      styleSelect.value = state.seriesConfig[i].style || 'solid';
       styleSelect.addEventListener('change', (e) => {
         state.seriesConfig[i].style = e.target.value;
         onSelectionChange();
@@ -388,6 +421,7 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
       const activeY = Array.from(document.querySelectorAll('.checkbox-y:checked'))
         .map(cb => parseInt(cb.value));
       recompactSeriesConfig(rawColumns, activeY);
+      refreshRolePanelFromState();
     }
     onSelectionChange();
   };
@@ -428,6 +462,10 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
     const boxes = Array.from(document.querySelectorAll('.checkbox-y'));
     normalChecked = boxes.filter(cb => cb.checked).map(cb => parseInt(cb.value));
     onlyChecked = [];
+    // If selectedY was not explicitly set, capture the initial selection now.
+    if (!Array.isArray(state.columnConfig.selectedY) && state.columnConfig.selectedY !== 'all' && state.columnConfig.selectedY !== 'first') {
+      // leave as null (auto)
+    }
   }
 
   selectX.onchange = onSelectionChange;
