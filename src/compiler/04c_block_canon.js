@@ -1,3 +1,7 @@
+// ============================================================
+// PHASE 04c — BLOCK CANON (v5.3)
+// ============================================================
+
 import { lex } from './02_lexer.js';
 
 export function buildBlockCanon(block, lines, resolution) {
@@ -20,44 +24,41 @@ export function buildBlockCanon(block, lines, resolution) {
   }
 
   const rowSlots = [];
-  let successfulRows = 0;
-
   for (const lineIndex of block.instances) {
     const structure = lex(lines[lineIndex].content).structure;
     const slots = applyResolution(structure, commas);
-
     if (slots === null) {
-      // Si la fila no encaja (ej. es cabecera de texto), la marcamos como nula
-      rowSlots.push(null);
-    } else {
-      rowSlots.push(slots);
-      successfulRows++;
+      diagnostics.push({
+        severity: 'error',
+        code: 'RESOLUTION_MISMATCH',
+        params: { pattern: block.pattern, structure },
+      });
+      return { canon: '', columns: [], diagnostics };
+    }
+    rowSlots.push(slots);
+  }
+
+  const nCols = rowSlots[0].length;
+  for (const slots of rowSlots) {
+    if (slots.length !== nCols) {
+      diagnostics.push({
+        severity: 'error',
+        code: 'BLOCK_COUNT_MISMATCH',
+        params: { pattern: block.pattern, expected: nCols, got: slots.length },
+      });
+      return { canon: '', columns: [], diagnostics };
     }
   }
 
-  // Si más del 90% de las filas fallan, el bloque entero es basura (ej. cabecera)
-  if (successfulRows === 0 || (block.instances.length > 0 && successfulRows / block.instances.length < 0.1)) {
-    diagnostics.push({
-      severity: 'info',
-      code: 'BLOCK_IGNORED_AS_GARBAGE',
-      params: { pattern: block.pattern, rows: block.instances.length },
-    });
-    return { canon: '', columns: [], diagnostics };
-  }
-
-  // Tomamos la primera fila exitosa para saber cuántas columnas tiene este bloque
-  const sampleSlot = rowSlots.find(s => s !== null);
-  const nCols = sampleSlot.length;
-
   const columns = [];
   for (let j = 0; j < nCols; j++) {
-    const types = rowSlots.filter(s => s !== null).map(s => s[j]);
+    const types = rowSlots.map(s => s[j]);
     const nonEmpty = types.filter(t => t !== 'v');
     const hasN = nonEmpty.includes('n');
     const hasZ = nonEmpty.includes('z');
     const filled = nonEmpty.length;
-    const total = block.instances.length;
-    const gapIndices = block.instances.filter((_, idx) => rowSlots[idx] === null || rowSlots[idx][j] === 'v');
+    const total = types.length;
+    const gapIndices = block.instances.filter((_, idx) => types[idx] === 'v');
 
     let type;
     if (nonEmpty.length === 0) type = 'v';
@@ -66,6 +67,22 @@ export function buildBlockCanon(block, lines, resolution) {
     else type = 'z';
 
     columns.push({ type, completeness: { filled, total, gapIndices } });
+
+    if (type === 'i') {
+      diagnostics.push({
+        severity: 'info',
+        code: 'MIXED_NOTATION',
+        params: { pattern: block.pattern, column: j },
+      });
+    }
+
+    if (filled < total) {
+      diagnostics.push({
+        severity: 'info',
+        code: 'COLUMN_GAPS',
+        params: { pattern: block.pattern, column: j, gaps: total - filled, total },
+      });
+    }
   }
 
   const canon = columns.map(c => c.type).join(',');
@@ -87,13 +104,13 @@ function applyResolution(structure, commas) {
   while (i < structure.length) {
     const ch = structure[i];
 
-    if (ch === 'n') {
+    if (ch === 'n' || ch === 'z') {
       if (pending !== null) return null;
-      pending = 'n';
+      pending = ch;
       i++;
-    } else if (ch === 'z') {
+    } else if (ch === 'v') {
       if (pending !== null) return null;
-      pending = 'z';
+      pending = 'v';
       i++;
     } else if (ch === '|') {
       slots.push(pending === null ? 'v' : pending);
@@ -107,22 +124,27 @@ function applyResolution(structure, commas) {
         pending = null;
         i++;
       } else {
-        if (pending === 'n') return null;
-        if (i + 1 >= structure.length) return null;
-
-        const nextCh = structure[i + 1];
-        if (nextCh === 'z' || nextCh === 'n') {
-          pending = 'n';
-          i += 2;
-        } else {
-          return null;
-        }
+        if (pending !== 'z') return null;
+        if (i + 1 >= structure.length || structure[i + 1] !== 'z') return null;
+        pending = 'n';
+        i += 2;
       }
     } else {
       return null;
     }
   }
 
-  if (pending !== null) slots.push(pending);
+  if (pending !== null) {
+    slots.push(pending);
+  } else if (structure.length > 0) {
+    // Coma/separador trailing → campo vacío final.
+    const lastCh = structure[structure.length - 1];
+    if (lastCh === '|') {
+      slots.push('v');
+    } else if (lastCh === ',' && commaIdx > 0 && commas[commaIdx - 1] === 'sep') {
+      slots.push('v');
+    }
+  }
+
   return slots;
 }

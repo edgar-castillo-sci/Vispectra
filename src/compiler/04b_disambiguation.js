@@ -20,9 +20,8 @@ export function detectAmbiguities(blocks, lines) {
       continue;
     }
 
-    // R98: Si el bloque contiene algún punto decimal ('n'), las comas
-    // SOLO pueden ser separadoras. No hay forma de que una coma sea
-    // decimal si un valor de la misma fila ya usa punto para decimales.
+    // R98: si el bloque contiene 'n' (punto decimal), las comas solo
+    // pueden ser separadoras. No hay ambigüedad posible.
     const hasN = structures.some(s => s.includes('n'));
     if (hasN) {
       const allSep = Array(commaCount).fill('sep');
@@ -39,7 +38,7 @@ export function detectAmbiguities(blocks, lines) {
       continue;
     }
 
-    // Safety: evitar explosión exponencial en bloques patológicos.
+    // Safety cap: bloques con muchas comas explotan exponencialmente.
     if (commaCount > MAX_COMMAS) {
       const allSep = Array(commaCount).fill('sep');
       let columns = -1;
@@ -109,6 +108,10 @@ export function detectAmbiguities(blocks, lines) {
     diagnostics,
   };
 }
+
+// ------------------------------------------------------------
+// Helpers
+// ------------------------------------------------------------
 
 function countCommas(pattern) {
   let n = 0;
@@ -218,6 +221,18 @@ function countColumns(structure, resolution) {
     }
   }
 
-  if (pending) columns++;
+  if (pending) {
+    columns++;
+  } else if (structure.length > 0) {
+    // Coma/separador trailing → campo vacío al final.
+    // (dec al final ya falla en el loop, así que aquí solo puede ser sep o |)
+    const lastCh = structure[structure.length - 1];
+    if (lastCh === '|') {
+      columns++;
+    } else if (lastCh === ',' && commaIdx > 0 && resolution[commaIdx - 1] === 'sep') {
+      columns++;
+    }
+  }
+
   return { ok: true, columns };
 }
