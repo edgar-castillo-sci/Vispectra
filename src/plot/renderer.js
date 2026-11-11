@@ -17,7 +17,7 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
   if (showLegend) {
     if (legendCfg.position === 'right') {
       const ROW_H = 22, COL_W = 170;
-      const itemsPerCol = Math.max(1, Math.floor(plotHeight / ROW_H));
+      const itemsPerCol = Math.max(1, Math.floor((plotHeight - 32) / ROW_H));
       const numCols = Math.ceil(ySeries.length / itemsPerCol);
       extraW = 30 + numCols * COL_W;
       legendMeta = { itemsPerCol, numCols, ROW_H, COL_W };
@@ -25,7 +25,7 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
       const ROW_H = 22, ITEM_W = 170;
       const itemsPerRow = Math.max(1, Math.floor(plotWidth / ITEM_W));
       const numRows = Math.ceil(ySeries.length / itemsPerRow);
-      extraH = 30 + numRows * ROW_H;
+      extraH = 30 + numRows * ROW_H + 22;
       legendMeta = { itemsPerRow, numRows, ROW_H, ITEM_W };
     }
   }
@@ -307,6 +307,7 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
   if (showLegend) {
     const legendGroup = document.createElementNS(SVG_NS, 'g');
     const labels = ySeries.map((_, j) => state.seriesConfig[yIndices[j]]?.label || `Col ${yIndices[j]}`);
+
     const drawItem = (group, x, y, index) => {
       const origIdx = yIndices[index];
       const colorIdx = origIdx % state.defaultColors.length;
@@ -316,65 +317,125 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
       if (conf.style === 'dashed') dashArray = '6 4';
       if (conf.style === 'dotted') dashArray = '2 4';
       if (conf.style === 'dashdot') dashArray = '6 4 2 4';
+
       const line = document.createElementNS(SVG_NS, 'line');
-      line.setAttribute('x1', x); line.setAttribute('y1', y); line.setAttribute('x2', x + 25); line.setAttribute('y2', y);
-      line.setAttribute('stroke', conf.color); line.setAttribute('stroke-width', conf.width); line.setAttribute('stroke-dasharray', dashArray);
+      line.setAttribute('x1', x); line.setAttribute('y1', y);
+      line.setAttribute('x2', x + 25); line.setAttribute('y2', y);
+      line.setAttribute('stroke', conf.color); line.setAttribute('stroke-width', conf.width);
+      line.setAttribute('stroke-dasharray', dashArray);
       group.appendChild(line);
+
       const text = document.createElementNS(SVG_NS, 'text');
       text.setAttribute('x', x + 30); text.setAttribute('y', y + 4);
-      text.setAttribute('font-size', '12px'); text.setAttribute('font-family', 'sans-serif'); text.setAttribute('fill', '#333');
-      text.textContent = labels[index]; group.appendChild(text);
+      text.setAttribute('font-size', '12px'); text.setAttribute('font-family', 'sans-serif');
+      text.setAttribute('fill', '#333');
+      text.setAttribute('data-legend-col', String(origIdx));
+      text.setAttribute('data-legend-label', labels[index]);
+      text.textContent = labels[index];
+      group.appendChild(text);
     };
+
+    const xHeader = document.createElementNS(SVG_NS, 'text');
+    xHeader.setAttribute('id', 'legend-x-label');
+    xHeader.setAttribute('font-size', '12px');
+    xHeader.setAttribute('font-family', 'sans-serif');
+    xHeader.setAttribute('font-weight', 'bold');
+    xHeader.setAttribute('fill', '#222');
+    xHeader.setAttribute('opacity', '0');
+    xHeader.textContent = '';
+
     const pos = legendCfg.position;
+
     if (pos === 'right' && legendMeta) {
       const sepX = baseWidth + 12;
       const sep = document.createElementNS(SVG_NS, 'line');
       sep.setAttribute('x1', sepX); sep.setAttribute('y1', margin.top);
       sep.setAttribute('x2', sepX); sep.setAttribute('y2', baseHeight - margin.bottom);
-      sep.setAttribute('stroke', '#ddd'); sep.setAttribute('stroke-width', '1'); sep.setAttribute('stroke-dasharray', '4 4');
+      sep.setAttribute('stroke', '#ddd'); sep.setAttribute('stroke-width', '1');
+      sep.setAttribute('stroke-dasharray', '4 4');
       svg.appendChild(sep);
+
       const { itemsPerCol, numCols, ROW_H, COL_W } = legendMeta;
       const startX = baseWidth + 30;
+      const startY = margin.top + 32;
+
+      xHeader.setAttribute('x', startX);
+      xHeader.setAttribute('y', margin.top + 16);
+      svg.appendChild(xHeader);
+
       for (let j = 0; j < ySeries.length; j++) {
-        const col = Math.floor(j / itemsPerCol); const row = j % itemsPerCol;
-        drawItem(legendGroup, startX + col * COL_W, margin.top + row * ROW_H + 15, j);
+        const col = Math.floor(j / itemsPerCol);
+        const row = j % itemsPerCol;
+        drawItem(legendGroup, startX + col * COL_W, startY + row * ROW_H, j);
       }
     } else if (pos === 'bottom' && legendMeta) {
       const sepY = baseHeight + 12;
       const sep = document.createElementNS(SVG_NS, 'line');
       sep.setAttribute('x1', margin.left); sep.setAttribute('y1', sepY);
       sep.setAttribute('x2', baseWidth - margin.right); sep.setAttribute('y2', sepY);
-      sep.setAttribute('stroke', '#ddd'); sep.setAttribute('stroke-width', '1'); sep.setAttribute('stroke-dasharray', '4 4');
+      sep.setAttribute('stroke', '#ddd'); sep.setAttribute('stroke-width', '1');
+      sep.setAttribute('stroke-dasharray', '4 4');
       svg.appendChild(sep);
+
       const { itemsPerRow, numRows, ROW_H, ITEM_W } = legendMeta;
-      const startY = baseHeight + 30;
+      const startY = baseHeight + 48;
+
+      xHeader.setAttribute('x', margin.left);
+      xHeader.setAttribute('y', baseHeight + 32);
+      svg.appendChild(xHeader);
+
       for (let j = 0; j < ySeries.length; j++) {
-        const row = Math.floor(j / itemsPerRow); const col = j % itemsPerRow;
+        const row = Math.floor(j / itemsPerRow);
+        const col = j % itemsPerRow;
         drawItem(legendGroup, margin.left + col * ITEM_W, startY + row * ROW_H, j);
       }
     } else {
       const layout = legendCfg.layout || 'vertical';
-      const itemWidth = 120; const itemHeight = 20;
+      const itemWidth = 120;
+      const itemHeight = 20;
+      const maxLen = Math.max(...labels.map(t => t.length));
+
       let boxWidth, boxHeight;
-      if (layout === 'horizontal') { boxWidth = ySeries.length * itemWidth + 20; boxHeight = itemHeight + 10; }
-      else { const maxLen = Math.max(...labels.map(t => t.length)); boxWidth = Math.max(120, maxLen * 7 + 60); boxHeight = ySeries.length * itemHeight + 10; }
-      let boxX = 0, boxY = 0; const padding = 10;
+      if (layout === 'horizontal') {
+        boxWidth = ySeries.length * Math.max(itemWidth, maxLen * 7 + 60) + 20;
+        boxHeight = itemHeight + 10 + 22;
+      } else {
+        boxWidth = Math.max(140, maxLen * 7 + 90);
+        boxHeight = ySeries.length * itemHeight + 10 + 22;
+      }
+
+      let boxX = 0, boxY = 0;
+      const padding = 10;
       if (pos === 'top-right') { boxX = margin.left + plotWidth - boxWidth - padding; boxY = margin.top + padding; }
       else if (pos === 'top-left') { boxX = margin.left + padding; boxY = margin.top + padding; }
       else if (pos === 'bottom-right') { boxX = margin.left + plotWidth - boxWidth - padding; boxY = margin.top + plotHeight - boxHeight - padding; }
       else if (pos === 'bottom-left') { boxX = margin.left + padding; boxY = margin.top + plotHeight - boxHeight - padding; }
+
       const rect = document.createElementNS(SVG_NS, 'rect');
       rect.setAttribute('x', boxX); rect.setAttribute('y', boxY);
       rect.setAttribute('width', boxWidth); rect.setAttribute('height', boxHeight);
-      rect.setAttribute('fill', 'rgba(255, 255, 255, 0.85)'); rect.setAttribute('stroke', '#999'); rect.setAttribute('stroke-width', '1'); rect.setAttribute('rx', '4');
+      rect.setAttribute('fill', 'rgba(255, 255, 255, 0.85)');
+      rect.setAttribute('stroke', '#999'); rect.setAttribute('stroke-width', '1');
+      rect.setAttribute('rx', '4');
       legendGroup.appendChild(rect);
+
+      xHeader.setAttribute('x', boxX + 10);
+      xHeader.setAttribute('y', boxY + 14);
+      svg.appendChild(xHeader);
+
       for (let j = 0; j < ySeries.length; j++) {
         let x, y;
-        if (layout === 'horizontal') { x = boxX + 10 + j * itemWidth; y = boxY + 15; }
-        else { x = boxX + 10; y = boxY + 15 + j * itemHeight; }
+        if (layout === 'horizontal') {
+          x = boxX + 10 + j * Math.max(itemWidth, maxLen * 7 + 60);
+          y = boxY + 22 + 15;
+        } else {
+          x = boxX + 10;
+          y = boxY + 22 + 15 + j * itemHeight;
+        }
         drawItem(legendGroup, x, y, j);
       }
     }
+
     svg.appendChild(legendGroup);
   }
 

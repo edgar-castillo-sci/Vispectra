@@ -1,10 +1,8 @@
 export const state = {
-  // --- View ---
   viewLimits: { minX: null, maxX: null, minY: null, maxY: null },
   viewHistory: [{ limits: { minX: null, maxX: null, minY: null, maxY: null }, axis: 'xy' }],
   historyIndex: 0,
 
-  // --- Interaction ---
   currentTool: 'zoom',
   isPinned: false,
   pinnedX: null,
@@ -13,57 +11,31 @@ export const state = {
   dragStart: { x: 0, y: 0 },
   panStartLimits: null,
 
-  // --- Frame ---
   frame: { width: 800, height: 500, mode: 'stretch' },
   exportMode: false,
   zoomControlsHidden: false,
 
-  // --- Column roles (from YAML) ---
   columnConfig: {
     x: null,
     discard: [],
     selectedY: null,
   },
 
-  // --- Axes ---
   axisConfig: {
-    x: {
-      scale: 'linear',
-      mode: 'auto',
-      count: 5,
-      step: 0.5,
-      format: 'auto',
-      minor: 0,
-      label: '',
-      showMinorLabels: false,
-      invert: false,
-    },
-    y: {
-      scale: 'linear',
-      mode: 'auto',
-      count: 5,
-      step: 0.5,
-      format: 'auto',
-      minor: 0,
-      label: '',
-      showMinorLabels: false,
-      invert: false,
-    },
+    x: { scale: 'linear', mode: 'auto', count: 5, step: 0.5, format: 'auto', minor: 0, label: '', showMinorLabels: false, invert: false },
+    y: { scale: 'linear', mode: 'auto', count: 5, step: 0.5, format: 'auto', minor: 0, label: '', showMinorLabels: false, invert: false }
   },
 
-  // --- Graph appearance ---
   graphConfig: {
     title: '',
-    legend: { show: false, position: 'top-right', layout: 'vertical' },
+    legend: { show: true, position: 'top-right', layout: 'vertical' }
   },
 
-  // --- Series style ---
   seriesConfig: {},
   seriesConfigLocked: false,
 
-  // --- Palettes ---
   defaultColors: ['#000000', '#cc0000', '#0055cc', '#009933', '#6600cc', '#ff9900', '#00cccc', '#cc00cc'],
-  defaultStyles: ['solid', 'dashed', 'dotted', 'dashdot'],
+  defaultStyles: ['solid', 'dashed', 'dotted', 'dashdot']
 };
 
 export function resetView() {
@@ -78,7 +50,7 @@ export function clearPin() {
   state.pinnedX = null;
   state.pinnedBounds = null;
   const spans = document.querySelectorAll('.y-val-display');
-  spans.forEach(span => { span.textContent = ''; });
+  spans.forEach(span => span.textContent = '');
 }
 
 export function pushHistory(newLimits, axis = 'xy') {
@@ -134,13 +106,10 @@ export function resetAxis(axis) {
 export function adjustViewForFrameChange(oldWidth, oldHeight, newWidth, newHeight, mode) {
   if (mode === 'stretch') return;
   if (oldWidth === newWidth && oldHeight === newHeight) return;
-
   const limits = state.viewLimits;
   if (limits.minX === null || limits.maxX === null || limits.minY === null || limits.maxY === null) return;
-
   const xRatio = newWidth / oldWidth;
   const yRatio = newHeight / oldHeight;
-
   const adjustRange = (min, max, ratio) => {
     const range = max - min;
     const center = (min + max) / 2;
@@ -149,12 +118,7 @@ export function adjustViewForFrameChange(oldWidth, oldHeight, newWidth, newHeigh
     else if (mode === 'crop' && ratio < 1) newRange = range * ratio;
     return { min: center - newRange / 2, max: center + newRange / 2 };
   };
-
   const xAdj = adjustRange(limits.minX, limits.maxX, xRatio);
   const yAdj = adjustRange(limits.minY, limits.maxY, yRatio);
-
-  state.viewLimits = {
-    minX: xAdj.min, maxX: xAdj.max,
-    minY: yAdj.min, maxY: yAdj.max,
-  };
+  state.viewLimits = { minX: xAdj.min, maxX: xAdj.max, minY: yAdj.min, maxY: yAdj.max };
 }

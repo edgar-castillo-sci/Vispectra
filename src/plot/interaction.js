@@ -3,24 +3,9 @@ import { state, clearPin, pushHistory } from './state.js';
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 export function attachInteraction(ctx) {
-  const {
-    svg,
-    dataPoints,
-    yIndices,
-    mapX,
-    unmapX,
-    unmapY,
-    plotWidth,
-    plotHeight,
-    margin,
-    width,
-    height,
-    baseWidth,
-    baseHeight,
-    redraw,
-  } = ctx;
+  const { svg, dataPoints, yIndices, mapX, unmapX, unmapY, plotWidth, plotHeight, margin, width, height, baseWidth, baseHeight, redraw } = ctx;
 
-  if (!svg || !dataPoints || !Array.isArray(dataPoints) || dataPoints.length === 0) return;
+  if (!svg || !Array.isArray(dataPoints) || dataPoints.length === 0) return;
 
   const hoverGroup = document.createElementNS(SVG_NS, 'g');
   hoverGroup.setAttribute('style', 'display: none; pointer-events: none;');
@@ -79,14 +64,42 @@ export function attachInteraction(ctx) {
     });
   };
 
-  const updateCrosshair = (mouseX) => {
-    crosshair.setAttribute('x1', mouseX);
-    crosshair.setAttribute('x2', mouseX);
+  const updateLegendWithValues = (point, yIdxArray) => {
+    const xLabel = document.getElementById('legend-x-label');
+    if (xLabel) {
+      xLabel.textContent = `X = ${point.x.toFixed(2)}`;
+      xLabel.setAttribute('opacity', '1');
+    }
+    const texts = document.querySelectorAll('[data-legend-col]');
+    texts.forEach(el => {
+      const colIdx = parseInt(el.getAttribute('data-legend-col'));
+      const base = el.getAttribute('data-legend-label') || '';
+      const yIdxInSeries = yIdxArray.indexOf(colIdx);
+      if (yIdxInSeries !== -1) {
+        const val = point.ys[yIdxInSeries];
+        el.textContent = val !== null ? `${base}: ${val.toFixed(3)}` : `${base}: —`;
+      } else {
+        el.textContent = base;
+      }
+    });
+  };
 
-    const xReal = unmapX(mouseX);
+  const clearLegendValues = () => {
+    const xLabel = document.getElementById('legend-x-label');
+    if (xLabel) {
+      xLabel.textContent = '';
+      xLabel.setAttribute('opacity', '0');
+    }
+    const texts = document.querySelectorAll('[data-legend-col]');
+    texts.forEach(el => {
+      const base = el.getAttribute('data-legend-label') || '';
+      el.textContent = base;
+    });
+  };
 
+  const findClosestPoint = (xReal) => {
     let closestPoint = dataPoints[0];
-    let minDist = Math.abs(xReal - closestPoint.x);
+    let minDist = Math.abs(xReal - dataPoints[0].x);
     for (let i = 1; i < dataPoints.length; i++) {
       const dist = Math.abs(xReal - dataPoints[i].x);
       if (dist < minDist) {
@@ -94,26 +107,30 @@ export function attachInteraction(ctx) {
         closestPoint = dataPoints[i];
       }
     }
-    updateDOMValues(closestPoint, yIndices);
     return closestPoint;
   };
 
-  // Restore pin if still active
+  const updateCrosshair = (mouseX) => {
+    crosshair.setAttribute('x1', mouseX);
+    crosshair.setAttribute('x2', mouseX);
+
+    const xReal = unmapX(mouseX);
+    const closestPoint = findClosestPoint(xReal);
+
+    updateDOMValues(closestPoint, yIndices);
+    updateLegendWithValues(closestPoint, yIndices);
+    return closestPoint;
+  };
+
+  // Restore pin if active
   if (state.isPinned && state.pinnedX !== null) {
-    let closestPoint = dataPoints[0];
-    let minDist = Math.abs(state.pinnedX - dataPoints[0].x);
-    for (let i = 1; i < dataPoints.length; i++) {
-      const dist = Math.abs(state.pinnedX - dataPoints[i].x);
-      if (dist < minDist) {
-        minDist = dist;
-        closestPoint = dataPoints[i];
-      }
-    }
+    const closestPoint = findClosestPoint(state.pinnedX);
     hoverGroup.setAttribute('style', 'display: block; pointer-events: none;');
     const px = mapX(closestPoint.x);
     crosshair.setAttribute('x1', px);
     crosshair.setAttribute('x2', px);
     updateDOMValues(closestPoint, yIndices);
+    updateLegendWithValues(closestPoint, yIndices);
   }
 
   const onMouseMoveWindow = (e) => {
@@ -123,33 +140,24 @@ export function attachInteraction(ctx) {
     pos.y = Math.max(margin.top, Math.min(baseHeight - margin.bottom, pos.y));
 
     if (state.currentTool === 'zoom') {
-      const minXpx = Math.min(state.dragStart.x, pos.x);
-      const maxXpx = Math.max(state.dragStart.x, pos.x);
-      const minYpx = Math.min(state.dragStart.y, pos.y);
-      const maxYpx = Math.max(state.dragStart.y, pos.y);
-      zoomRect.setAttribute('x', minXpx);
-      zoomRect.setAttribute('y', minYpx);
-      zoomRect.setAttribute('width', maxXpx - minXpx);
-      zoomRect.setAttribute('height', maxYpx - minYpx);
+      const minXpx = Math.min(state.dragStart.x, pos.x), maxXpx = Math.max(state.dragStart.x, pos.x);
+      const minYpx = Math.min(state.dragStart.y, pos.y), maxYpx = Math.max(state.dragStart.y, pos.y);
+      zoomRect.setAttribute('x', minXpx); zoomRect.setAttribute('y', minYpx);
+      zoomRect.setAttribute('width', maxXpx - minXpx); zoomRect.setAttribute('height', maxYpx - minYpx);
     } else if (state.currentTool === 'pan') {
       const dx = pos.x - state.dragStart.x;
       const dy = pos.y - state.dragStart.y;
       const xShift = (dx / plotWidth) * (state.panStartLimits.maxX - state.panStartLimits.minX || 1);
       const yShift = (dy / plotHeight) * (state.panStartLimits.maxY - state.panStartLimits.minY || 1);
-
       state.viewLimits = {
         minX: state.panStartLimits.minX - xShift,
         maxX: state.panStartLimits.maxX - xShift,
         minY: state.panStartLimits.minY + yShift,
         maxY: state.panStartLimits.maxY + yShift,
       };
-
       if (!panRafScheduled) {
         panRafScheduled = true;
-        requestAnimationFrame(() => {
-          panRafScheduled = false;
-          redraw();
-        });
+        requestAnimationFrame(() => { panRafScheduled = false; redraw(); });
       }
     }
   };
@@ -166,6 +174,7 @@ export function attachInteraction(ctx) {
       overlay.setAttribute('style', 'cursor: grab;');
       pushHistory({ ...state.viewLimits }, 'xy');
       clearPin();
+      clearLegendValues();
       redraw();
       return;
     }
@@ -190,38 +199,28 @@ export function attachInteraction(ctx) {
         } else {
           clearPin();
           hoverGroup.setAttribute('style', 'display: none; pointer-events: none;');
+          clearLegendValues();
         }
       } else {
-        const minPxX = Math.min(state.dragStart.x, pos.x);
-        const maxPxX = Math.max(state.dragStart.x, pos.x);
-        const minPxY = Math.min(state.dragStart.y, pos.y);
-        const maxPxY = Math.max(state.dragStart.y, pos.y);
-
-        const xA = unmapX(minPxX);
-        const xB = unmapX(maxPxX);
-        const yA = unmapY(maxPxY);
-        const yB = unmapY(minPxY);
-
+        const minPxX = Math.min(state.dragStart.x, pos.x), maxPxX = Math.max(state.dragStart.x, pos.x);
+        const minPxY = Math.min(state.dragStart.y, pos.y), maxPxY = Math.max(state.dragStart.y, pos.y);
+        const xA = unmapX(minPxX), xB = unmapX(maxPxX);
+        const yA = unmapY(maxPxY), yB = unmapY(minPxY);
         const newLimits = {
-          minX: Math.min(xA, xB),
-          maxX: Math.max(xA, xB),
-          minY: Math.min(yA, yB),
-          maxY: Math.max(yA, yB),
+          minX: Math.min(xA, xB), maxX: Math.max(xA, xB),
+          minY: Math.min(yA, yB), maxY: Math.max(yA, yB),
         };
-
         pushHistory(newLimits, 'xy');
         state.viewLimits = newLimits;
         clearPin();
+        clearLegendValues();
         redraw();
       }
     }
   };
 
   overlay.addEventListener('mousedown', (e) => {
-    if (e.detail > 1) {
-      e.preventDefault();
-      return;
-    }
+    if (e.detail > 1) { e.preventDefault(); return; }
     const pos = getMousePos(e);
     if (!inPlotArea(pos)) return;
 
@@ -240,19 +239,15 @@ export function attachInteraction(ctx) {
       frozenRect = svg.getBoundingClientRect();
 
       if (state.currentTool === 'zoom') {
-        zoomRect.setAttribute('x', pos.x);
-        zoomRect.setAttribute('y', pos.y);
-        zoomRect.setAttribute('width', 0);
-        zoomRect.setAttribute('height', 0);
+        zoomRect.setAttribute('x', pos.x); zoomRect.setAttribute('y', pos.y);
+        zoomRect.setAttribute('width', 0); zoomRect.setAttribute('height', 0);
         zoomRect.setAttribute('style', 'display: block; pointer-events: none;');
       } else if (state.currentTool === 'pan') {
         overlay.setAttribute('style', 'cursor: grabbing;');
       }
-
       window.addEventListener('mousemove', onMouseMoveWindow);
       window.addEventListener('mouseup', onMouseUpWindow);
     }
-
     e.preventDefault();
   });
 
@@ -264,7 +259,8 @@ export function attachInteraction(ctx) {
       if (!state.isPinned) {
         hoverGroup.setAttribute('style', 'display: none; pointer-events: none;');
         const spans = document.querySelectorAll('.y-val-display');
-        spans.forEach((span) => (span.textContent = ''));
+        spans.forEach(span => (span.textContent = ''));
+        clearLegendValues();
       }
       return;
     }
@@ -278,7 +274,6 @@ export function attachInteraction(ctx) {
   overlay.addEventListener('click', (e) => {
     if (e.detail > 1) return;
     if (state.currentTool !== 'crosshair') return;
-
     const pos = getMousePos(e);
     if (!inPlotArea(pos)) return;
 
@@ -291,6 +286,9 @@ export function attachInteraction(ctx) {
     } else {
       clearPin();
       hoverGroup.setAttribute('style', 'display: none; pointer-events: none;');
+      const spans = document.querySelectorAll('.y-val-display');
+      spans.forEach(span => (span.textContent = ''));
+      clearLegendValues();
     }
   });
 
@@ -303,6 +301,7 @@ export function attachInteraction(ctx) {
     state.isDragging = false;
     state.zoomControlsHidden = false;
     clearPin();
+    clearLegendValues();
     redraw();
   });
 }
