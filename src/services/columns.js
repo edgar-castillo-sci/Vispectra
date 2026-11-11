@@ -6,6 +6,13 @@
 
 /**
  * Removes duplicate columns (same length, values within epsilon).
+ *
+ * Rules:
+ *   - Empty columns (all null) are never collapsed. Each keeps its
+ *     own index so the user sees the real column count.
+ *   - Non-empty columns are compared pairwise. A column identical to
+ *     another (within epsilon) is collapsed.
+ *
  * Returns { unique, originalIndices } where originalIndices[i] is
  * the original index of unique[i].
  */
@@ -14,24 +21,33 @@ export function deduplicateColumns(columns, epsilon = 1e-6) {
   const originalIndices = [];
 
   for (let i = 0; i < columns.length; i++) {
+    const col = columns[i];
+    const isColEmpty = col.every(v => v === null || v === undefined);
+
+    if (isColEmpty) {
+      unique.push(col);
+      originalIndices.push(i);
+      continue;
+    }
+
     let isDuplicate = false;
 
     for (let j = 0; j < unique.length; j++) {
-      const a = columns[i];
-      const b = unique[j];
+      const other = unique[j];
 
-      if (a.length !== b.length) continue;
+      if (other.length !== col.length) continue;
+
+      // Don't compare against empty columns (they were preserved as-is)
+      const otherEmpty = other.every(v => v === null || v === undefined);
+      if (otherEmpty) continue;
 
       let match = true;
-      for (let k = 0; k < a.length; k++) {
-        const av = a[k];
-        const bv = b[k];
+      for (let k = 0; k < col.length; k++) {
+        const av = col[k];
+        const bv = other[k];
 
-        // Both null → match
         if (av === null && bv === null) continue;
-        // One null, one not → no match
         if (av === null || bv === null) { match = false; break; }
-        // Numeric comparison
         if (Math.abs(Number(av) - Number(bv)) > epsilon) { match = false; break; }
       }
 
@@ -39,7 +55,7 @@ export function deduplicateColumns(columns, epsilon = 1e-6) {
     }
 
     if (!isDuplicate) {
-      unique.push(columns[i]);
+      unique.push(col);
       originalIndices.push(i);
     }
   }

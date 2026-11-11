@@ -17,7 +17,6 @@ let onProcesar = null;
 let onGraficar = null;
 let columnasGlobales = null;
 
-// --- Helper: toggle panel with scroll into view ---
 function bindCollapsiblePanel(checkboxId, panelId) {
   const checkbox = document.getElementById(checkboxId);
   const panel = document.getElementById(panelId);
@@ -58,7 +57,7 @@ export function initUI(procesarFn, graficarFn) {
     if (toggleAutoPlot && toggleAutoPlot.checked) actualizarGrafico();
   };
 
-  // --- Inicializar paneles (render interno) ---
+  // --- Inicializar paneles ---
   if (document.getElementById('toggleAxesPanel')) initAxesPanel(() => actualizarGrafico());
   if (document.getElementById('toggleFramePanel')) initFramePanel(() => actualizarGrafico());
   if (document.getElementById('toggleConfigPanel')) initConfigPanel(() => actualizarGrafico());
@@ -120,14 +119,13 @@ export function initUI(procesarFn, graficarFn) {
       setLanguage(e.target.value);
       translateDOM();
 
-      // Re-render i18n-dependent panels
       initAxesPanel(() => actualizarGrafico());
       initFramePanel(() => actualizarGrafico());
       initConfigPanel(() => actualizarGrafico());
       initRangePanel(() => actualizarGrafico());
 
       if (columnasGlobales) {
-        prepararRolePanel(columnasGlobales.length, null, false, onSelectionChange);
+        prepararRolePanel(columnasGlobales.length, null, false, onSelectionChange, columnasGlobales);
         const currentPipeline = getMathPipeline();
         pipelineContainer.innerHTML = '';
         currentPipeline.forEach(op => agregarPasoPipeline(pipelineContainer, op, onSelectionChange));
@@ -199,7 +197,7 @@ export function initUI(procesarFn, graficarFn) {
           `  columns: ${finalColumns.length} (from ${result.columns.length})\n` +
           `  rows: ${result.totalRows} (failed: ${result.failedRows})\n`;
 
-        prepararRolePanel(finalColumns.length, finalIndices, autoSelect, onSelectionChange);
+        prepararRolePanel(finalColumns.length, finalIndices, autoSelect, onSelectionChange, finalColumns);
 
         if (rolePanel) rolePanel.style.display = 'flex';
         if (exportGroup) exportGroup.style.display = 'flex';
@@ -277,7 +275,6 @@ export function initUI(procesarFn, graficarFn) {
     });
   }
 
-  // --- Redraw orchestrator ---
   function actualizarGrafico() {
     if (!columnasGlobales) return;
     const selectX = document.getElementById('selectX');
