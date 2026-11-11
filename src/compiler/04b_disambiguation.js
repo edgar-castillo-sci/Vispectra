@@ -1,8 +1,10 @@
 // ============================================================
-// PHASE 04b — DISAMBIGUATION (v5.2)
+// PHASE 04b — DISAMBIGUATION (v5.3)
 // ============================================================
 
 import { lex } from './02_lexer.js';
+
+const MAX_COMMAS = 20;
 
 export function detectAmbiguities(blocks, lines) {
   const diagnostics = [];
@@ -18,9 +20,53 @@ export function detectAmbiguities(blocks, lines) {
       continue;
     }
 
+    // R98: Si el bloque contiene algún punto decimal ('n'), las comas
+    // SOLO pueden ser separadoras. No hay forma de que una coma sea
+    // decimal si un valor de la misma fila ya usa punto para decimales.
+    const hasN = structures.some(s => s.includes('n'));
+    if (hasN) {
+      const allSep = Array(commaCount).fill('sep');
+      let columns = -1;
+      if (structures.length > 0) {
+        const result = countColumns(structures[0], allSep);
+        if (result.ok) columns = result.columns;
+      }
+      enriched.push({
+        ...block,
+        resolutions: [{ id: allSep.join(','), commas: allSep, columns, isDefault: true }],
+        isAmbiguous: false,
+      });
+      continue;
+    }
+
+    // Safety: evitar explosión exponencial en bloques patológicos.
+    if (commaCount > MAX_COMMAS) {
+      const allSep = Array(commaCount).fill('sep');
+      let columns = -1;
+      if (structures.length > 0) {
+        const result = countColumns(structures[0], allSep);
+        if (result.ok) columns = result.columns;
+      }
+      diagnostics.push({
+        severity: 'warn',
+        code: 'TOO_MANY_COMMAS',
+        params: {
+          pattern: block.pattern.substring(0, 60) + '...',
+          commas: commaCount,
+          max: MAX_COMMAS,
+          fallback: 'all-sep',
+        },
+      });
+      enriched.push({
+        ...block,
+        resolutions: [{ id: allSep.join(','), commas: allSep, columns, isDefault: true }],
+        isAmbiguous: false,
+      });
+      continue;
+    }
+
     const resolutions = enumerateResolutions(structures, commaCount, hasHardSeparator);
 
-    // Detectar si el bloque es basura (falla en su propia resolución)
     let isGarbage = false;
     if (resolutions.length > 0) {
       const defaultRes = resolutions[0];
@@ -28,9 +74,7 @@ export function detectAmbiguities(blocks, lines) {
       for (const struct of structures) {
         if (!countColumns(struct, defaultRes.commas).ok) failCount++;
       }
-      if (failCount > structures.length / 2) {
-        isGarbage = true;
-      }
+      if (failCount > structures.length / 2) isGarbage = true;
     }
 
     if (isGarbage) {
@@ -66,10 +110,6 @@ export function detectAmbiguities(blocks, lines) {
   };
 }
 
-// ------------------------------------------------------------
-// Helpers
-// ------------------------------------------------------------
-
 function countCommas(pattern) {
   let n = 0;
   for (const ch of pattern) if (ch === ',') n++;
@@ -88,18 +128,11 @@ function enumerateResolutions(structures, commaCount, hasHardSeparator) {
   if (hasHardSeparator) {
     const allDec = Array(commaCount).fill('dec');
     let columns = -1;
-
     if (structures.length > 0) {
       const result = countColumns(structures[0], allDec);
       if (result.ok) columns = result.columns;
     }
-
-    return [{
-      id: allDec.join(','),
-      commas: allDec,
-      columns,
-      isDefault: true,
-    }];
+    return [{ id: allDec.join(','), commas: allDec, columns, isDefault: true }];
   }
 
   const total = 1 << commaCount;
@@ -122,12 +155,7 @@ function enumerateResolutions(structures, commaCount, hasHardSeparator) {
     }
 
     if (valid) {
-      resolutions.push({
-        id: commas.join(','),
-        commas,
-        columns,
-        isDefault: false,
-      });
+      resolutions.push({ id: commas.join(','), commas, columns, isDefault: false });
     }
   }
 
@@ -168,10 +196,7 @@ function countColumns(structure, resolution) {
       columns++;
       i++;
     } else if (ch === '|') {
-      if (pending) {
-        columns++;
-        pending = false;
-      }
+      if (pending) { columns++; pending = false; }
       i++;
     } else if (ch === ',') {
       if (commaIdx >= resolution.length) return { ok: false };
