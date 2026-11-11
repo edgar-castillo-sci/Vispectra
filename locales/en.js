@@ -130,5 +130,8 @@ export default {
     redo_all: "Redo",
       reset_x: "Reset X range",
     reset_y: "Reset Y range",
-      show_empty: "Show empty",
+    show_empty: "Show empty",
+    axis_invert: "Invert axis",
+    axis_flip: "Flip data",
+      lock_styles: "Lock styles",
 };

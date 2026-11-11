@@ -128,5 +128,8 @@ export default {
     redo_all: "Rehacer",
       reset_x: "Reiniciar rango de X",
     reset_y: "Reiniciar rango de Y",
-      show_empty: "Mostrar vacías",
+    show_empty: "Mostrar vacías",
+    axis_invert: "Invertir eje",
+    axis_flip: "Invertir datos",
+      lock_styles: "Fijar estilos",
 };

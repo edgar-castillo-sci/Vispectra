@@ -4,7 +4,7 @@ import { applyPipeline } from './services/pipeline.js';
 import { exportarCSV, exportarPlot } from './services/export.js';
 import { openDisambiguationModal } from './ui/disambiguationModal.js';
 import { openColumnsModal } from './ui/columnsModal.js';
-import { prepararRolePanel } from './ui/rolePanel.js';
+import { prepararRolePanel, recompactSeriesConfig } from './ui/rolePanel.js';
 import { agregarPasoPipeline, getMathPipeline } from './ui/pipelinePanel.js';
 import { initAxesPanel } from './ui/axesPanel.js';
 import { initFramePanel } from './ui/framePanel.js';
@@ -53,23 +53,40 @@ export function initUI(procesarFn, graficarFn) {
 
   if (!zona || !input || !botonProcesar) return;
 
+  const getActiveYIndices = () => {
+    return Array.from(document.querySelectorAll('.checkbox-y:checked'))
+      .map(cb => parseInt(cb.value))
+      .filter(i => {
+        const col = columnasGlobales?.[i];
+        if (!col) return false;
+        for (let k = 0; k < col.length; k++) {
+          if (col[k] !== null && col[k] !== undefined) return true;
+        }
+        return false;
+      });
+  };
+
   const onSelectionChange = () => {
     if (toggleAutoPlot && toggleAutoPlot.checked) actualizarGrafico();
   };
 
-  // --- Inicializar paneles ---
+  const onSeriesToggle = () => {
+    if (!state.seriesConfigLocked && columnasGlobales) {
+      recompactSeriesConfig(columnasGlobales, getActiveYIndices());
+    }
+    onSelectionChange();
+  };
+
   if (document.getElementById('toggleAxesPanel')) initAxesPanel(() => actualizarGrafico());
   if (document.getElementById('toggleFramePanel')) initFramePanel(() => actualizarGrafico());
   if (document.getElementById('toggleConfigPanel')) initConfigPanel(() => actualizarGrafico());
   if (document.getElementById('rangePanel')) initRangePanel(() => actualizarGrafico());
 
-  // --- Toggles con scroll into view ---
   bindCollapsiblePanel('toggleAxesPanel', 'axesPanel');
   bindCollapsiblePanel('toggleFramePanel', 'framePanel');
   bindCollapsiblePanel('toggleConfigPanel', 'configPanel');
   bindCollapsiblePanel('toggleAppearancePanel', 'appearancePanel');
 
-  // --- Graph Appearance panel logic ---
   const inputGraphTitle = document.getElementById('inputGraphTitle');
   const chkShowLegend = document.getElementById('chkShowLegend');
   const selectLegendPos = document.getElementById('selectLegendPos');
@@ -113,19 +130,17 @@ export function initUI(procesarFn, graficarFn) {
     updateLayoutVisibility();
   }
 
-  // --- Language selector ---
   if (langSelector) {
     langSelector.addEventListener('change', (e) => {
       setLanguage(e.target.value);
       translateDOM();
-
       initAxesPanel(() => actualizarGrafico());
       initFramePanel(() => actualizarGrafico());
       initConfigPanel(() => actualizarGrafico());
       initRangePanel(() => actualizarGrafico());
 
       if (columnasGlobales) {
-        prepararRolePanel(columnasGlobales.length, null, false, onSelectionChange, columnasGlobales);
+        prepararRolePanel(columnasGlobales.length, null, false, onSelectionChange, columnasGlobales, onSeriesToggle);
         const currentPipeline = getMathPipeline();
         pipelineContainer.innerHTML = '';
         currentPipeline.forEach(op => agregarPasoPipeline(pipelineContainer, op, onSelectionChange));
@@ -133,7 +148,6 @@ export function initUI(procesarFn, graficarFn) {
     });
   }
 
-  // --- Drag & Drop ---
   zona.addEventListener('click', () => input.click());
   input.addEventListener('change', (e) => {
     actualizarArchivos(e.target.files, salida);
@@ -144,7 +158,6 @@ export function initUI(procesarFn, graficarFn) {
   );
   zona.addEventListener('drop', (e) => actualizarArchivos(e.dataTransfer.files, salida));
 
-  // --- Process button ---
   botonProcesar.addEventListener('click', async () => {
     if (archivos.length === 0) return (salida.textContent = t('status_waiting'));
     salida.textContent = t('status_processing');
@@ -197,7 +210,7 @@ export function initUI(procesarFn, graficarFn) {
           `  columns: ${finalColumns.length} (from ${result.columns.length})\n` +
           `  rows: ${result.totalRows} (failed: ${result.failedRows})\n`;
 
-        prepararRolePanel(finalColumns.length, finalIndices, autoSelect, onSelectionChange, finalColumns);
+        prepararRolePanel(finalColumns.length, finalIndices, autoSelect, onSelectionChange, finalColumns, onSeriesToggle);
 
         if (rolePanel) rolePanel.style.display = 'flex';
         if (exportGroup) exportGroup.style.display = 'flex';
@@ -210,7 +223,6 @@ export function initUI(procesarFn, graficarFn) {
     }
   });
 
-  // --- Add operation ---
   if (btnAddOp) {
     btnAddOp.addEventListener('click', () => {
       agregarPasoPipeline(pipelineContainer, null, onSelectionChange);
@@ -218,7 +230,6 @@ export function initUI(procesarFn, graficarFn) {
     });
   }
 
-  // --- Auto-plot toggle ---
   if (toggleAutoPlot) {
     toggleAutoPlot.addEventListener('change', (e) => {
       if (botonGraficar) botonGraficar.style.display = e.target.checked ? 'none' : 'block';
@@ -226,7 +237,6 @@ export function initUI(procesarFn, graficarFn) {
     });
   }
 
-  // --- Export plot (SVG forced mode) ---
   if (botonExportar) {
     botonExportar.addEventListener('click', async () => {
       const prevText = salida.textContent;
@@ -253,24 +263,22 @@ export function initUI(procesarFn, graficarFn) {
     });
   }
 
-  // --- Export CSV raw ---
   if (botonExportCsvRaw) {
     botonExportCsvRaw.addEventListener('click', () => {
       const selectX = document.getElementById('selectX');
       if (!selectX) return;
       const xIndex = parseInt(selectX.value);
-      const yIndices = Array.from(document.querySelectorAll('.checkbox-y:checked')).map(cb => parseInt(cb.value));
+      const yIndices = getActiveYIndices();
       exportarCSV(columnasGlobales, xIndex, yIndices, getMathPipeline(), false);
     });
   }
 
-  // --- Export CSV processed ---
   if (botonExportCsvProcessed) {
     botonExportCsvProcessed.addEventListener('click', () => {
       const selectX = document.getElementById('selectX');
       if (!selectX) return;
       const xIndex = parseInt(selectX.value);
-      const yIndices = Array.from(document.querySelectorAll('.checkbox-y:checked')).map(cb => parseInt(cb.value));
+      const yIndices = getActiveYIndices();
       exportarCSV(columnasGlobales, xIndex, yIndices, getMathPipeline(), true);
     });
   }
@@ -280,7 +288,7 @@ export function initUI(procesarFn, graficarFn) {
     const selectX = document.getElementById('selectX');
     if (!selectX) return;
     const xIndex = parseInt(selectX.value);
-    const yIndices = Array.from(document.querySelectorAll('.checkbox-y:checked')).map(cb => parseInt(cb.value));
+    const yIndices = getActiveYIndices();
 
     const pipeline = getMathPipeline();
     const processedColumns = applyPipeline(columnasGlobales, xIndex, yIndices, pipeline);

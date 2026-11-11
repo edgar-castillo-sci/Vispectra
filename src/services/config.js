@@ -3,34 +3,58 @@ import { parseYAML, stringifyYAML } from './yaml.js';
 
 export function stateToConfig() {
   return {
-    version: 1,
+    version: 2,
+    columns: {
+      x: state.columnConfig.x,
+      discard: state.columnConfig.discard.slice(),
+      selected_y: state.columnConfig.selectedY,
+    },
     frame: {
       width: state.frame.width,
       height: state.frame.height,
-      mode: state.frame.mode
+      mode: state.frame.mode,
     },
     axis: {
       x: { ...state.axisConfig.x },
-      y: { ...state.axisConfig.y }
+      y: { ...state.axisConfig.y },
     },
     graph: {
       title: state.graphConfig.title || '',
-      legend: { ...state.graphConfig.legend }
+      legend: { ...state.graphConfig.legend },
     },
     series: Object.fromEntries(
       Object.entries(state.seriesConfig).map(([k, v]) => [k, { ...v }])
     ),
+    series_locked: state.seriesConfigLocked === true,
     view: {
       minX: state.viewLimits.minX,
       maxX: state.viewLimits.maxX,
       minY: state.viewLimits.minY,
-      maxY: state.viewLimits.maxY
-    }
+      maxY: state.viewLimits.maxY,
+    },
   };
 }
 
 export function configToState(config) {
   if (!config || typeof config !== 'object') return;
+
+  if (config.columns) {
+    const c = config.columns;
+    if (c.x !== undefined && c.x !== null) {
+      const parsed = parseInt(c.x);
+      state.columnConfig.x = Number.isInteger(parsed) ? parsed : null;
+    } else if (c.x === null) {
+      state.columnConfig.x = null;
+    }
+    if (Array.isArray(c.discard)) {
+      state.columnConfig.discard = c.discard
+        .map(v => parseInt(v))
+        .filter(v => Number.isInteger(v));
+    }
+    if (c.selected_y !== undefined) {
+      state.columnConfig.selectedY = c.selected_y;
+    }
+  }
 
   if (config.frame) {
     if (typeof config.frame.width === 'number') state.frame.width = config.frame.width;
@@ -57,6 +81,10 @@ export function configToState(config) {
     });
   }
 
+  if (typeof config.series_locked === 'boolean') {
+    state.seriesConfigLocked = config.series_locked;
+  }
+
   if (config.view) {
     const v = config.view;
     const isValid = ['minX', 'maxX', 'minY', 'maxY'].every(
@@ -67,9 +95,9 @@ export function configToState(config) {
         minX: v.minX ?? null,
         maxX: v.maxX ?? null,
         minY: v.minY ?? null,
-        maxY: v.maxY ?? null
+        maxY: v.maxY ?? null,
       };
-      state.viewHistory = [{ ...state.viewLimits }];
+      state.viewHistory = [{ limits: { ...state.viewLimits }, axis: 'xy' }];
       state.historyIndex = 0;
     }
   }

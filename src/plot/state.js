@@ -1,7 +1,10 @@
 export const state = {
+  // --- View ---
   viewLimits: { minX: null, maxX: null, minY: null, maxY: null },
   viewHistory: [{ limits: { minX: null, maxX: null, minY: null, maxY: null }, axis: 'xy' }],
   historyIndex: 0,
+
+  // --- Interaction ---
   currentTool: 'zoom',
   isPinned: false,
   pinnedX: null,
@@ -10,24 +13,57 @@ export const state = {
   dragStart: { x: 0, y: 0 },
   panStartLimits: null,
 
+  // --- Frame ---
   frame: { width: 800, height: 500, mode: 'stretch' },
-
   exportMode: false,
   zoomControlsHidden: false,
 
-  axisConfig: {
-    x: { scale: 'linear', mode: 'auto', count: 5, step: 0.5, format: 'auto', minor: 0, label: '', showMinorLabels: false },
-    y: { scale: 'linear', mode: 'auto', count: 5, step: 0.5, format: 'auto', minor: 0, label: '', showMinorLabels: false }
+  // --- Column roles (from YAML) ---
+  columnConfig: {
+    x: null,
+    discard: [],
+    selectedY: null,
   },
 
+  // --- Axes ---
+  axisConfig: {
+    x: {
+      scale: 'linear',
+      mode: 'auto',
+      count: 5,
+      step: 0.5,
+      format: 'auto',
+      minor: 0,
+      label: '',
+      showMinorLabels: false,
+      invert: false,
+    },
+    y: {
+      scale: 'linear',
+      mode: 'auto',
+      count: 5,
+      step: 0.5,
+      format: 'auto',
+      minor: 0,
+      label: '',
+      showMinorLabels: false,
+      invert: false,
+    },
+  },
+
+  // --- Graph appearance ---
   graphConfig: {
     title: '',
-    legend: { show: false, position: 'top-right', layout: 'vertical' }
+    legend: { show: false, position: 'top-right', layout: 'vertical' },
   },
 
+  // --- Series style ---
   seriesConfig: {},
+  seriesConfigLocked: false,
+
+  // --- Palettes ---
   defaultColors: ['#000000', '#cc0000', '#0055cc', '#009933', '#6600cc', '#ff9900', '#00cccc', '#cc00cc'],
-  defaultStyles: ['solid', 'dashed', 'dotted', 'dashdot']
+  defaultStyles: ['solid', 'dashed', 'dotted', 'dashdot'],
 };
 
 export function resetView() {
@@ -42,10 +78,9 @@ export function clearPin() {
   state.pinnedX = null;
   state.pinnedBounds = null;
   const spans = document.querySelectorAll('.y-val-display');
-  spans.forEach(span => span.textContent = '');
+  spans.forEach(span => { span.textContent = ''; });
 }
 
-// axis: 'x' | 'y' | 'xy' (cambios de zoom/pan afectan ambos ejes)
 export function pushHistory(newLimits, axis = 'xy') {
   state.viewHistory = state.viewHistory.slice(0, state.historyIndex + 1);
   state.viewHistory.push({ limits: { ...newLimits }, axis });
@@ -70,16 +105,13 @@ export function redo() {
   return false;
 }
 
-// Revierte SOLO el eje indicado, buscando hacia atrás el último step que lo afectó.
 export function undoAxis(axis) {
   const keys = axis === 'x' ? ['minX', 'maxX'] : ['minY', 'maxY'];
-
   for (let i = state.historyIndex - 1; i >= 0; i--) {
     const step = state.viewHistory[i];
     if (step.axis === axis || step.axis === 'xy') {
       const newLimits = { ...state.viewLimits };
       keys.forEach(k => { newLimits[k] = step.limits[k]; });
-
       state.viewLimits = newLimits;
       state.viewHistory = state.viewHistory.slice(0, state.historyIndex + 1);
       state.viewHistory.push({ limits: { ...newLimits }, axis });
@@ -88,6 +120,15 @@ export function undoAxis(axis) {
     }
   }
   return false;
+}
+
+export function resetAxis(axis) {
+  const newLimits = { ...state.viewLimits };
+  if (axis === 'x') { newLimits.minX = null; newLimits.maxX = null; }
+  else if (axis === 'y') { newLimits.minY = null; newLimits.maxY = null; }
+  state.viewLimits = newLimits;
+  pushHistory(newLimits, axis);
+  return true;
 }
 
 export function adjustViewForFrameChange(oldWidth, oldHeight, newWidth, newHeight, mode) {
@@ -114,19 +155,6 @@ export function adjustViewForFrameChange(oldWidth, oldHeight, newWidth, newHeigh
 
   state.viewLimits = {
     minX: xAdj.min, maxX: xAdj.max,
-    minY: yAdj.min, maxY: yAdj.max
+    minY: yAdj.min, maxY: yAdj.max,
   };
-}
-export function resetAxis(axis) {
-  const newLimits = { ...state.viewLimits };
-  if (axis === 'x') {
-    newLimits.minX = null;
-    newLimits.maxX = null;
-  } else if (axis === 'y') {
-    newLimits.minY = null;
-    newLimits.maxY = null;
-  }
-  state.viewLimits = newLimits;
-  pushHistory(newLimits, axis);
-  return true;
 }
