@@ -1,3 +1,7 @@
+// ============================================================
+// PLOT — AXES GENERATOR
+// ============================================================
+
 function getNiceNumber(x) {
   const exp = Math.floor(Math.log10(x));
   const f = x / Math.pow(10, exp);
@@ -16,18 +20,15 @@ export function generateTicks(min, max, config, isLog = false) {
   let minorTicks = [];
   const range = max - min;
 
-  // --- LÓGICA PARA ESCALA LOGARÍTMICA ---
   if (isLog) {
     const startExp = Math.floor(min);
     const endExp = Math.ceil(max);
 
-    // Ticks mayores: potencias de 10
     for (let i = startExp; i <= endExp; i++) {
       if (i >= min - 0.1 && i <= max + 0.1) ticks.push(i);
     }
     if (ticks.length === 0) ticks = [startExp, endExp];
 
-    // Ticks menores: Solo si config.minor > 0
     if (config.minor > 0) {
       for (let i = startExp; i < endExp; i++) {
         for (let j = 2; j <= 9; j++) {
@@ -39,20 +40,17 @@ export function generateTicks(min, max, config, isLog = false) {
     return { ticks, minorTicks, decimals: 2 };
   }
 
-  // --- LÓGICA PARA ESCALA LINEAL ---
   if (config.mode === 'count') {
     const step = range / (config.count - 1);
     for (let i = 0; i < config.count; i++) ticks.push(min + step * i);
-  }
-  else if (config.mode === 'step' || config.mode === 'nice') {
+  } else if (config.mode === 'step' || config.mode === 'nice') {
     let step = config.step;
     if (config.mode === 'nice') step = getNiceNumber(step);
     const start = Math.ceil(min / step) * step;
     for (let val = start; val <= max + step * 0.1; val += step) {
       ticks.push(Number(val.toFixed(10)));
     }
-  }
-  else {
+  } else {
     const roughStep = range / 6;
     const step = getNiceNumber(roughStep);
     const start = Math.floor(min / step) * step;
@@ -91,19 +89,48 @@ export function generateTicks(min, max, config, isLog = false) {
   return { ticks, minorTicks, decimals };
 }
 
+// ------------------------------------------------------------
+// Backward-compat: string version (no superscripts)
+// ------------------------------------------------------------
 export function formatLabel(val, decimals, format, isLog) {
+  const parts = formatLabelParts(val, decimals, format, isLog, false);
+  return parts.pre + (parts.sup !== null ? `^${parts.sup}` : '');
+}
+
+// ------------------------------------------------------------
+// Structured label: { pre, sup }. Renderer creates <tspan> for sup.
+// ------------------------------------------------------------
+export function formatLabelParts(val, decimals, format, isLog, useSuperExponent = true) {
+  // Log scale: 'val' is the exponent (e.g. -2, -1, 0, 1, 2)
   if (format === 'auto' && isLog) {
-    const exp = Math.round(Math.log10(val));
-    if (exp === 0) return '1';
-    if (exp === 1) return '10';
-    return `10^${exp}`;
+    const exp = Math.round(val);
+    if (!useSuperExponent) {
+      if (exp === 0) return { pre: '1', sup: null };
+      if (exp === 1) return { pre: '10', sup: null };
+      return { pre: `10^${exp}`, sup: null };
+    }
+    if (exp === 0) return { pre: '1', sup: null };
+    if (exp === 1) return { pre: '10', sup: null };
+    return { pre: '10', sup: String(exp) };
   }
 
-  if (format === 'fixed') return val.toFixed(decimals);
-  if (format === 'scientific') return val.toExponential(2);
-
-  if (Math.abs(val) > 0 && (Math.abs(val) < 0.01 || Math.abs(val) >= 10000)) {
-    return val.toExponential(2);
+  // Linear: produce a base string first
+  let str;
+  if (format === 'fixed') str = val.toFixed(decimals);
+  else if (format === 'scientific') str = val.toExponential(2);
+  else if (Math.abs(val) > 0 && (Math.abs(val) < 0.01 || Math.abs(val) >= 10000)) {
+    str = val.toExponential(2);
+  } else {
+    str = val.toFixed(decimals);
   }
-  return val.toFixed(decimals);
+
+  // Split scientific notation "1.5e-3" → { pre: "1.5×10", sup: "-3" }
+  if (useSuperExponent) {
+    const m = str.match(/^(-?\d+(?:\.\d+)?)[eE]([+-]?\d+)$/);
+    if (m) {
+      return { pre: `${m[1]}×10`, sup: m[2].replace(/^\+/, '') };
+    }
+  }
+
+  return { pre: str, sup: null };
 }

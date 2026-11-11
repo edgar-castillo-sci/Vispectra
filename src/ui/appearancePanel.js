@@ -1,136 +1,144 @@
+import { state } from '../plot/state.js';
+import { t } from '../i18n.js';
 
-export default {
-  // === App ===
-  app_title: "Vispectra",
-  drop_zone: "Arrastra tus espectros aquí o haz clic para explorar",
+export function initAppearancePanel(onUpdate) {
+  const container = document.getElementById('appearancePanel');
+  if (!container) return;
 
-  // === Status ===
-  status_waiting: "Esperando archivos...",
-  status_processing: "Procesando...",
+  const group = (titleKey, inner) => `
+    <div style="border-top: 1px dashed #eee; padding-top: 8px; margin-top: 8px;">
+      <div style="font-size: 0.75rem; font-weight: bold; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+        ${t(titleKey)}
+      </div>
+      ${inner}
+    </div>
+  `;
 
-  // === Buttons ===
-  btn_process: "Procesar Archivo",
-  btn_export_csv_raw: "CSV Crudo",
-  btn_add_op: "+ Agregar Operación",
-  btn_update_plot: "Actualizar Gráfico",
-  btn_export_graph: "Exportar Gráfico",
-  btn_export_csv_proc: "CSV Procesado",
+  const row = (labelKey, inner) => `
+    <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.85rem; color: #333; gap: 8px;">
+      <span>${t(labelKey)}</span>
+      ${inner}
+    </label>
+  `;
 
-  // === Role Panel ===
-  role_title: "Asignación de Roles",
-  auto_plot: "Auto-graficar",
-  select_x: "Eje X:",
-  select_y: "Series Y:",
-  only_mode: "Modo Solo",
-  col_prefix: "Columna",
-  alert_select_y: "Selecciona al menos una serie Y.",
+  container.innerHTML = `
+    <div style="padding: 5px;">
+      <!-- Title -->
+      <label style="display: block; margin-bottom: 8px;">
+        <span style="font-size: 0.85rem; color: #333;">${t('appearance_title')}:</span>
+        <input type="text" id="ap-title" placeholder="${t('appearance_title_placeholder')}" style="width: 100%; padding: 4px; margin-top: 4px; box-sizing: border-box;">
+      </label>
 
-  // === Math Pipeline ===
-  math_pipeline: "Pipeline Matemático (Arriba a Abajo):",
-  op_none: "Ninguna",
-  op_smooth: "Suavizado (Gaussiano)",
-  op_derivative: "Derivada",
-  op_baseline: "Corrección de Línea Base",
-  op_minmax: "Normalizar (Mín-Máx)",
-  op_max: "Normalizar (Máximo)",
-  param_window: "Ventana:",
-  param_start: "Inicio:",
-  param_end: "Fin:",
+      ${group('appearance_show_legend', `
+        ${row('appearance_show_legend', `<input type="checkbox" id="ap-legend-show">`)}
+        ${row('appearance_position', `
+          <select id="ap-legend-pos" style="width: 150px; padding: 2px;">
+            <option value="top-right">${t('appearance_pos_top_right')}</option>
+            <option value="top-left">${t('appearance_pos_top_left')}</option>
+            <option value="bottom-right">${t('appearance_pos_bottom_right')}</option>
+            <option value="bottom-left">${t('appearance_pos_bottom_left')}</option>
+            <option value="right">${t('appearance_pos_right')}</option>
+            <option value="bottom">${t('appearance_pos_bottom')}</option>
+          </select>
+        `)}
+        ${row('appearance_layout', `
+          <select id="ap-legend-layout" style="width: 150px; padding: 2px;">
+            <option value="vertical">${t('appearance_layout_vertical')}</option>
+            <option value="horizontal">${t('appearance_layout_horizontal')}</option>
+          </select>
+        `)}
+        ${row('style_legend_frame', `
+          <select id="ap-legend-frame" style="width: 150px; padding: 2px;">
+            <option value="none">${t('style_legend_frame_none')}</option>
+            <option value="thin">${t('style_legend_frame_thin')}</option>
+            <option value="default">${t('style_legend_frame_default')}</option>
+          </select>
+        `)}
+      `)}
 
-  // === Panels ===
-  panel_math: "Pipeline Matemático",
-  panel_axes: "Ajustes de Ejes",
-  panel_frame: "Lienzo y Marco",
-  panel_config: "Config (YAML)",
-  panel_appearance: "Apariencia del Gráfico",
+      ${group('style_title', `
+        ${row('style_font', `
+          <select id="ap-font" style="width: 150px; padding: 2px;">
+            <option value="cm">${t('style_font_cm')}</option>
+            <option value="serif">${t('style_font_serif')}</option>
+            <option value="sans">${t('style_font_sans')}</option>
+          </select>
+        `)}
+        ${row('style_frame', `<input type="checkbox" id="ap-frame">`)}
+        ${row('style_tick_direction', `
+          <select id="ap-tick-dir" style="width: 150px; padding: 2px;">
+            <option value="in">${t('style_tick_in')}</option>
+            <option value="out">${t('style_tick_out')}</option>
+            <option value="inout">${t('style_tick_inout')}</option>
+          </select>
+        `)}
+        ${row('style_mirror_ticks', `<input type="checkbox" id="ap-mirror-ticks">`)}
+        ${row('style_grid', `
+          <select id="ap-grid" style="width: 150px; padding: 2px;">
+            <option value="none">${t('style_grid_none')}</option>
+            <option value="major">${t('style_grid_major')}</option>
+            <option value="both">${t('style_grid_both')}</option>
+          </select>
+        `)}
+        ${row('style_super_exponent', `<input type="checkbox" id="ap-super-exp">`)}
+      `)}
+    </div>
+  `;
 
-  // === Axis Panel ===
-  axis_x: "Eje X",
-  axis_y: "Eje Y",
-  axis_label: "Etiqueta",
-  axis_scale: "Escala",
-  axis_scale_linear: "Lineal",
-  axis_scale_log: "Log10",
-  axis_mode: "Modo",
-  axis_mode_auto: "Auto (Bonito)",
-  axis_mode_count: "Cantidad Fija",
-  axis_mode_nice: "Paso Bonito Forzado",
-  axis_mode_step: "Paso Exacto",
-  axis_count: "Cantidad",
-  axis_step: "Paso",
-  axis_minors: "Menores",
-  axis_show_minor_labels: "Mostrar etiquetas menores",
-  axis_format: "Formato",
-  axis_format_auto: "Auto",
-  axis_format_fixed: "Decimales fijos",
-  axis_format_scientific: "Científico (1e-2)",
+  // ── Grab elements ──
+  const elTitle = document.getElementById('ap-title');
+  const elLegendShow = document.getElementById('ap-legend-show');
+  const elLegendPos = document.getElementById('ap-legend-pos');
+  const elLegendLayout = document.getElementById('ap-legend-layout');
+  const elLegendFrame = document.getElementById('ap-legend-frame');
+  const elFont = document.getElementById('ap-font');
+  const elFrame = document.getElementById('ap-frame');
+  const elTickDir = document.getElementById('ap-tick-dir');
+  const elMirrorTicks = document.getElementById('ap-mirror-ticks');
+  const elGrid = document.getElementById('ap-grid');
+  const elSuperExp = document.getElementById('ap-super-exp');
 
-  // === Frame Panel ===
-  frame_preset: "Preajuste",
-  frame_preset_16_10: "Horizontal 16:10 (Default)",
-  frame_preset_16_9: "Horizontal 16:9 (Presentaciones)",
-  frame_preset_21_9: "Horizontal 21:9 (Ultra-ancho)",
-  frame_preset_a4l: "Horizontal A4 (Impresión)",
-  frame_preset_1_1: "Cuadrado 1:1",
-  frame_preset_a4p: "Vertical A4 (Impresión)",
-  frame_preset_9_16: "Vertical 9:16 (Móvil)",
-  frame_preset_custom: "Personalizado...",
-  frame_w: "An",
-  frame_h: "Al",
-  frame_min_max: "Mín: 200x200 / Máx: 3000x3000",
-  frame_mode: "Modo",
-  frame_mode_stretch: "Estirar (llenar)",
-  frame_mode_extend: "Extender (ver más al agrandar)",
-  frame_mode_crop: "Recortar (ver menos al reducir)",
+  // ── Sync from state ──
+  const syncUI = () => {
+    const g = state.graphConfig;
+    elTitle.value = g.title || '';
+    elLegendShow.checked = g.legend.show === true;
+    elLegendPos.value = g.legend.position;
+    elLegendLayout.value = g.legend.layout || 'vertical';
+    elLegendFrame.value = g.legendFrame || 'thin';
+    elFont.value = g.fontFamily || 'cm';
+    elFrame.checked = g.frame !== false;
+    elTickDir.value = g.tickDirection || 'in';
+    elMirrorTicks.checked = g.mirrorTicks !== false;
+    elGrid.value = g.grid || 'none';
+    elSuperExp.checked = g.useSuperExponent !== false;
 
-  // === Appearance Panel ===
-  appearance_title: "Título",
-  appearance_title_placeholder: "Título de mi gráfico",
-  appearance_show_legend: "Mostrar Leyenda",
-  appearance_position: "Posición",
-  appearance_pos_top_right: "Arriba Derecha (Caja)",
-  appearance_pos_top_left: "Arriba Izquierda (Caja)",
-  appearance_pos_bottom_right: "Abajo Derecha (Caja)",
-  appearance_pos_bottom_left: "Abajo Izquierda (Caja)",
-  appearance_pos_right: "Derecha (Columnas)",
-  appearance_pos_bottom: "Abajo (Filas)",
-  appearance_layout: "Disposición",
-  appearance_layout_vertical: "Vertical",
-  appearance_layout_horizontal: "Horizontal",
+    // Layout selector only applies to corner positions
+    const isCorner = ['top-right', 'top-left', 'bottom-right', 'bottom-left'].includes(g.legend.position);
+    elLegendLayout.disabled = !isCorner;
+    elLegendLayout.style.opacity = isCorner ? '1' : '0.5';
+  };
 
-  // === Config Panel ===
-  config_save: "Guardar .yaml",
-  config_load: "Cargar .yaml",
-  config_apply: "Aplicar",
-  config_placeholder: "# Pega aquí la configuración YAML, o carga un archivo arriba",
-  config_saved: "Configuración guardada.",
-  config_loaded: "Configuración cargada en el área de texto. Presiona Aplicar.",
-  config_applied: "Configuración aplicada.",
-  config_empty: "La configuración está vacía.",
+  // ── Handlers ──
+  const handle = (fn) => (e) => {
+    fn(e);
+    onUpdate();
+  };
 
-  // === Range Display ===
-  range_x: "X",
-  range_y: "Y",
+  elTitle.addEventListener('input', handle((e) => { state.graphConfig.title = e.target.value; }));
+  elLegendShow.addEventListener('change', handle((e) => { state.graphConfig.legend.show = e.target.checked; }));
+  elLegendPos.addEventListener('change', handle((e) => {
+    state.graphConfig.legend.position = e.target.value;
+    syncUI();
+  }));
+  elLegendLayout.addEventListener('change', handle((e) => { state.graphConfig.legend.layout = e.target.value; }));
+  elLegendFrame.addEventListener('change', handle((e) => { state.graphConfig.legendFrame = e.target.value; }));
+  elFont.addEventListener('change', handle((e) => { state.graphConfig.fontFamily = e.target.value; }));
+  elFrame.addEventListener('change', handle((e) => { state.graphConfig.frame = e.target.checked; }));
+  elTickDir.addEventListener('change', handle((e) => { state.graphConfig.tickDirection = e.target.value; }));
+  elMirrorTicks.addEventListener('change', handle((e) => { state.graphConfig.mirrorTicks = e.target.checked; }));
+  elGrid.addEventListener('change', handle((e) => { state.graphConfig.grid = e.target.value; }));
+  elSuperExp.addEventListener('change', handle((e) => { state.graphConfig.useSuperExponent = e.target.checked; }));
 
-  // === Export ===
-  export_preparing: "Preparando exportación SVG...",
-  export_exporting: "Exportando...",
-    export_failed: "Exportación fallida",
-      range_pan_left: "Mover a la izquierda",
-  range_pan_right: "Mover a la derecha",
-  range_pan_up: "Mover arriba",
-  range_pan_down: "Mover abajo",
-    range_reset: "Reiniciar vista",
-      range_shift_x: "Desplazar X por esta cantidad (Enter para aplicar)",
-    range_shift_y: "Desplazar Y por esta cantidad (Enter para aplicar)",
-      undo_all: "Deshacer (cualquier eje)",
-  undo_x: "Deshacer solo X",
-  undo_y: "Deshacer solo Y",
-    redo_all: "Rehacer",
-      reset_x: "Reiniciar rango de X",
-    reset_y: "Reiniciar rango de Y",
-    show_empty: "Mostrar vacías",
-    axis_invert: "Invertir eje",
-    axis_flip: "Invertir datos",
-      lock_styles: "Fijar estilos",
-};
+  syncUI();
+}

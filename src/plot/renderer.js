@@ -1,33 +1,45 @@
-import { generateTicks, formatLabel } from './axes.js';
+import { generateTicks, formatLabelParts } from './axes.js';
 import { state } from './state.js';
 import { downsampleMinMaxLTTB } from './downsampler.js';
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
+const getFontStack = (family) => {
+  if (family === 'cm') return "'KaTeX_Main', 'Latin Modern Roman', 'CMU Serif', 'Computer Modern', 'Times New Roman', Times, serif";
+  if (family === 'serif') return "'Times New Roman', Times, serif";
+  if (family === 'sans') return "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+  return "'KaTeX_Main', serif";
+};
+
 export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, baseHeight, yIndices) {
   const plotWidth = baseWidth - margin.left - margin.right;
   const plotHeight = baseHeight - margin.top - margin.bottom;
 
-  // =========================================================
-  // 1. Espacio extra para la leyenda
-  // =========================================================
   const legendCfg = state.graphConfig.legend;
   const showLegend = legendCfg.show && ySeries.length > 0;
 
+  // ── Style tokens ──
+  const fontStack = getFontStack(state.graphConfig.fontFamily);
+  const tickDir = state.graphConfig.tickDirection || 'in';
+  const mirror = state.graphConfig.mirrorTicks !== false;
+  const drawFrame = state.graphConfig.frame !== false;
+  const gridMode = state.graphConfig.grid || 'none';
+  const legendFrame = state.graphConfig.legendFrame || 'thin';
+  const useSuper = state.graphConfig.useSuperExponent !== false;
+  const TICK_LEN = 5;
+
+  // ── Extra space for legend ──
   let extraW = 0, extraH = 0;
   let legendMeta = null;
-
   if (showLegend) {
     if (legendCfg.position === 'right') {
-      const ROW_H = 22;
-      const COL_W = 170;
+      const ROW_H = 22, COL_W = 170;
       const itemsPerCol = Math.max(1, Math.floor(plotHeight / ROW_H));
       const numCols = Math.ceil(ySeries.length / itemsPerCol);
       extraW = 30 + numCols * COL_W;
       legendMeta = { itemsPerCol, numCols, ROW_H, COL_W };
     } else if (legendCfg.position === 'bottom') {
-      const ROW_H = 22;
-      const ITEM_W = 170;
+      const ROW_H = 22, ITEM_W = 170;
       const itemsPerRow = Math.max(1, Math.floor(plotWidth / ITEM_W));
       const numRows = Math.ceil(ySeries.length / itemsPerRow);
       extraH = 30 + numRows * ROW_H;
@@ -43,18 +55,14 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
   wrapper.style.maxWidth = `${totalWidth}px`;
   wrapper.style.aspectRatio = `${totalWidth} / ${totalHeight}`;
 
-  // =========================================================
-  // 2. Canvas
-  // =========================================================
+  // ── Canvas ──
   let canvas = document.getElementById('plotCanvas');
   if (!canvas) {
     canvas = document.createElement('canvas');
     canvas.id = 'plotCanvas';
     canvas.style.position = 'absolute';
-    canvas.style.top = '0';
-    canvas.style.left = '0';
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
+    canvas.style.top = '0'; canvas.style.left = '0';
+    canvas.style.width = '100%'; canvas.style.height = '100%';
     canvas.style.pointerEvents = 'none';
     canvas.style.zIndex = '1';
     svg.parentNode.appendChild(canvas);
@@ -63,9 +71,7 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
     ctx0.clearRect(0, 0, canvas.width, canvas.height);
   }
 
-  // =========================================================
-  // 3. Escalas y límites
-  // =========================================================
+  // ── Scales & limits ──
   const configX = state.axisConfig.x;
   const configY = state.axisConfig.y;
   const isLogX = configX.scale === 'log10';
@@ -78,8 +84,7 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
   const inverseTransformX = (v) => isLogX ? Math.pow(10, v) : v;
   const inverseTransformY = (v) => isLogY ? Math.pow(10, v) : v;
 
-  let minX = viewLimits.minX;
-  let maxX = viewLimits.maxX;
+  let minX = viewLimits.minX, maxX = viewLimits.maxX;
   if (minX === null || maxX === null) {
     minX = dataPoints[0].x;
     maxX = dataPoints[dataPoints.length - 1].x;
@@ -93,11 +98,9 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
   const pointsForLimits = dataPoints.slice(strictStart, strictEnd + 1);
   const limitsForY = pointsForLimits.length > 0 ? pointsForLimits : drawableDataPoints;
 
-  let minY = viewLimits.minY;
-  let maxY = viewLimits.maxY;
+  let minY = viewLimits.minY, maxY = viewLimits.maxY;
   if (minY === null || maxY === null) {
-    minY = Infinity;
-    maxY = -Infinity;
+    minY = Infinity; maxY = -Infinity;
     for (let i = 0; i < limitsForY.length; i++) {
       const p = limitsForY[i];
       for (let j = 0; j < ySeries.length; j++) {
@@ -139,9 +142,7 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
     ? (py) => inverseTransformY(tMinY + ((py - margin.top) / plotHeight) * (tMaxY - tMinY))
     : (py) => inverseTransformY(tMaxY - ((py - margin.top) / plotHeight) * (tMaxY - tMinY));
 
-  // =========================================================
-  // 4. Ejes, cuadrícula, texto
-  // =========================================================
+  // ── Clip ──
   const clipId = "plot-clip-area";
   const defs = document.createElementNS(SVG_NS, 'defs');
   defs.innerHTML = `<clipPath id="${clipId}"><rect x="${margin.left}" y="${margin.top}" width="${plotWidth}" height="${plotHeight}" /></clipPath>`;
@@ -154,113 +155,182 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
   const xTicksData = generateTicks(tMinX, tMaxX, configX, isLogX);
   const yTicksData = generateTicks(tMinY, tMaxY, configY, isLogY);
 
-  const drawTicksAndGrid = (ticksData, isXAxis) => {
+  // ── Helpers ──
+  const createLabel = (val, ticksData, isXAxis, isLog, pos) => {
     const activeConfig = isXAxis ? configX : configY;
-    const isLog = isXAxis ? isLogX : isLogY;
+    const parts = formatLabelParts(val, ticksData.decimals, activeConfig.format, isLog, useSuper);
+    const text = document.createElementNS(SVG_NS, 'text');
+    text.setAttribute('font-size', '12px');
+    text.setAttribute('font-family', fontStack);
+    text.setAttribute('fill', '#333');
 
-    ticksData.minorTicks.forEach(val => {
-      const actualVal = isXAxis ? inverseTransformX(val) : inverseTransformY(val);
-      const p = isXAxis ? mapX(actualVal) : mapY(actualVal);
-      if (p >= (isXAxis ? margin.left : margin.top) - 1 && p <= (isXAxis ? baseWidth - margin.right : baseHeight - margin.bottom) + 1) {
-        const line = document.createElementNS(SVG_NS, 'line');
-        if (isXAxis) {
-          line.setAttribute('x1', p); line.setAttribute('x2', p);
-          line.setAttribute('y1', margin.top); line.setAttribute('y2', baseHeight - margin.bottom);
-        } else {
-          line.setAttribute('y1', p); line.setAttribute('y2', p);
-          line.setAttribute('x1', margin.left); line.setAttribute('x2', baseWidth - margin.right);
-        }
-        line.setAttribute('stroke', '#ebebeb');
-        line.setAttribute('stroke-width', '1');
-        clippedGroup.appendChild(line);
-        if (activeConfig.showMinorLabels) {
-          const text = document.createElementNS(SVG_NS, 'text');
-          const labelStr = formatLabel(actualVal, ticksData.decimals, activeConfig.format, isLog);
-          if (isXAxis) {
-            text.setAttribute('x', p); text.setAttribute('y', baseHeight - margin.bottom + 20);
-            text.setAttribute('text-anchor', 'middle');
-          } else {
-            text.setAttribute('x', margin.left - 10); text.setAttribute('y', p + 4);
-            text.setAttribute('text-anchor', 'end');
-          }
-          text.setAttribute('font-size', '9px');
-          text.setAttribute('font-family', 'sans-serif');
-          text.setAttribute('fill', '#999');
-          text.textContent = labelStr;
-          svg.appendChild(text);
-        }
-      }
-    });
+    if (isXAxis) {
+      text.setAttribute('x', pos);
+      text.setAttribute('y', baseHeight - margin.bottom + 20);
+      text.setAttribute('text-anchor', 'middle');
+    } else {
+      text.setAttribute('x', margin.left - 10);
+      text.setAttribute('y', pos + 4);
+      text.setAttribute('text-anchor', 'end');
+    }
 
-    ticksData.ticks.forEach(val => {
-      const actualVal = isXAxis ? inverseTransformX(val) : inverseTransformY(val);
-      const p = isXAxis ? mapX(actualVal) : mapY(actualVal);
-      if (p >= (isXAxis ? margin.left : margin.top) - 1 && p <= (isXAxis ? baseWidth - margin.right : baseHeight - margin.bottom) + 1) {
-        const line = document.createElementNS(SVG_NS, 'line');
-        if (isXAxis) {
-          line.setAttribute('x1', p); line.setAttribute('x2', p);
-          line.setAttribute('y1', margin.top); line.setAttribute('y2', baseHeight - margin.bottom);
-        } else {
-          line.setAttribute('y1', p); line.setAttribute('y2', p);
-          line.setAttribute('x1', margin.left); line.setAttribute('x2', baseWidth - margin.right);
-        }
-        line.setAttribute('stroke', '#e0e0e0');
-        line.setAttribute('stroke-dasharray', '3 3');
-        clippedGroup.appendChild(line);
-
-        const tick = document.createElementNS(SVG_NS, 'line');
-        if (isXAxis) {
-          tick.setAttribute('x1', p); tick.setAttribute('x2', p);
-          tick.setAttribute('y1', baseHeight - margin.bottom); tick.setAttribute('y2', baseHeight - margin.bottom + 5);
-        } else {
-          tick.setAttribute('y1', p); tick.setAttribute('y2', p);
-          tick.setAttribute('x1', margin.left - 5); tick.setAttribute('x2', margin.left);
-        }
-        tick.setAttribute('stroke', '#000');
-        svg.appendChild(tick);
-
-        const text = document.createElementNS(SVG_NS, 'text');
-        const labelStr = formatLabel(actualVal, ticksData.decimals, activeConfig.format, isLog);
-        if (isXAxis) {
-          text.setAttribute('x', p); text.setAttribute('y', baseHeight - margin.bottom + 20);
-          text.setAttribute('text-anchor', 'middle');
-        } else {
-          text.setAttribute('x', margin.left - 10); text.setAttribute('y', p + 4);
-          text.setAttribute('text-anchor', 'end');
-        }
-        text.setAttribute('font-size', '12px');
-        text.setAttribute('font-family', 'sans-serif');
-        text.setAttribute('fill', '#555');
-        text.textContent = labelStr;
-        svg.appendChild(text);
-      }
-    });
+    if (parts.sup === null) {
+      text.textContent = parts.pre;
+    } else {
+      const ts1 = document.createElementNS(SVG_NS, 'tspan');
+      ts1.textContent = parts.pre;
+      text.appendChild(ts1);
+      const ts2 = document.createElementNS(SVG_NS, 'tspan');
+      ts2.setAttribute('baseline-shift', 'super');
+      ts2.setAttribute('font-size', '0.7em');
+      ts2.textContent = parts.sup;
+      text.appendChild(ts2);
+    }
+    return text;
   };
 
-  drawTicksAndGrid(xTicksData, true);
-  drawTicksAndGrid(yTicksData, false);
+  const drawTickAt = (isXAxis, pos, mirrorSide = false) => {
+    const segments = [];
+    if (!mirrorSide) {
+      if (tickDir === 'in' || tickDir === 'inout') segments.push('in');
+      if (tickDir === 'out' || tickDir === 'inout') segments.push('out');
+    } else {
+      segments.push('in');
+    }
 
+    for (const s of segments) {
+      const t = document.createElementNS(SVG_NS, 'line');
+      if (isXAxis) {
+        const baseY = mirrorSide ? margin.top : (baseHeight - margin.bottom);
+        t.setAttribute('x1', pos); t.setAttribute('x2', pos);
+        if (s === 'in') {
+          t.setAttribute('y1', baseY);
+          t.setAttribute('y2', mirrorSide ? baseY + TICK_LEN : baseY - TICK_LEN);
+        } else {
+          t.setAttribute('y1', baseY);
+          t.setAttribute('y2', baseY + TICK_LEN);
+        }
+      } else {
+        const baseX = mirrorSide ? (baseWidth - margin.right) : margin.left;
+        t.setAttribute('y1', pos); t.setAttribute('y2', pos);
+        if (s === 'in') {
+          t.setAttribute('x1', baseX);
+          t.setAttribute('x2', mirrorSide ? baseX - TICK_LEN : baseX + TICK_LEN);
+        } else {
+          t.setAttribute('x1', baseX - TICK_LEN);
+          t.setAttribute('x2', baseX);
+        }
+      }
+      t.setAttribute('stroke', '#000');
+      t.setAttribute('stroke-width', '1');
+      svg.appendChild(t);
+    }
+  };
+
+  const drawGridLine = (isXAxis, pos, isMinor) => {
+    const line = document.createElementNS(SVG_NS, 'line');
+    if (isXAxis) {
+      line.setAttribute('x1', pos); line.setAttribute('x2', pos);
+      line.setAttribute('y1', margin.top); line.setAttribute('y2', baseHeight - margin.bottom);
+    } else {
+      line.setAttribute('y1', pos); line.setAttribute('y2', pos);
+      line.setAttribute('x1', margin.left); line.setAttribute('x2', baseWidth - margin.right);
+    }
+    line.setAttribute('stroke', isMinor ? '#f0f0f0' : '#e0e0e0');
+    line.setAttribute('stroke-width', '1');
+    if (!isMinor) line.setAttribute('stroke-dasharray', '3 3');
+    clippedGroup.appendChild(line);
+  };
+
+  // ── Minor ticks ──
+  xTicksData.minorTicks.forEach(val => {
+    const actualVal = inverseTransformX(val);
+    const p = mapX(actualVal);
+    if (p < margin.left - 1 || p > baseWidth - margin.right + 1) return;
+    if (gridMode === 'both') drawGridLine(true, p, true);
+    drawTickAt(true, p, false);
+    if (mirror) drawTickAt(true, p, true);
+    if (configX.showMinorLabels) {
+      const t = createLabel(actualVal, xTicksData, true, isLogX, p);
+      t.setAttribute('font-size', '9px');
+      t.setAttribute('fill', '#999');
+      svg.appendChild(t);
+    }
+  });
+  yTicksData.minorTicks.forEach(val => {
+    const actualVal = inverseTransformY(val);
+    const p = mapY(actualVal);
+    if (p < margin.top - 1 || p > baseHeight - margin.bottom + 1) return;
+    if (gridMode === 'both') drawGridLine(false, p, true);
+    drawTickAt(false, p, false);
+    if (mirror) drawTickAt(false, p, true);
+    if (configY.showMinorLabels) {
+      const t = createLabel(actualVal, yTicksData, false, isLogY, p);
+      t.setAttribute('font-size', '9px');
+      t.setAttribute('fill', '#999');
+      svg.appendChild(t);
+    }
+  });
+
+  // ── Major ticks ──
+  xTicksData.ticks.forEach(val => {
+    const actualVal = inverseTransformX(val);
+    const p = mapX(actualVal);
+    if (p < margin.left - 1 || p > baseWidth - margin.right + 1) return;
+    if (gridMode === 'major' || gridMode === 'both') drawGridLine(true, p, false);
+    drawTickAt(true, p, false);
+    if (mirror) drawTickAt(true, p, true);
+    svg.appendChild(createLabel(actualVal, xTicksData, true, isLogX, p));
+  });
+  yTicksData.ticks.forEach(val => {
+    const actualVal = inverseTransformY(val);
+    const p = mapY(actualVal);
+    if (p < margin.top - 1 || p > baseHeight - margin.bottom + 1) return;
+    if (gridMode === 'major' || gridMode === 'both') drawGridLine(false, p, false);
+    drawTickAt(false, p, false);
+    if (mirror) drawTickAt(false, p, true);
+    svg.appendChild(createLabel(actualVal, yTicksData, false, isLogY, p));
+  });
+
+  // ── Frame (4 sides) ──
   const axisGroup = document.createElementNS(SVG_NS, 'g');
-  const xAxis = document.createElementNS(SVG_NS, 'line');
-  xAxis.setAttribute('x1', margin.left); xAxis.setAttribute('y1', baseHeight - margin.bottom);
-  xAxis.setAttribute('x2', baseWidth - margin.right); xAxis.setAttribute('y2', baseHeight - margin.bottom);
-  xAxis.setAttribute('stroke', '#000'); xAxis.setAttribute('stroke-width', '1.5');
+  const bottomAxis = document.createElementNS(SVG_NS, 'line');
+  bottomAxis.setAttribute('x1', margin.left); bottomAxis.setAttribute('y1', baseHeight - margin.bottom);
+  bottomAxis.setAttribute('x2', baseWidth - margin.right); bottomAxis.setAttribute('y2', baseHeight - margin.bottom);
+  bottomAxis.setAttribute('stroke', '#000'); bottomAxis.setAttribute('stroke-width', '1');
+  axisGroup.appendChild(bottomAxis);
 
-  const yAxis = document.createElementNS(SVG_NS, 'line');
-  yAxis.setAttribute('x1', margin.left); yAxis.setAttribute('y1', margin.top);
-  yAxis.setAttribute('x2', margin.left); yAxis.setAttribute('y2', baseHeight - margin.bottom);
-  yAxis.setAttribute('stroke', '#000'); yAxis.setAttribute('stroke-width', '1.5');
-  axisGroup.appendChild(xAxis);
-  axisGroup.appendChild(yAxis);
+  const leftAxis = document.createElementNS(SVG_NS, 'line');
+  leftAxis.setAttribute('x1', margin.left); leftAxis.setAttribute('y1', margin.top);
+  leftAxis.setAttribute('x2', margin.left); leftAxis.setAttribute('y2', baseHeight - margin.bottom);
+  leftAxis.setAttribute('stroke', '#000'); leftAxis.setAttribute('stroke-width', '1');
+  axisGroup.appendChild(leftAxis);
+
+  if (drawFrame) {
+    const topAxis = document.createElementNS(SVG_NS, 'line');
+    topAxis.setAttribute('x1', margin.left); topAxis.setAttribute('y1', margin.top);
+    topAxis.setAttribute('x2', baseWidth - margin.right); topAxis.setAttribute('y2', margin.top);
+    topAxis.setAttribute('stroke', '#000'); topAxis.setAttribute('stroke-width', '1');
+    axisGroup.appendChild(topAxis);
+
+    const rightAxis = document.createElementNS(SVG_NS, 'line');
+    rightAxis.setAttribute('x1', baseWidth - margin.right); rightAxis.setAttribute('y1', margin.top);
+    rightAxis.setAttribute('x2', baseWidth - margin.right); rightAxis.setAttribute('y2', baseHeight - margin.bottom);
+    rightAxis.setAttribute('stroke', '#000'); rightAxis.setAttribute('stroke-width', '1');
+    axisGroup.appendChild(rightAxis);
+  }
+
   svg.appendChild(axisGroup);
 
+  // ── Axis labels ──
   const xLabel = document.createElementNS(SVG_NS, 'text');
   xLabel.setAttribute('x', margin.left + plotWidth / 2);
   xLabel.setAttribute('y', baseHeight - 15);
   xLabel.setAttribute('text-anchor', 'middle');
   xLabel.setAttribute('font-size', '14px');
-  xLabel.setAttribute('font-family', 'sans-serif');
+  xLabel.setAttribute('font-family', fontStack);
   xLabel.setAttribute('font-weight', 'bold');
+  xLabel.setAttribute('fill', '#222');
   xLabel.textContent = configX.label || "X Axis";
   svg.appendChild(xLabel);
 
@@ -270,8 +340,9 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
   yLabel.setAttribute('transform', 'rotate(-90)');
   yLabel.setAttribute('text-anchor', 'middle');
   yLabel.setAttribute('font-size', '14px');
-  yLabel.setAttribute('font-family', 'sans-serif');
+  yLabel.setAttribute('font-family', fontStack);
   yLabel.setAttribute('font-weight', 'bold');
+  yLabel.setAttribute('fill', '#222');
   yLabel.textContent = configY.label || "Y Axis";
   svg.appendChild(yLabel);
 
@@ -281,16 +352,14 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
     titleEl.setAttribute('y', 25);
     titleEl.setAttribute('text-anchor', 'middle');
     titleEl.setAttribute('font-size', '16px');
-    titleEl.setAttribute('font-family', 'sans-serif');
+    titleEl.setAttribute('font-family', fontStack);
     titleEl.setAttribute('font-weight', 'bold');
     titleEl.setAttribute('fill', '#222');
     titleEl.textContent = state.graphConfig.title;
     svg.appendChild(titleEl);
   }
 
-  // =========================================================
-  // 5. Líneas (SVG o Canvas)
-  // =========================================================
+  // ── Lines ──
   const MAX_POINTS_FOR_SVG_INTERACTIVE = 2000;
   const MAX_POINTS_FOR_SVG_EXPORT = 10000;
   const isExportMode = state.exportMode === true;
@@ -377,9 +446,7 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
     });
   }
 
-  // =========================================================
-  // 6. Leyenda (sin espacio reservado para header)
-  // =========================================================
+  // ── Legend ──
   if (showLegend) {
     const legendGroup = document.createElementNS(SVG_NS, 'g');
     const labels = ySeries.map((_, j) => state.seriesConfig[yIndices[j]]?.label || `Col ${yIndices[j]}`);
@@ -404,12 +471,32 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
       const text = document.createElementNS(SVG_NS, 'text');
       text.setAttribute('x', x + 30); text.setAttribute('y', y + 4);
       text.setAttribute('font-size', '12px');
-      text.setAttribute('font-family', 'sans-serif');
-      text.setAttribute('fill', '#333');
+      text.setAttribute('font-family', fontStack);
+      text.setAttribute('fill', '#222');
       text.setAttribute('data-legend-col', String(origIdx));
       text.setAttribute('data-legend-label', labels[index]);
       text.textContent = labels[index];
       group.appendChild(text);
+    };
+
+    const drawLegendRect = (group, boxX, boxY, boxWidth, boxHeight) => {
+      const rect = document.createElementNS(SVG_NS, 'rect');
+      rect.setAttribute('x', boxX); rect.setAttribute('y', boxY);
+      rect.setAttribute('width', boxWidth); rect.setAttribute('height', boxHeight);
+      rect.setAttribute('rx', '3');
+      if (legendFrame === 'none') {
+        rect.setAttribute('fill', 'rgba(255, 255, 255, 0.75)');
+        rect.setAttribute('stroke', 'none');
+      } else if (legendFrame === 'thin') {
+        rect.setAttribute('fill', 'rgba(255, 255, 255, 0.9)');
+        rect.setAttribute('stroke', '#ccc');
+        rect.setAttribute('stroke-width', '0.5');
+      } else {
+        rect.setAttribute('fill', 'rgba(255, 255, 255, 0.85)');
+        rect.setAttribute('stroke', '#999');
+        rect.setAttribute('stroke-width', '1');
+      }
+      group.appendChild(rect);
     };
 
     const pos = legendCfg.position;
@@ -425,7 +512,6 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
 
       const { itemsPerCol, numCols, ROW_H, COL_W } = legendMeta;
       const startX = baseWidth + 30;
-
       for (let j = 0; j < ySeries.length; j++) {
         const col = Math.floor(j / itemsPerCol);
         const row = j % itemsPerCol;
@@ -442,7 +528,6 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
 
       const { itemsPerRow, numRows, ROW_H, ITEM_W } = legendMeta;
       const startY = baseHeight + 30;
-
       for (let j = 0; j < ySeries.length; j++) {
         const row = Math.floor(j / itemsPerRow);
         const col = j % itemsPerRow;
@@ -471,13 +556,7 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
       else if (pos === 'bottom-right') { boxX = margin.left + plotWidth - boxWidth - padding; boxY = margin.top + plotHeight - boxHeight - padding; }
       else if (pos === 'bottom-left') { boxX = margin.left + padding; boxY = margin.top + plotHeight - boxHeight - padding; }
 
-      const rect = document.createElementNS(SVG_NS, 'rect');
-      rect.setAttribute('x', boxX); rect.setAttribute('y', boxY);
-      rect.setAttribute('width', boxWidth); rect.setAttribute('height', boxHeight);
-      rect.setAttribute('fill', 'rgba(255, 255, 255, 0.85)');
-      rect.setAttribute('stroke', '#999'); rect.setAttribute('stroke-width', '1');
-      rect.setAttribute('rx', '4');
-      legendGroup.appendChild(rect);
+      drawLegendRect(legendGroup, boxX, boxY, boxWidth, boxHeight);
 
       for (let j = 0; j < ySeries.length; j++) {
         let x, y;
@@ -504,9 +583,6 @@ export function render(svg, dataPoints, ySeries, viewLimits, margin, baseWidth, 
   };
 }
 
-// =========================================================
-// Búsqueda binaria
-// =========================================================
 function findFirstIndexGreaterThan(arr, val) {
   let low = 0, high = arr.length - 1, result = arr.length;
   while (low <= high) {
@@ -527,9 +603,6 @@ function findLastIndexLessThan(arr, val) {
   return result;
 }
 
-// =========================================================
-// Downsampler para Canvas
-// =========================================================
 function downsampleForCanvas(dataPoints, ySeries, targetPoints) {
   if (dataPoints.length <= targetPoints) return dataPoints;
   const selectedIndices = new Set();
