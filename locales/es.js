@@ -127,5 +127,6 @@ export default {
   undo_y: "Deshacer solo Y",
     redo_all: "Rehacer",
       reset_x: "Reiniciar rango de X",
-  reset_y: "Reiniciar rango de Y",
+    reset_y: "Reiniciar rango de Y",
+      show_empty: "Mostrar vacías",
 };

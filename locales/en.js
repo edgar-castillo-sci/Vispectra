@@ -129,5 +129,6 @@ export default {
   undo_y: "Undo Y only",
     redo_all: "Redo",
       reset_x: "Reset X range",
-  reset_y: "Reset Y range",
+    reset_y: "Reset Y range",
+      show_empty: "Show empty",
 };

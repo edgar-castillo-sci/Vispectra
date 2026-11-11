@@ -42,13 +42,14 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
   if (!controlsContainer) {
     controlsContainer = document.createElement('div');
     controlsContainer.id = 'yControlsContainer';
-    controlsContainer.style.cssText = 'margin: 10px 0; padding: 6px 0; border-top: 1px solid #eee; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;';
+    controlsContainer.style.cssText = 'margin: 10px 0; padding: 6px 0; border-top: 1px solid #eee; border-bottom: 1px solid #eee; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px;';
 
     const onlyDiv = document.createElement('div');
     onlyDiv.style.cssText = 'display: flex; align-items: center; gap: 6px;';
     const toggle = document.createElement('input');
     toggle.type = 'checkbox';
     toggle.id = 'onlyModeToggle';
+    toggle.name = 'only-mode';
     const onlyLabel = document.createElement('label');
     onlyLabel.htmlFor = 'onlyModeToggle';
     onlyLabel.textContent = t('only_mode') || 'Only Mode';
@@ -57,10 +58,13 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
     onlyDiv.appendChild(onlyLabel);
 
     const bulkDiv = document.createElement('div');
-    bulkDiv.style.cssText = 'display: flex; gap: 6px;';
+    bulkDiv.style.cssText = 'display: flex; gap: 6px; align-items: center;';
     bulkDiv.innerHTML = `
-      <button id="btnSelectAll" style="background:none; border:none; color:#0055cc; cursor:pointer; font-size:0.75rem; text-decoration:underline;">All</button>
-      <button id="btnSelectNone" style="background:none; border:none; color:#0055cc; cursor:pointer; font-size:0.75rem; text-decoration:underline;">None</button>
+      <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; font-size: 0.75rem; color: #666;">
+        <input type="checkbox" id="chkShowEmpty" name="show-empty" checked> ${t('show_empty') || 'Show empty'}
+      </label>
+      <button id="btnSelectAll" name="select-all" style="background:none; border:none; color:#0055cc; cursor:pointer; font-size:0.75rem; text-decoration:underline;">All</button>
+      <button id="btnSelectNone" name="select-none" style="background:none; border:none; color:#0055cc; cursor:pointer; font-size:0.75rem; text-decoration:underline;">None</button>
     `;
 
     controlsContainer.appendChild(onlyDiv);
@@ -71,6 +75,7 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
   const onlyModeToggle = document.getElementById('onlyModeToggle');
   const btnSelectAll = document.getElementById('btnSelectAll');
   const btnSelectNone = document.getElementById('btnSelectNone');
+  const chkShowEmpty = document.getElementById('chkShowEmpty');
 
   for (let i = 0; i < numColumnas; i++) {
     const row = document.createElement('div');
@@ -80,6 +85,7 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
     const isEmpty = isColumnEmpty(col);
 
     if (isEmpty) {
+      row.classList.add('empty-row');
       row.style.opacity = '0.55';
     }
 
@@ -93,12 +99,13 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
     cb.type = 'checkbox';
     cb.value = i;
     cb.className = 'checkbox-y';
+    cb.name = `y-series-${i}`;
     const cbId = `col-checkbox-${i}`;
     cb.id = cbId;
+    cb.setAttribute('aria-label', `Y-series ${i}`);
 
     if (isNewFile) {
       if (autoSelect) {
-        // Auto-select only non-empty columns (except X=0)
         cb.checked = (i !== 0) && !isEmpty;
       } else {
         cb.checked = (i === 1);
@@ -176,6 +183,9 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
 
       const colorInput = document.createElement('input');
       colorInput.type = 'color';
+      colorInput.id = `y-color-${i}`;
+      colorInput.name = `y-color-${i}`;
+      colorInput.setAttribute('aria-label', `Color for Y-series ${i}`);
       colorInput.style.cssText = 'width: 20px; height: 20px; padding: 0; border: none; cursor: pointer;';
       colorInput.value = state.seriesConfig[i].color;
       colorInput.addEventListener('input', (e) => {
@@ -184,6 +194,9 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
       });
 
       const styleSelect = document.createElement('select');
+      styleSelect.id = `y-style-${i}`;
+      styleSelect.name = `y-style-${i}`;
+      styleSelect.setAttribute('aria-label', `Line style for Y-series ${i}`);
       styleSelect.style.cssText = 'font-size: 10px; padding: 0; height: 20px; border: 1px solid #ccc; border-radius: 2px; cursor: pointer; width: 40px;';
       styleSelect.innerHTML = `
         <option value="solid">──</option>
@@ -203,6 +216,18 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
     }
 
     checkboxesY.appendChild(row);
+  }
+
+  // Aplicar visibilidad inicial a las columnas vacías
+  if (chkShowEmpty) {
+    chkShowEmpty.onchange = (e) => {
+      document.querySelectorAll('.empty-row').forEach(r => {
+        r.style.display = e.target.checked ? '' : 'none';
+      });
+    };
+    if (!chkShowEmpty.checked) {
+      document.querySelectorAll('.empty-row').forEach(r => { r.style.display = 'none'; });
+    }
   }
 
   onlyModeToggle.checked = onlyModeActive;
