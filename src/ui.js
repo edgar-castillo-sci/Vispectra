@@ -70,12 +70,23 @@ export function initUI(procesarFn, graficarFn) {
     if (toggleAutoPlot && toggleAutoPlot.checked) actualizarGrafico();
   };
 
-  const onSeriesToggle = () => {
+    const onSeriesToggle = () => {
     const active = getActiveYIndices();
     state.columnConfig.selectedY = active;
+
     if (!state.seriesConfigLocked && columnasGlobales) {
       recompactSeriesConfig(columnasGlobales, active);
     }
+
+    // Always sync widths when width is locked (independent of style lock)
+    if (state.seriesWidthLocked) {
+      for (const i of active) {
+        if (state.seriesConfig[i]) {
+          state.seriesConfig[i].width = state.masterWidth;
+        }
+      }
+    }
+
     refreshRolePanelFromState();
     onSelectionChange();
   };

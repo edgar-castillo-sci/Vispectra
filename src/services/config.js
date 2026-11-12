@@ -27,7 +27,9 @@ export function stateToConfig() {
       mirrorTicks: state.graphConfig.mirrorTicks,
       grid: state.graphConfig.grid,
       legendFrame: state.graphConfig.legendFrame,
-      useSuperExponent: state.graphConfig.useSuperExponent,
+        useSuperExponent: state.graphConfig.useSuperExponent,
+              seriesWidthLocked: state.seriesWidthLocked,
+      masterWidth: state.masterWidth,
     },
     series: Object.fromEntries(
       Object.entries(state.seriesConfig).map(([k, v]) => [k, { ...v }])
@@ -84,7 +86,9 @@ export function configToState(config) {
     if (typeof g.mirrorTicks === 'boolean') state.graphConfig.mirrorTicks = g.mirrorTicks;
     if (['none', 'major', 'both'].includes(g.grid)) state.graphConfig.grid = g.grid;
     if (['none', 'thin', 'default'].includes(g.legendFrame)) state.graphConfig.legendFrame = g.legendFrame;
-    if (typeof g.useSuperExponent === 'boolean') state.graphConfig.useSuperExponent = g.useSuperExponent;
+      if (typeof g.useSuperExponent === 'boolean') state.graphConfig.useSuperExponent = g.useSuperExponent;
+          if (typeof g.seriesWidthLocked === 'boolean') state.seriesWidthLocked = g.seriesWidthLocked;
+    if (typeof g.masterWidth === 'number') state.masterWidth = g.masterWidth;
   }
 
   if (config.series) {

@@ -134,5 +134,9 @@ export default {
 
   export_preparing: "Preparing SVG export...",
   export_exporting: "Exporting...",
-  export_failed: "Export failed"
+    export_failed: "Export failed",
+      master_width: "Width",
+  lock_widths: "Lock all",
+  series_style: "Style",
+  style_width: "Width",
 };

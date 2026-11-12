@@ -2,7 +2,7 @@
 
 ## Abstract
 
-Vispectra is a compiler for spectroscopic file formats (UV-Vis, XRD, XPS, Raman, IR). It is designed to ingest heterogeneous, unformatted instrument outputs and transform them into strict numerical matrices. 
+Vispectra is a compiler for spectroscopic file formats (UV-Vis, XRD, XPS, Raman, IR). It is designed to ingest heterogeneous, unformatted instrument outputs and transform them into strict numerical matrices.
 
 Rather than relying on hardcoded parsers for specific proprietary formats, Vispectra infers the grammatical structure of the file from a statistical sample of its contents. It operates entirely client-side within a web browser, ensuring zero telemetry, no backend dependencies, and complete data privacy.
 
@@ -20,126 +20,105 @@ When the compiler cannot decide on a valid structure, it fails explicitly by emi
 
 ## System Architecture
 
-The project is divided into four independent layers:
+Four independent layers:
 
 **1. Compiler (`src/compiler/`)**
-A pipeline of pure functions (00 to 09) that transforms raw text into clean numerical columns.
-
-    00_reading            -> text normalization and BOM handling
-    01_sampling           -> extraction of the central block and random sampling
-    02_lexer              -> structural classification of tokens (n, z, |, ,)
-    03_ir                 -> intermediate representation and frequency analysis
-    04_canon              -> grammar inference and center-out expansion
-    04b_disambiguation    -> candidate resolutions and garbage filtering
-    04c_block_canon       -> abstract column typing (n, z, i, v)
-    05_fixation           -> plan generation for the parser
-    06_parser             -> line-by-line extraction using the fixed plan
-    07_semantics          -> structural validation and ambiguity resolution
-    08_codegen            -> column population (null-preserving)
-    09_diagnostics        -> centralized diagnostic accumulator
+Pipeline of pure functions (00-09) that transforms text into clean numerical columns.
+- 00_reading, 01_sampling, 02_lexer, 03_ir, 04_canon, 04b_disambiguation,
+  04c_block_canon, 05_fixation, 06_parser, 07_semantics, 08_codegen,
+  09_diagnostics.
 
 **2. Visualization Engine (`src/plot/`)**
-A modular, high-performance rendering engine with hybrid SVG/Canvas rendering.
-
-    state.js              -> centralized graph state (zoom, limits, styles, frame)
-    axes.js               -> tick generation (Linear/Log10, Auto/Count/Step/Nice)
-    renderer.js           -> hybrid SVG/Canvas rendering with clipping
-    downsampler.js        -> MinMaxLTTB algorithm for massive datasets
-    interaction.js        -> box zoom, pan, crosshair, and pin logic
-    controls.js           -> floating toolbar for zoom navigation
-    index.js              -> orchestrator: drawPlot + range panel update
+Hybrid SVG/Canvas renderer.
+- `state.js` — centralized graph state
+- `axes.js` — tick generation + label formatting (with super-exponent support)
+- `renderer.js` — hybrid SVG/Canvas drawing, frame, ticks, grid, legend
+- `downsampler.js` — MinMaxLTTB algorithm for massive datasets
+- `interaction.js` — hover crosshair, pin, box zoom, dblclick reset
+- `index.js` — orchestrator (drawPlot + range panel)
 
 **3. Services (`src/services/`)**
-Pure logic that the UI consumes.
-
-    columns.js            -> column deduplication (null-aware)
-    pipeline.js           -> math pipeline application (immutable)
-    export.js             -> SVG / PNG / JPEG / PDF / CSV export
-    yaml.js               -> minimal YAML parser + stringifier
-    config.js             -> state <-> YAML bridge
+Pure logic the UI consumes.
+- `columns.js` — null-aware deduplication
+- `pipeline.js` — math pipeline (immutable)
+- `export.js` — SVG/PNG/JPEG/PDF/CSV
+- `yaml.js` — minimal YAML parser/stringifier (Vanilla JS)
+- `config.js` — state ↔ YAML bridge
 
 **4. User Interface (`src/ui/` + `ui.js`)**
-Modular DOM components for the browser.
-
-    ui/rolePanel.js       -> Y-series selection, colors, styles, inline labels
-    ui/pipelinePanel.js   -> math pipeline operation builder
-    ui/axesPanel.js       -> axis scale, mode, format, minors
-    ui/framePanel.js      -> canvas presets, custom dimensions, frame modes
-    ui/configPanel.js     -> YAML save / load / apply
-    ui/rangePanel.js      -> editable view limits, per-axis shift, undo, reset
-    ui/disambiguationModal.js -> comma disambiguation
-    ui/columnsModal.js    -> duplicate column collapsing
-    ui.js                 -> orchestrator (event wiring + state updates)
+Modular DOM components.
+- `rolePanel.js` — Y-series selection, colors, styles, widths, inline labels
+- `pipelinePanel.js` — math pipeline builder
+- `axesPanel.js` — axis scale, mode, format, minors, invert
+- `framePanel.js` — canvas presets, custom dimensions, frame modes
+- `configPanel.js` — YAML save/load/apply
+- `rangePanel.js` — editable view limits, per-axis shift/undo/reset
+- `appearancePanel.js` — font, frame, ticks, grid, legend frame, super-exponent
+- `disambiguationModal.js` / `columnsModal.js` — decision modals
 
 ## Implementation Status
 
-**Current Version:** `v0.1.0-alpha` (First Public Release)
+**Current Version:** `v0.1.1-alpha-dev`
 
-**Canonical model (v5.7):** Two-level canon.
-
-- **Literal canon (per row):** `n` (dot-decimal), `z` (integer), `,` (literal comma), `|` (hard separator).
-- **Abstract canon (per block):** `n` / `z` / `i` / `v`, one symbol per column.
+**Canonical model:** Two-level canon.
+- **Literal (per row):** `n` (dot-decimal), `z` (integer), `v` (empty slot), `|` (hard separator), `,` (literal comma).
+- **Abstract (per block):** `n` / `z` / `i` / `v`, one symbol per column.
 
 **Status:**
-
-- **Compiler:** Fully functional (00-09). Handles American, European, sparse, and wide-format files with automatic garbage filtering.
-- **Visualization Engine:** Modularized into `src/plot/`. Features Log/Linear scales, dynamic tick generation, interactive Box Zoom/Pan, crosshair tooltips, custom styling (colors/dashes), smart legend positioning, frame presets, and per-axis view control.
-- **Performance:** Integrated MinMaxLTTB downsampling and binary search, allowing smooth rendering of 100,000+ point datasets in the browser.
-- **Configuration:** YAML serialization of the entire visual state (frame, axes, graph, series, view limits). Configurations can be saved, loaded, and applied to reproduce the exact same visualization across files.
-- **UI:** Modularized into `src/services/` and `src/ui/`. Complete i18n (English + Spanish).
+- **Compiler:** Stable (00-09). Handles American, European, sparse, and wide-format files with automatic garbage filtering and empty-column exclusion.
+- **Visualization Engine:** Publication-ready. Hybrid SVG/Canvas, MinMaxLTTB downsampling, binary-search zoom isolation, per-axis invert (no `flip`), frame/ticks/grid/legend-frame/Computer-Modern/super-exponent options.
+- **Configuration (YAML v2):** Full visual state serialization (columns, frame, axis, graph, series, view). Round-trip faithful.
+- **UI:** Modular. Custom modals, per-series width lock, color/style compaction with lock, hover legend with live values, floating X tooltip.
 
 ## Key Features
 
 **Robust Parsing:**
-
-- Handles American (`.` decimal, `,` separator) and European (`,` decimal, `;` separator) formats.
-- Automatically detects and ignores metadata headers.
-- Pads missing columns with `null` (never `0`).
-- Provides interactive disambiguation when the file structure is truly ambiguous.
+- American (`.` decimal, `,` separator) and European (`,` decimal, `;` separator) formats.
+- Automatic metadata/header filtering.
+- Missing columns padded with `null` (never `0`).
+- Empty columns excluded from plot and legend automatically.
+- Heuristic X detection: skips sequential integer index columns and picks the first monotonic numeric column.
+- Interactive disambiguation when structure is truly ambiguous.
 
 **Publication-Ready Visualization:**
+- **Scales:** Linear and Log10 per axis.
+- **Ticks:** Auto (nice numbers), Fixed Count, Exact Step, Forced Nice Step; inward/outward/in+out; mirrored on top/right.
+- **Frame:** Full box around the plot (LaTeX-style), on by default.
+- **Grid:** `none` / `major` / `both`.
+- **Font:** Computer Modern (via KaTeX webfont), Times, or system sans.
+- **Super-exponent:** `1.5e-3` rendered as `1.5x10^-3`, log ticks as `10^-2`, `10^-1`, `1`, `10`.
+- **Legend:** 6 positions (4 box corners + right + bottom), 3 frame styles (`none`, `thin`, `default`).
+- **Hover interaction:** Crosshair follows mouse; sidebar and legend values update live; floating `X = ...` tooltip over the plot.
+- **Pin (click):** Freezes crosshair, sidebar values, legend values, and X tooltip. Click again to release.
+- **Box zoom:** Drag on the plot to zoom; double-click to reset.
+- **Range panel:** Direct min/max editing, deterministic shift (Δ) per axis, per-axis undo, per-axis reset.
+- **Frame presets:** 7 layouts + custom (200-3000px), 3 resize modes (stretch, extend, crop).
+- **Series styling:** Per-series color/style/width; color and style auto-compact across active non-empty series; optional "Lock styles" to freeze manual choices; per-series width with master width slider and "Lock all" toggle.
+- **Performance:** Binary-search isolates visible points during zoom; MinMaxLTTB downsamples datasets >2,000 points while preserving peak shapes; force-SVG export mode for vector output on massive files.
 
-- **Scales:** Linear and Log10.
-- **Ticks:** Auto (nice numbers), Fixed Count, Exact Step, or Forced Nice Step.
-- **Grid:** Major and minor grid lines with optional labels.
-- **Legend:** Placed inside (4 corners, vertical/horizontal layout) or outside (Right Columns, Bottom Rows). The plot area never compresses; the SVG expands to accommodate the legend.
-- **Frame:** 7 presets (16:10, 16:9, 21:9, A4 landscape, 1:1, A4 portrait, 9:16) plus custom dimensions (200-3000px). Three modes: Stretch (fill), Extend (show more data when bigger), Crop (show less data when smaller).
-- **Interactivity:** Box Zoom, Pan, Crosshair, and Pin (click to freeze crosshair). Double-click to reset.
-- **Performance:** Binary search isolates visible data points during zoom; MinMaxLTTB reduces massive datasets while preserving peak shapes.
-- **View Limits:** Editable min/max inputs for each axis, deterministic shifts (Δ), and per-axis undo/reset.
-
-**Reproducibility (YAML):**
-
-- Save the entire visual state as a `.yaml` file.
-- Load a `.yaml` file and apply it to any file to reproduce the same view.
-- Includes frame dimensions, axis configuration, series styles, legend settings, and current zoom range.
+**Calibration (Planned for v0.3.0):**
+- Linear, quadratic, and linear-through-zero fits.
+- LOD, LOQ, residuals, standard errors per sample.
+- No automatic decisions: Vispectra computes and reports; the user decides what the data means.
 
 ## Usage & Deployment
-
-The compiler is designed to run locally. To start the development environment:
 
     git clone https://github.com/edgar-castillo-sci/Vispectra.git
     cd Vispectra
     npm run dev
 
-Access the local server in your browser and drop a spectroscopic file into the interface. Drag and drop is supported. The file will be parsed, plotted, and ready for analysis.
+Open the local URL, drop a spectroscopic file into the interface. Drag and drop is supported.
 
 ## License and Open Science
 
-Vispectra is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
-
-This license was chosen to ensure that any modifications to the compiler—including those used to provide network services—remain open-source. The AGPL-3.0 protects the scientific core from proprietary forks. For commercial or proprietary integration, dual-licensing negotiations are available by contacting the author.
+Licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. The AGPL-3.0 protects the scientific core from proprietary forks. For commercial or proprietary integration, dual-licensing negotiations are available by contacting the author.
 
 ## References
 
-- Gold, E. M. (1967). *Language identification in the limit*. Information and Control, 10(5), 447-474. https://doi.org/10.1016/S0019-9958(67)91165-5
-
-## Citation
-
-Coming soon...
+- Gold, E. M. (1967). *Language identification in the limit*. Information and Control, 10(5), 447-474. https://doi.org/10.1016/S0019-9958\(67\)91165-5
 
 ## Author
 
-**Edgar Castillo**  
-Independent Researcher  
+**Edgar Castillo**
+Independent Researcher
 [ORCID: 0009-0006-4268-3323](https://orcid.org/0009-0006-4268-3323)

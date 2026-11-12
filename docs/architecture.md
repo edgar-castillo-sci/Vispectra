@@ -154,42 +154,88 @@ The plotting module is fully decoupled from the compiler and the UI logic. It is
 
 #### Architecture
 
-- **`state.js`**: Centralized state. Holds `viewLimits`, `viewHistory` (each step stores `{ limits, axis }`), `currentTool`, `frame`, `axisConfig`, `graphConfig`, `seriesConfig`, `exportMode`, `zoomControlsHidden`. Exposes `resetView`, `clearPin`, `pushHistory`, `undo`, `redo`, `undoAxis`, `resetAxis`, `adjustViewForFrameChange`.
-- **`axes.js`**: Pure functions for generating ticks (Linear/Log10, Auto/Count/Step/Nice) and formatting labels.
-- **`renderer.js`**: The core engine. Uses a **Hybrid SVG/Canvas** approach. Axes, grid, text, and legend are drawn in SVG (for perfect vector sharpness). Dense data lines are drawn in a Canvas overlay (for speed). Uses binary search to isolate visible data points during zoom.
-- **`downsampler.js`**: Implements the **MinMaxLTTB** algorithm. Reduces datasets with >2,000 points while preserving visual peaks and valleys, allowing smooth rendering of 100,000+ point files.
-- **`interaction.js`**: Handles mouse events (Box Zoom, Pan, Crosshair/Pin). Uses `frozenRect` to prevent coordinate drift during drag and `requestAnimationFrame` to throttle pan redraws. Ignores `e.detail > 1` on mousedown/mouseup/click so double-click fires cleanly.
-- **`controls.js`**: Manages the floating zoom toolbar. Global undo/redo only (per-axis undo lives in the range panel).
-- **`index.js`**: The orchestrator. Prepares data, calls `render()`, connects interaction, updates controls, and updates the range panel below the plot.
+- **`state.js`**: centralized state. Holds `viewLimits`, `viewHistory` (each step is `{ limits, axis }` with `axis ∈ 'x'|'y'|'xy'`), `currentTool`, `frame`, `columnConfig`, `axisConfig`, `graphConfig`, `seriesConfig`, `seriesConfigLocked`, `seriesWidthLocked`, `masterWidth`, `exportMode`. Exposes `resetView`, `clearPin`, `pushHistory`, `undo`, `redo`, `undoAxis`, `resetAxis`, `adjustViewForFrameChange`.
+- **`axes.js`**: pure tick generation (Linear/Log10, Auto/Count/Step/Nice) and label formatting. `formatLabelParts` returns `{ pre, sup }` so the renderer can emit `<tspan baseline-shift="super">` for real superscripts.
+- **`renderer.js`**: hybrid SVG/Canvas. Axes, grid, ticks, frame, text, and legend in SVG (crisp vectors). Data lines in Canvas overlay for >2,000 points. Uses binary search to isolate visible data during zoom. Honors `graphConfig` style options (frame, tick direction, mirror ticks, grid, legend frame, font, super-exponent).
+- **`downsampler.js`**: MinMaxLTTB algorithm. Reduces dense series while preserving peak shapes and valleys.
+- **`interaction.js`**: hover crosshair, floating X tooltip, legend live values, pin (click to freeze), box zoom (drag), double-click reset. No floating toolbar; all interactions are direct gestures or via the range panel.
+- **`index.js`**: orchestrator. Prepares data, calls `render()`, attaches interaction, updates range panel.
 
-#### Two Modes of Rendering
+#### Style System (per graph)
 
-- **Interactive (default):** Data with ≤2,000 points per series is drawn in SVG (crisp vectors). Data with >2,000 points uses Canvas + MinMaxLTTB.
-- **Export mode (`state.exportMode = true`):** Forces SVG for all series, with a higher downsample budget (10,000 points per series). Used by the export flow to guarantee vector output in SVG/PDF/PNG.
+`state.graphConfig` holds publication-grade styling options, all serialized to YAML:
 
-#### View Limits and History
+| Key | Values | Default | Effect |
+|---|---|---|---|
+| `fontFamily` | `'cm'` / `'serif'` / `'sans'` | `'cm'` | Computer Modern (KaTeX webfont), Times, or system sans |
+| `frame` | boolean | `true` | Full box around the plot (LaTeX-style) |
+| `tickDirection` | `'in'` / `'out'` / `'inout'` | `'in'` | Tick marks direction |
+| `mirrorTicks` | boolean | `true` | Inward ticks on top and right edges |
+| `grid` | `'none'` / `'major'` / `'both'` | `'none'` | Grid lines |
+| `legendFrame` | `'none'` / `'thin'` / `'default'` | `'thin'` | Legend background border |
+| `useSuperExponent` | boolean | `true` | `1.5e-3` → `1.5x10^-3` via `<tspan>`; log ticks as `10^-2` |
 
-- `viewLimits` holds the current visible range (`minX`, `maxX`, `minY`, `maxY`). `null` means "full data range".
-- Every change (zoom, pan, shift, manual edit, reset) pushes a new step to `viewHistory` with `{ limits, axis }` where `axis ∈ 'x' | 'y' | 'xy'`.
-- `undo()` / `redo()` walk the history globally.
-- `undoAxis('x' | 'y')` walks back to the last step that affected that axis and applies only that axis's values.
-- `resetAxis('x' | 'y')` sets that axis's limits to `null` (full range) and pushes the step.
+#### Per-axis options
 
-#### Frame System
+`state.axisConfig.{x,y}` holds per-axis settings:
 
-- `state.frame` holds `{ width, height, mode }`. Min 200x200, max 3000x3000.
-- Seven presets (16:10, 16:9, 21:9, A4 landscape, 1:1, A4 portrait, 9:16) plus Custom.
-- Three modes:
-  - **Stretch:** `viewLimits` unchanged. Data visually stretched.
-  - **Extend:** On grow, `viewLimits` expands so density (px/unit) stays constant.
-  - **Crop:** On shrink, `viewLimits` shrinks so density stays constant.
+| Key | Values | Default |
+|---|---|---|
+| `scale` | `'linear'` / `'log10'` | `'linear'` |
+| `mode` | `'auto'` / `'count'` / `'step'` / `'nice'` | `'auto'` |
+| `count`, `step` | number | 5, 0.5 |
+| `format` | `'auto'` / `'fixed'` / `'scientific'` | `'auto'` |
+| `minor` | number (0–10) | 0 |
+| `label` | string | `''` |
+| `showMinorLabels` | boolean | false |
+| `invert` | boolean | false |
 
-#### Legend Positions
+`invert` reverses the visual direction of the axis (ticks + data together). There is **no `flip`**: reflecting only the data while leaving ticks fixed is incoherent with zoom and was retired.
 
-- **Box (4 corners):** Rendered inside the plot, vertical or horizontal layout. Does not affect SVG size.
-- **Right (Columns):** Rendered outside, to the right. The SVG expands horizontally (never compresses the plot). Multiple columns if needed.
-- **Bottom (Rows):** Rendered outside, below. The SVG expands vertically. Multiple rows if needed.
-- A dashed separator line marks the boundary between plot and legend.
+#### Two rendering modes
+
+- **Interactive (default):** series with ≤2,000 points are drawn in SVG (crisp). Dense series use Canvas + MinMaxLTTB.
+- **Export mode (`state.exportMode = true`):** forces SVG for all series (up to 10,000 points per series after downsampling). Used by the export flow to guarantee vector output in SVG/PDF/PNG.
+
+#### Range panel (below the plot)
+
+Deterministic counterpart to zoom. Holds four inputs (`X min`, `X max`, `Y min`, `Y max`), two Δ shift inputs (per axis), per-axis undo (`undoAxis`), per-axis reset (`resetAxis`), and per-axis shift values. Edits apply on Enter or blur. Invalid ranges (min ≥ max) are highlighted red and rejected.
+
+#### Frame system
+
+`state.frame` holds `{ width, height, mode }`. Min 200×200, max 3000×3000. Seven presets (16:10, 16:9, 21:9, A4 landscape, 1:1, A4 portrait, 9:16) plus custom.
+
+Three modes:
+- **`stretch`**: `viewLimits` unchanged; data visually stretched.
+- **`extend`**: on grow, `viewLimits` expands so px-per-unit stays constant.
+- **`crop`**: on shrink, `viewLimits` shrinks so px-per-unit stays constant.
+
+#### Legend
+
+6 positions (`top-right`, `top-left`, `bottom-right`, `bottom-left`, `right`, `bottom`). Three frame styles. When placed outside (right/bottom), the SVG viewBox expands rather than compressing the plot.
+
+On hover, legend labels are replaced by the value at the crosshair. On click (pin), the values freeze. A floating `X = ...` tooltip appears above the plot and follows the mouse, hiding when the pointer leaves.
+
+#### Column roles and series
+
+`state.columnConfig` holds the YAML-driven selection:
+- `x: null | int` — forced X column (null = heuristic).
+- `discard: [int]` — indices hidden from the panel and plot.
+- `selectedY: null | 'all' | 'first' | [indices]` — active Y series.
+
+**Heuristic X selection**: if column 0 is a sequential integer index (step +1 or -1), skip it and use the first monotonic numeric column. Falls back to column 0.
+
+**Empty columns** (all `null`) are:
+- Rendered with `(empty)` badge and reduced opacity.
+- Checkbox disabled.
+- No color/style/width pickers.
+- Excluded from `yIndices` (not drawn, not in legend).
+
+**Series styling**:
+- Colors and styles auto-compact across active non-empty Y series (no gaps from discarded/empty columns).
+- `seriesConfigLocked` (Lock styles): preserves manual color/style across selection changes.
+- `seriesWidthLocked` (Lock all widths, default `true`): master width slider applies to all active series. When `false`, each series has its own width slider in its expanded panel.
+- Each series row has a swatch SVG (mimicking a legend item). Click swatch to expand color/style/width panel.
 
 ### Services (`src/services/`)
 

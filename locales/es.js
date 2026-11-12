@@ -133,5 +133,9 @@ export default {
 
   export_preparing: "Preparando exportación SVG...",
   export_exporting: "Exportando...",
-  export_failed: "Exportación fallida"
+    export_failed: "Exportación fallida",
+      master_width: "Grosor",
+  lock_widths: "Fijar todos",
+  series_style: "Estilo",
+  style_width: "Grosor",
 };
