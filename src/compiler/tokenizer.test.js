@@ -30,12 +30,12 @@ test('tokenize: signed with exponent', () => {
   assert.equal(t[0].hasDot, true);
 });
 
-test('tokenize: incomplete exponent falls back to gap', () => {
+test('tokenize: incomplete exponent falls back to separator', () => {
   const t = tokenize('1e 5');
   assert.equal(t.length, 3);
   assert.equal(t[0].type, 'number');
   assert.equal(t[0].value, 1);
-  assert.equal(t[1].type, 'gap');
+  assert.equal(t[1].type, 'separator');
   assert.equal(t[1].raw, 'e ');
   assert.equal(t[2].type, 'number');
   assert.equal(t[2].value, 5);
@@ -48,8 +48,8 @@ test('tokenize: comma tokens', () => {
   assert.equal(t[3].type, 'comma');
 });
 
-test('tokenize: gap between commas', () => {
+test('tokenize: separator between commas', () => {
   const t = tokenize('1, ,3');
   assert.equal(t.length, 5);
-  assert.equal(t[2].type, 'gap');
+  assert.equal(t[2].type, 'separator');
 });

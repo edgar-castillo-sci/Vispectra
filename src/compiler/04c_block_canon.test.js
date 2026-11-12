@@ -73,10 +73,14 @@ test('empty slot in middle column → v + COLUMN_GAPS', () => {
   assert.equal(gaps[0].params.column, 1);
 });
 
-test('explicit v column → type v', () => {
+test('explicit empty slot between separators → type v', () => {
   const { lines, block } = setup(['1.5, ,3.5', '2.5, ,4.5'], '_,v,_');
   const r = buildBlockCanon(block, lines, null); // no resolution → default all-sep
-  assert.equal(r.canon, 'n,v,n');
+  // v5.6: the space between the two commas is a hard separator (|),
+  // decomposing into an extra empty column (n, v, v, n). columns[1]
+  // is still the first empty slot, so its completeness checks are
+  // unchanged.
+  assert.equal(r.canon, 'n,v,v,n');
   assert.equal(r.columns[1].type, 'v');
   assert.equal(r.columns[1].completeness.filled, 0);
   assert.equal(r.columns[1].completeness.total, 2);

@@ -43,12 +43,17 @@ test('canon: mixed n and z disambiguates', () => {
   assert.equal(result.blocks[0].hasAmbiguity, false);
 });
 
-test('canon: explicit v does not trigger ambiguity', () => {
+test('canon: hard separator is conservatively flagged, resolved by 04b', () => {
   const lines = makeLines(['1, ,3', '2, ,4']);
   const ir = makeIR(lines.map((l) => lex(l.content).structure));
   const result = buildCanon(ir, lines, { start: 0, end: 2 });
-  assert.equal(result.blocks[0].pattern, '_,v,_');
-  assert.equal(result.blocks[0].hasAmbiguity, false);
+  // v5.6: a space between commas lexes as a hard separator (|), not as
+  // an empty slot (v). 04_canon marks the block ambiguous conservatively
+  // (any commas + no dot-decimal). 04b_disambiguation resolves it to
+  // hasAmbiguity: false via R107 — see 'explicit v disambiguates' in
+  // 04b_disambiguation.test.js.
+  assert.equal(result.blocks[0].pattern, '_,|,_');
+  assert.equal(result.blocks[0].hasAmbiguity, true);
 });
 
 test('canon: body expansion stops at non-matching rows', () => {
