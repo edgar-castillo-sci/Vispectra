@@ -2,25 +2,52 @@
 
 ## Vision
 
-To turn Vispectra into a reference compiler for spectroscopic file formats: a local, cross-platform tool that reads messy files from any technique and converts them into clean columns, without relying on servers or external services.
+To turn Vispectra into a reference compiler for spectroscopic file formats:
+a local, cross-platform tool that reads messy files from any technique and
+converts them into clean columns, without relying on servers or external
+services.
 
-The compiler core is technique-agnostic. UV-Vis is just the first implementation, not the limit of the project.
+The compiler core is technique-agnostic. UV-Vis is the first implementation,
+not the limit of the project.
 
 ## Current Status
 
-Last updated: 2026-10-06.
+Last updated: 2026-11-12.
 
-- **Implemented**: phases 00 (reading), 02 (lexer), 09 (diagnostics), orchestrator (`main.js`), complete specification (R1–R95), documented architecture.
-- **In development**: phase 01 (sampling), phases 03–08 of the compiler.
-- **Not operational**: Vispectra does not parse files yet.
+- **Current release:** `v0.1.1-alpha` (2026-11-11).
+- **Compiler:** stable (phases 00-09, including 01b). Handles American,
+  European, mixed-notation, sparse, and wide-format files with automatic
+  garbage filtering and empty-column exclusion.
+- **Visualization engine:** publication-ready. Hybrid SVG/Canvas,
+  MinMaxLTTB downsampling, binary-search zoom isolation, full styling
+  (frame, ticks, grid, legend frame, Computer Modern, super-exponent),
+  per-axis invert, per-series width control.
+- **Configuration:** YAML v2, round-trip faithful for the entire visual
+  state (columns, frame, axes, graph, series, view).
+- **Tests:** 112 passing (`npm test`), covering compiler phases, services,
+  and orchestrator integration.
+- **Fixtures:** 5 real-world UV-Vis files in `examples/`, including a
+  Cary 60 export with mixed notation that drove the recent R107/R16/R109
+  fixes.
+- **Documentation:** English + Spanish READMEs, `docs/architecture.md`,
+  `docs/rules.md` (R1-R109), `docs/examples.md`, `docs/processing_rules.md`,
+  `docs/origen.md`, `CHANGELOG.md`.
+
+**Not yet started:** scientific pipeline (smoothing, baseline, peak
+detection), calibration, batch processing, multi-technique validation.
 
 ## How to read this roadmap
 
-This roadmap is organized by **thematic areas**, not linear versions. Each area groups a related set of work and has its own checklist.
+Organized by **thematic areas**, not linear versions. Each area groups a
+related set of work and has its own checklist.
 
-The author can work on multiple areas in parallel depending on motivation or need. There is no strict order between areas. Dependencies are explicitly indicated where they exist: for example, editorial visualization assumes that basic visualization works.
+Work can proceed in parallel across areas. Dependencies are explicit where
+they exist: for example, calibration assumes the scientific pipeline works.
 
-**Public releases** (`v0.1`, `v0.2`, ...) are published when a coherent set of features is ready, even if other areas are still in exploration. They do not mark internal development phases; they mark GitHub releases and Zenodo archives.
+**Public releases** (`v0.1`, `v0.2`, ...) are published when a coherent set
+of features is ready, even if other areas are still in exploration. They do
+not mark internal development phases; they mark GitHub Releases and Zenodo
+archives.
 
 Effort sizes are indicative:
 
@@ -32,139 +59,192 @@ There are no dates. Milestones are completed when they are ready.
 
 ## Work Areas
 
-### Area 1 — Compiler Core
-**Effort: large**
+### Area 1 - Compiler Core
+**Effort: large (mostly done)**
 
-The goal is for the pipeline to work end-to-end with simple UV-Vis files, and to handle messy files.
-
-**Basic pipeline:**
-- [x] Phase 00 — reading and normalization
-- [ ] Phase 01 — random sampling of the central block
-- [x] Phase 02 — lexer (point and comma classification)
-- [ ] Phase 03 — IR (intermediate representation)
-- [ ] Phase 04 — canon (inference + center-out expansion)
-- [ ] Phase 05 — fixation (parity, `c,c,c` conversion)
-- [ ] Phase 06 — master parser (line interpretation)
-- [ ] Phase 07 — semantics (verification)
-- [ ] Phase 08 — codegen (clean columns)
-- [x] Phase 09 — diagnostics accumulator
-- [x] Orchestrator (`main.js`)
+**Pipeline:**
+- [x] Phase 00 - reading and normalization
+- [x] Phase 01 - random sampling of the central block
+- [x] Phase 01b - trailing comma policy (preserve / trim / none)
+- [x] Phase 02 - lexer (point, comma, hard separator)
+- [x] Phase 03 - IR (intermediate representation)
+- [x] Phase 04 - canon (inference + center-out expansion)
+- [x] Phase 04b - disambiguation (R107, R98, MAX_COMMAS)
+- [x] Phase 04c - abstract canon (n/z/i/v per column)
+- [x] Phase 05 - fixation (executable plan per block)
+- [x] Phase 06 - master parser (plan-driven, R16 fusion)
+- [x] Phase 07 - semantics (verification)
+- [x] Phase 08 - codegen (clean columns, null-preserving)
+- [x] Phase 09 - diagnostics accumulator
+- [x] Orchestrator (`main.js`) with R109 dominant-block tiebreaker
 
 **Robustness:**
-- [ ] Support for preamble and residue (delimited data body)
-- [ ] Support for comma runs with `i` as anchor
-- [ ] Support for empty slots
-- [ ] Complete diagnostics (codes R60–R69)
+- [x] Support for preamble and residue (delimited data body)
+- [x] Support for comma runs
+- [x] Support for empty slots
+- [x] Hard separators (`|`) distinguish commas from semicolons/spaces
+- [x] Mixed notation within a single row (european + scientific)
+- [x] R107 (hard separator forces decimal commas)
+- [x] R16 (`Number(...)` fusion, accepts sign/exponent)
+- [x] R109 (deterministic dominant block with row/col tiebreaker)
 
 **Validation:**
-- [ ] Full pipeline tests
-- [ ] Tests with cases: pure American, pure European, mixed, run, empty slot
-- [ ] First UV-Vis file successfully parsed
-- [ ] Documentation of edge cases in `docs/examples.md`
+- [x] Full pipeline tests (112 assertions)
+- [x] Five real UV-Vis fixtures (Cary 60, CNNi, L1Ref, FORTH, curvedata)
+- [ ] Unit tests for `01b_trailing_comma.js` (three policies:
+      preserve / trim / none). Currently exercised indirectly via CNNi.csv.
+- [ ] Documented edge cases in `docs/examples.md` (7 cases done;
+      more as real-world files expose them).
 
-**Area closure criteria**: the parser handles the five documented test cases without manual intervention, using real UV-Vis files.
+**Area closure criteria:** `01b` test coverage. The rest is complete.
 
-### Area 2 — UI and Visualization
-**Effort: large**
-
-The goal is for the user to interact with Vispectra without touching the console, view their spectra, and export them.
+### Area 2 - UI and Visualization
+**Effort: large (mostly done)**
 
 **Minimal UI:**
-- [ ] Functional drop zone
-- [ ] Multiple file processing
-- [ ] Results panel: detected columns, canon, diagnostics
-- [ ] Visible error handling for the user
+- [x] Functional drop zone (drag and drop)
+- [x] Multiple file handling (single file at a time; queue for batch
+      is Area 3)
+- [x] Results panel: detected columns, canon, diagnostics
+- [x] Visible error handling for the user
 
-**Basic visualization** *(depends on minimal UI)*:
-- [ ] Functional `plot.js` with Canvas or SVG
-- [ ] Axes labeled with generic names (`column 0`, `column 1`)
-- [ ] Basic zoom and pan
-- [ ] PNG export (screen resolution)
+**Visualization:**
+- [x] Hybrid SVG/Canvas renderer
+- [x] Axes labeled with column names (inline editable)
+- [x] Zoom (box), pan (via range panel), crosshair, pin
+- [x] PNG / JPEG / PDF / SVG export (vector output on massive files)
+- [x] Log10 scales per axis
+- [x] Tick modes (Auto / Count / Step / Nice), minor ticks
+- [x] Per-axis invert (no `flip`)
+- [x] Frame presets (7 layouts + custom), 3 resize modes
+- [x] Legend: 6 positions, 3 frame styles, live values on hover, freeze on pin
+- [x] Publication-grade styling: Computer Modern font, super-exponent
+      rendering, tick direction, mirror ticks, grid modes
+- [x] Per-series width with master slider and "Lock all" toggle
+- [x] MinMaxLTTB downsampling, binary-search zoom isolation
 
-**Hybrid UI** *(depends on basic visualization)*:
-- [ ] Detection of more than 2 columns
-- [ ] Role assignment modal (wavelength, absorbance, etc.)
-- [ ] Basic operations: normalization, smoothing
-- [ ] Strict / permissive mode for diagnostics
+**Configuration:**
+- [x] YAML v2: full visual state round-trip (columns, frame, axes, graph,
+      series, view)
+- [x] Save / Load / Apply workflow
+- [x] Pure-reader services layer (`services/config.js`)
 
-**Editorial visualization** *(depends on hybrid UI; effort: large)*:
-- [ ] Configurable typography and colors
-- [ ] SVG and vector PDF export
-- [ ] Annotations (peaks, labels, regions)
-- [ ] Multiple overlaid spectra
-- [ ] Style templates (paper, presentation, thesis)
+**Area closure criteria:** done. Next visualization work belongs to Area 3
+(annotations, multi-spectrum overlays, publication templates) or Area 4
+(export formats).
 
-**Area closure criteria**: an exported plot is acceptable for a scientific publication without external retouching, and the user can assign roles to columns from the interface.
-
-### Area 3 — Technique-Specific
+### Area 3 - Scientific Pipeline
 **Effort: large**
 
-The goal is for UV-Vis to be completely polished, and then to extend the compiler to other techniques without rewriting the core.
+The scientific pipeline is the next major phase. It consumes YAML
+configuration to apply mathematical operations to the extracted columns.
+Operations are pure functions in `src/processor.js` (per
+`docs/processing_rules.md`).
+
+**Core operations (v0.2.0):**
+- [ ] Savitzky-Golay smoothing (currently only Gaussian)
+- [ ] Baseline correction: interactive anchors (click on plot)
+- [ ] Peak detection with prominence
+- [ ] Derivative (1st, 2nd)
+- [ ] Normalization: min-max, max-peak, area, vector
+- [ ] Pipeline configuration in YAML (extend the current schema with a
+      `pipeline:` block)
+
+**Calibration (v0.3.0):**
+- [ ] Linear, quadratic, and linear-through-zero fits
+- [ ] LOD, LOQ, residuals, standard errors per sample
+- [ ] No automatic decisions: Vispectra computes and reports; the user
+      decides what the data means
+
+**Batch processing (v0.3.0):**
+- [ ] Drop a folder + a `.yaml` config
+- [ ] Compile every file, apply the same treatment, unified export
+- [ ] Progress reporting for large batches
+
+**Area closure criteria:** a researcher can load a spectrum, apply smoothing
++ baseline + peak detection, and export the processed data with a
+reproducible YAML config, without touching code.
+
+### Area 4 - Technique-Specific
+**Effort: large**
+
+UV-Vis is polished. Other techniques extend the compiler without rewriting
+the core.
 
 **UV-Vis polished:**
-- [ ] UV-Vis validation ranges (190–1100 nm, absorbance 0–4)
+- [ ] UV-Vis validation ranges (190-1100 nm, absorbance 0-4)
 - [ ] Typical operations: baseline, smoothing, peak detection
-- [ ] Clean CSV export
-- [ ] Validation with real instrument files (different brands)
-- [ ] Documentation of UV-Vis specific limitations
+- [ ] Validation with real instrument files from different brands
+- [ ] Documentation of UV-Vis-specific limitations
 
-**Multi-technique** *(depends on polished UV-Vis; effort: large)*:
-- [ ] Technique configuration layer
+**Multi-technique:**
+- [ ] Technique configuration layer (per-technique ranges, labels, defaults)
 - [ ] XRD: specific ranges (2θ, intensity)
 - [ ] Raman: specific ranges (wavenumber, intensity)
 - [ ] IR: specific ranges
 - [ ] XPS: specific ranges (binding energy)
 
-**Area closure criteria**: Vispectra handles UV-Vis completely and reliably, and at least two different techniques are parsed and visualized with the same architecture.
+**Area closure criteria:** Vispectra handles UV-Vis completely and reliably,
+and at least two other techniques are parsed and visualized with the same
+architecture.
 
-### Area 4 — Infrastructure
+### Area 5 - Infrastructure
 **Effort: medium**
 
-The goal is for Vispectra to be usable by third parties, citable, and documented.
-
 **Internationalization:**
-- [ ] Complete `locales/en.js` (all diagnostic codes)
-- [ ] Complete `locales/es.js`
+- [x] `locales/en.js` and `locales/es.js`
+- [x] Language switcher in the UI
+- [ ] Complete diagnostic code coverage (R60-R109 codes exposed as i18n keys)
 - [ ] Automatic browser language detection
-- [ ] Manual language selector in the UI
 
 **API and export:**
-- [ ] Documented public API
-- [ ] Export to standard formats (clean CSV, JSON)
+- [ ] Documented public API (`compile`, `drawPlot`, `applyPipeline`)
+- [ ] Export to JSON (in addition to CSV)
+- [ ] Programmatic usage from Node (currently browser-only)
 
 **Documentation:**
-- [ ] Complete documentation for end users
-- [x] `docs/origen.md` (design history)
-- [ ] Regression tests
+- [x] `README.md` (English)
+- [x] `README.es.md` (Spanish)
+- [x] `CHANGELOG.md`
+- [x] `docs/architecture.md`
+- [x] `docs/rules.md` (R1-R109)
+- [x] `docs/examples.md` (7 worked cases)
+- [x] `docs/processing_rules.md` (planned pipeline spec)
+- [x] `docs/origen.md` (design history, in Spanish)
+- [x] `ROADMAP.md` (this file)
+- [ ] Regression tests for the browser UI (currently only compiler/services
+      are tested)
 
 **Publication:**
-- [x] First GitHub release (`v0.1.0-alpha`)
-- [x] Zenodo DOI (`10.5281/zenodo.23177822`)
-- [ ] Conceptual DOI updated in README and `package.json`
+- [x] First GitHub release (`v0.1.0-alpha`, 2026-11-09)
+- [x] Second GitHub release (`v0.1.1-alpha`, 2026-11-11)
+- [x] Zenodo conceptual DOI (`10.5281/zenodo.23177822`)
+- [ ] GitHub Release for `v0.1.1-alpha` (dispatches Zenodo webhook,
+      generates version-specific DOI)
+- [ ] Update Zenodo description to reflect the parser being operational
+      (currently says "does not yet parse files")
 - [ ] Stable version `v1.0.0` published in Zenodo without embargo
 
-**Area closure criteria**: Vispectra is usable by third parties without the author's assistance, with complete documentation and a citable DOI.
+**Area closure criteria:** Vispectra is usable by third parties without the
+author's assistance, with complete documentation and a citable DOI per
+release.
 
 ## Public Releases
 
-Versions are published when a coherent set of features is ready. Numbering follows [SemVer](https://semver.org/).
+Versions are published when a coherent set of features is ready. Numbering
+follows [SemVer](https://semver.org/).
 
-Planned releases:
-
-| Version | Minimum Content | Areas Involved |
+| Version | Minimum Content | Status |
 | --- | --- | --- |
-| `v0.1.0` | Complete pipeline, simple UV-Vis parsed | Area 1 (partial) |
-| `v0.2.0` | Parser robustness, messy cases | Area 1 (complete) |
-| `v0.3.0` | Minimal UI, Spanish i18n | Area 2 (partial), Area 4 (partial) |
-| `v0.4.0` | Basic visualization | Area 2 (partial) |
-| `v0.5.0` | Hybrid UI | Area 2 (partial) |
-| `v0.6.0` | Polished UV-Vis | Area 3 (partial) |
-| `v0.7.0` | Complete i18n | Area 4 (partial) |
-| `v1.0.0` | Stable UV-Vis, public API, DOI | All areas |
-| `v2.0.0` | Editorial visualization | Area 2 (complete) |
-| `v3.0.0` | Multi-technique | Area 3 (complete) |
+| `v0.1.0-alpha` | Complete pipeline, simple UV-Vis parsed | **Released** 2026-11-09 |
+| `v0.1.1-alpha` | Parser robustness (R107, R16, R109), bilingüe README | **Released** 2026-11-11 |
+| `v0.2.0-alpha` | Scientific pipeline: Savitzky-Golay, interactive baseline, peak detection, YAML `pipeline:` block | planned |
+| `v0.3.0-alpha` | Calibration (fits, LOD/LOQ), batch processing | planned |
+| `v0.4.0-alpha` | Multi-technique validation (XRD, Raman, IR, XPS) | planned |
+| `v1.0.0` | Stable, public API, full docs, DOI per release | planned |
 
-Releases are **snapshots in time**, not development phases. A release can be published even if some areas are still in exploration.
+Releases are **snapshots in time**, not development phases. A release can
+be published even if some areas are still in exploration.
 
 ## Out of scope (for now)
 
@@ -173,30 +253,45 @@ Releases are **snapshots in time**, not development phases. A release can be pub
 - Rows split across multiple lines.
 - Units attached to numbers (`250nm`).
 - Comments at the end of lines.
-- Processing of massive datasets (>1M points).
+- Processing of massive datasets (>1M points per series).
 - Desktop version with native processing.
+- Mobile app.
 
-These points can be added in later versions if demand justifies it. They are not discarded.
+These points can be added in later versions if demand justifies it. They
+are not discarded.
 
 ## Publication and DOI
 
-The Zenodo DOI is not a milestone, but a procedure performed at the first GitHub release (`v0.1.0`). Once obtained:
+Each release is archived on Zenodo via GitHub integration. The conceptual
+DOI (`10.5281/zenodo.23177822`) always points to the latest archived
+version. Specific version DOIs are generated per release.
 
-- The "How to cite" section is added to `README.md`.
-- The `package.json` is updated with the DOI.
-- It is documented in `docs/origen.md`.
-
-The Zenodo conceptual DOI will always point to the latest published version. Specific version DOIs are generated with each release.
+The `.zenodo.json` at the repository root controls the metadata Zenodo
+attaches to each archived snapshot: title, description, creators, ORCID,
+license, keywords. **It must be updated before each release**; otherwise
+the DOI ships with stale metadata from the previous version.
 
 ## How to follow progress
 
 - **GitHub Issues**: each item in the areas is broken down into issues.
 - **GitHub Milestones**: each release has its associated milestone.
 - **Releases**: each version is published as a tagged release.
-- **Zenodo**: each release is automatically archived via GitHub integration, generating a version DOI.
+- **Zenodo**: each release is archived automatically via GitHub integration,
+  generating a version DOI.
+- **CHANGELOG.md**: every release has a section documenting what changed.
 
 ## Notes on scope
 
-Vispectra is a single-author project in active development. Milestones have no assigned dates. The priority is the quality of the compiler, not the speed of delivery.
+Vispectra is a single-author project in active development. Milestones have
+no assigned dates. The priority is the quality of the compiler, not the
+speed of delivery.
 
-The author can work on multiple areas in parallel. The roadmap only describes where the project is heading.
+The author can work on multiple areas in parallel. The roadmap describes
+where the project is heading, not the order in which it will get there.
+
+## Acknowledgments
+
+Vispectra grew out of the LMAERPS laboratory context at DACB-UJAT, where
+the practical pain of reading spectroscopic files became impossible to
+ignore. The idea of a phone-first plotter was originally proposed by
+Javier. See [`docs/origen.md`](docs/origen.md) for the full origin story.
