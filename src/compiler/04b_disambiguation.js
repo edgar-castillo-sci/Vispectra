@@ -20,6 +20,34 @@ export function detectAmbiguities(blocks, lines) {
       continue;
     }
 
+    // R107: hard separator present → all commas are decimal by definition.
+    // Must run BEFORE hasN, otherwise a dot-decimal in any structure
+    // (e.g. "8.9E-4") would force allSep and split european numbers.
+    // Structural validity is required: if allDec does not fit, the block
+    // is garbage (commas are mandated to be decimal but do not compose).
+    if (hasHardSeparator) {
+      const allDec = Array(commaCount).fill('dec');
+      let columns = -1;
+      let consistent = structures.length > 0;
+      for (const struct of structures) {
+        const result = countColumns(struct, allDec);
+        if (!result.ok) { consistent = false; break; }
+        if (columns === -1) columns = result.columns;
+        else if (columns !== result.columns) { consistent = false; break; }
+      }
+      if (!consistent) {
+        enriched.push({ ...block, resolutions: [], isAmbiguous: false });
+        continue;
+      }
+      enriched.push({
+        ...block,
+        resolutions: [{ id: allDec.join(','), commas: allDec, columns, isDefault: true }],
+        isAmbiguous: false,
+      });
+      continue;
+    }
+
+    // R98: dot-decimal present (and no hard separator) → commas can only be separators.
     const hasN = structures.some(s => s.includes('n'));
     if (hasN) {
       const allSep = Array(commaCount).fill('sep');
