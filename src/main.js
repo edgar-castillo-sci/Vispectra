@@ -117,18 +117,28 @@ export async function compile(file, options = {}) {
 
   const numColumns = maxNumColumns;
 
+  // R109: dominant block = most rows, tiebreak by column count.
+  // Needed so a wide-but-short header does not steal dominance from the
+  // real data block, and so equal-row-count blocks still pick the wider.
   let biggestBlock = null;
-  for (const block of enrichedBlocks) {
-    if (!biggestBlock || block.instances.length > biggestBlock.instances.length) biggestBlock = block;
-  }
-
   let biggestBlockCols = 0;
-  if (biggestBlock) {
-    const resolution = chosen.get(biggestBlock.pattern);
-    const blockCanon = buildBlockCanon(biggestBlock, lines, resolution);
-    if (blockCanon.canon) {
-      const fixed = fixCanon(blockCanon, resolution, biggestBlock.pattern);
-      if (fixed.plan) biggestBlockCols = fixed.plan.numColumns;
+  for (const block of enrichedBlocks) {
+    const resolution = chosen.get(block.pattern);
+    const blockCanon = buildBlockCanon(block, lines, resolution);
+    if (!blockCanon.canon) continue;
+    const fixed = fixCanon(blockCanon, resolution, block.pattern);
+    if (!fixed.plan) continue;
+    const cols = fixed.plan.numColumns;
+    const rows = block.instances.length;
+    if (!biggestBlock) {
+      biggestBlock = block;
+      biggestBlockCols = cols;
+      continue;
+    }
+    const currentRows = biggestBlock.instances.length;
+    if (rows > currentRows || (rows === currentRows && cols > biggestBlockCols)) {
+      biggestBlock = block;
+      biggestBlockCols = cols;
     }
   }
 

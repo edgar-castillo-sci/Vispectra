@@ -95,10 +95,10 @@ test('compile: resolution rejected by 04c → failed', async () => {
   assert.equal(r.columns, null);
 });
 
-test('compile: two blocks with different numColumns → failed', async () => {
-  // 10 n,n rows (2 columns) + 10 z,z,z rows (3 columns). Sample
-  // straddles both patterns, body captures all 20 rows, two blocks
-  // produce incompatible counts → BLOCK_COUNT_MISMATCH.
+test('compile: R109 keeps widest block, smaller is discarded', async () => {
+  // 10 n,n rows (2 columns) + 10 z,z,z rows (3 columns). Equal row count;
+  // the R109 tiebreaker in main.js prefers the wider block, so the 2-column
+  // block is discarded as garbage and its rows are null-padded to width 3.
   const content = [
     ...lines(10, (i) => `${350 + i}.0,${0.5 - i * 0.01}`),
     ...lines(10, (i) => `${i},${i + 1},${i + 2}`),
@@ -108,9 +108,28 @@ test('compile: two blocks with different numColumns → failed', async () => {
     resolutions: { '_,_,_': ['sep', 'sep'] },
   });
 
-  assert.equal(r.status, 'failed');
-  assert.equal(r.columns, null);
+  assert.equal(r.status, 'ok');
+  assert.equal(r.numColumns, 3);
+  assert.equal(r.columns.length, 3);
+  assert.equal(r.totalRows, 20);
 
   const codes = r.diagnostics.map((d) => d.code);
-  assert.ok(codes.includes('BLOCK_COUNT_MISMATCH'));
+  assert.ok(
+    !codes.includes('BLOCK_COUNT_MISMATCH'),
+    'R109 should discard the smaller block instead of aborting'
+  );
+
+  // Rows from the discarded 2-column block (rows 0-9) are null-padded.
+  for (let i = 0; i < 10; i++) {
+    assert.equal(r.columns[0][i], null);
+    assert.equal(r.columns[1][i], null);
+    assert.equal(r.columns[2][i], null);
+  }
+
+  // Rows from the winning 3-column block (rows 10-19) carry real values.
+  for (let i = 10; i < 20; i++) {
+    assert.equal(r.columns[0][i], i - 10);
+    assert.equal(r.columns[1][i], i - 9);
+    assert.equal(r.columns[2][i], i - 8);
+  }
 });
