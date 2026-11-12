@@ -32,6 +32,8 @@
 - **R14.** The comma has no intrinsic meaning in the literal canon. It becomes a decimal separator (`dec`) or a column separator (`sep`) only after a resolution is applied in `04b`.
 - **R15.** For a block with `k` commas, `2^k` combinations of `dec`/`sep` are candidates. A candidate is valid only if it is structurally compatible with every row of the block.
 - **R16.** A `dec` fusion is valid only if both operands are `/^\d+$/` (no signs, no exponents). Otherwise the row fails with `FUSION_UNSAFE`.
+    > **Rationale for R16 (v0.1.1).** Once `04b_disambiguation` has closed the plan with a `dec` role for a comma, the parser has nothing left to guess: the question is not *"is this comma decimal or separator?"* (already answered by R107, R98, or the user in the modal), but *"given that it is decimal, does the concatenation form a valid number?"*. The historical `/^\d+$/` restriction was over-conservative: it rejected `-9,58E-06`, a token no reader would call ambiguous. `Number(...)` is the minimal, principled filter that mirrors what a reader does when parsing the fused text mentally. No heuristic is introduced; a plan-level decision is validated against the token syntax. 
+
 - **R17.** All rows in a block must yield the same number of columns under the chosen resolution. Otherwise `BLOCK_COUNT_MISMATCH`.
 
 ## 5. Prohibitions
@@ -88,7 +90,7 @@
 - **R106.** The lexer must distinguish between a literal comma (`,`) and a hard column separator (`|`), which includes semicolons, spaces, and tabs.
 - **R107.** If a block pattern contains a hard separator (`|`), all commas within that block are **decimal separators by definition** (`dec`). No parity enumeration is needed.
 - **R108.** If a block consists solely of text (no numbers), it is classified as a metadata block and discarded.
-- **R109.** The orchestrator (`main.js`) must identify the block with the maximum number of columns (`maxNumColumns`). Smaller blocks that do not match this width are treated as garbage headers and ignored (their rows are padded with `null`).
+- **R109.** The orchestrator identifies the *dominant* block: the one with the most instances (rows), breaking ties by column count. If the dominant block's width equals `maxNumColumns`, smaller blocks are classified as garbage and ignored (their rows are null-padded). Otherwise, all blocks are merged (safety guard: a wide metadata header must not discard a narrow but real data block). The tiebreaker is required for synthetic cases with equal row counts and different widths; without it, the last-iterated block wins and the filter silently disables.
 
 ## 11. Out of scope
 
