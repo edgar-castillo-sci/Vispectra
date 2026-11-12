@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fixCanon } from './05_fixation.js';
+import { fixCanon } from '../../src/compiler/05_fixation.js';
 
 function blockCanon(types) {
   return {

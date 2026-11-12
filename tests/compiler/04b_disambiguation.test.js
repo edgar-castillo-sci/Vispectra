@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { detectAmbiguities } from './04b_disambiguation.js';
-import { buildCanon } from './04_canon.js';
-import { buildIR } from './03_ir.js';
-import { lex } from './02_lexer.js';
+import { detectAmbiguities } from '../../src/compiler/04b_disambiguation.js';
+import { buildCanon } from '../../src/compiler/04_canon.js';
+import { buildIR } from '../../src/compiler/03_ir.js';
+import { lex } from '../../src/compiler/02_lexer.js';
 
 function setup(strings) {
   const lines = strings.map((content, index) => ({ index, content }));

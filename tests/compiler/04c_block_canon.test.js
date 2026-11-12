@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildBlockCanon } from './04c_block_canon.js';
+import { buildBlockCanon } from '../../src/compiler/04c_block_canon.js';
 
 function setup(strings, pattern) {
   const lines = strings.map((content, index) => ({ index, content }));

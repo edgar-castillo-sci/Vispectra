@@ -1,7 +1,7 @@
 // compiler/03_ir.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildIR } from './03_ir.js';
+import { buildIR } from '../../src/compiler/03_ir.js';
 
 test('buildIR: single structure', () => {
   const ir = buildIR([

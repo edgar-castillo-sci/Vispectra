@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { verify } from './07_semantics.js';
+import { verify } from '../../src/compiler/07_semantics.js';
 
 const plan = (columnTypes) => ({
   pattern: columnTypes.map(t => (t === 'v' ? 'v' : '_')).join(','),

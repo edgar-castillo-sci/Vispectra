@@ -1,7 +1,7 @@
 // compiler/tokenizer.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { tokenize } from './tokenizer.js';
+import { tokenize } from '../../src/compiler/tokenizer.js';
 
 test('tokenize: simple number', () => {
   const t = tokenize('42');

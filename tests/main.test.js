@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { compile } from './main.js';
+import { compile } from '../src/main.js';
 
 function mockFile(name, content) {
   return { name, text: async () => content };

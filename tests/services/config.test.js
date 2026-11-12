@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { stateToConfig, configToStatePatch, exportStateToYAML, importYAMLToPatch } from './config.js';
+import { stateToConfig, configToStatePatch, exportStateToYAML, importYAMLToPatch } from '../../src/services/config.js';
 
 const mockState = {
   frame: { width: 800, height: 500, mode: 'stretch' },

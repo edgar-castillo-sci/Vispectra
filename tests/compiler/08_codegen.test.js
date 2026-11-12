@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createColumns, inject } from './08_codegen.js';
+import { createColumns, inject } from '../../src/compiler/08_codegen.js';
 
 // --- createColumns ---
 

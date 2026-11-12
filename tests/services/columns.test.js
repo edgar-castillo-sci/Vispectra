@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { deduplicateColumns } from './columns.js';
+import { deduplicateColumns } from '../../src/services/columns.js';
 
 test('deduplicateColumns: identical columns', () => {
   const cols = [[1, 2, 3], [1, 2, 3], [4, 5, 6]];

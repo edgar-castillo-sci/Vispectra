@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyPipeline } from './pipeline.js';
+import { applyPipeline } from '../../src/services/pipeline.js';
 
 const cols = [
   [1, 2, 3, 4, 5],        // x

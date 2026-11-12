@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseLine } from './06_parser.js';
+import { parseLine } from '../../src/compiler/06_parser.js';
 
 const plan = (pattern, commaRoles, numColumns) => ({
   pattern,

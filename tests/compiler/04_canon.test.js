@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildCanon } from './04_canon.js';
-import { buildIR } from './03_ir.js';
-import { lex } from './02_lexer.js';
+import { buildCanon } from '../../src/compiler/04_canon.js';
+import { buildIR } from '../../src/compiler/03_ir.js';
+import { lex } from '../../src/compiler/02_lexer.js';
 
 function makeIR(structures) {
   return buildIR(structures.map((s, i) => ({ index: i, structure: s })));
