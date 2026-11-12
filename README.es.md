@@ -1,6 +1,6 @@
 # Vispectra
 
-> 🇬🇧 [English version](README.md) · 📅 Last synced: 2026-11-11
+> 🇬🇧 [English](README.md) · 🇲🇽🇦🇷🇨🇴🇪🇸🇨🇱🇵🇦🇵🇪🇨🇺… Español · 📅 Last synced: 2026-11-11
 
 ## Resumen
 
