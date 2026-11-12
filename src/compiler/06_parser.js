@@ -115,16 +115,25 @@ export function parseLine(line, plan) {
         const rightRaw = tokens[tokenIdx].raw;
         const leftRaw = pending.raw;
 
-        // Validación de fusión (solo dígitos puros)
-        if (!/^\d+$/.test(leftRaw) || !/^\d+$/.test(rightRaw)) {
+        // R16 (reformulado): la fusión es válida si y solo si la
+        // concatenación parsea como número finito. Number() es estricto
+        // (rechaza '-1.-5', '1e5.2', '1.2.5', '1.+2'), así que cualquier
+        // violación sintáctica aparece como NaN. NO usar parseFloat:
+        // truncaría silenciosamente '-1.-5' a -1.
+        //
+        // No se introduce adivinación: 04b ya cerró el plan fijando el
+        // rol 'dec'. El parser solo pregunta si ese rol produce un
+        // número válido.
+        const fusedText = `${leftRaw}.${rightRaw}`;
+        const fused = Number(fusedText);
+        if (!Number.isFinite(fused)) {
           return fail('FUSION_UNSAFE', { left: leftRaw, right: rightRaw });
         }
 
-        const fused = parseFloat(`${leftRaw}.${rightRaw}`);
         pending = {
           kind: 'value',
           value: fused,
-          raw: `${leftRaw}.${rightRaw}`,
+          raw: fusedText,
         };
         tokenIdx++;
 

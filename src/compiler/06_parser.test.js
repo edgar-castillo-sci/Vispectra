@@ -91,14 +91,42 @@ test('parse: unexpected number in v slot', () => {
   assert.equal(r.diagnostics[0].code, 'UNEXPECTED_NUMBER_IN_V_SLOT');
 });
 
-test('parse: fusion with sign rejected', () => {
+test('parse: fusion rejects result that is not a number (double sign)', () => {
   const r = parseLine({ index: 0, content: '-1,-5' }, plan('_,_', ['dec'], 1));
   assert.equal(r.ok, false);
   assert.equal(r.diagnostics[0].code, 'FUSION_UNSAFE');
 });
 
-test('parse: fusion with exponent rejected', () => {
+test('parse: fusion rejects result that is not a number (exponent+dot)', () => {
   const r = parseLine({ index: 0, content: '1e5,2' }, plan('_,_', ['dec'], 1));
+  assert.equal(r.ok, false);
+  assert.equal(r.diagnostics[0].code, 'FUSION_UNSAFE');
+});
+
+test('parse: fusion accepts sign on left', () => {
+  // -1,5 → -1.5
+  const r = parseLine({ index: 0, content: '-1,5' }, plan('_,_', ['dec'], 1));
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.values, [-1.5]);
+});
+
+test('parse: fusion accepts exponent on right', () => {
+  // 1,2e5 → 1.2e5 = 120000
+  const r = parseLine({ index: 0, content: '1,2e5' }, plan('_,_', ['dec'], 1));
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.values, [120000]);
+});
+
+test('parse: fusion accepts european scientific (real Cary 60 case)', () => {
+  // -9,58E-06 → -9.58e-6
+  const r = parseLine({ index: 0, content: '-9,58E-06' }, plan('_,_', ['dec'], 1));
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.values, [-9.58e-6]);
+});
+
+test('parse: fusion rejects double-dot result', () => {
+  // 1,2.5 → 1.2.5 is not a valid number
+  const r = parseLine({ index: 0, content: '1,2.5' }, plan('_,_', ['dec'], 1));
   assert.equal(r.ok, false);
   assert.equal(r.diagnostics[0].code, 'FUSION_UNSAFE');
 });
