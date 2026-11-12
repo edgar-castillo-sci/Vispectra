@@ -9,3 +9,6 @@ dist/
 .projectile
 proyecto_completo.txt
 examples/big_test.csv
+
+diff.txt
+gitlog.txt

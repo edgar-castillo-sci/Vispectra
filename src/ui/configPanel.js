@@ -1,4 +1,5 @@
-import { exportStateToYAML, importYAMLToState } from '../services/config.js';
+import { exportStateToYAML, importYAMLToPatch } from '../services/config.js';
+import { state, applyConfigPatch } from '../plot/state.js';
 import { t } from '../i18n.js';
 
 export function initConfigPanel(onApplied) {
@@ -20,7 +21,7 @@ export function initConfigPanel(onApplied) {
 
   document.getElementById('btnSaveConfig').onclick = () => {
     try {
-      const yaml = exportStateToYAML();
+      const yaml = exportStateToYAML(state);
       textarea.value = yaml;
       const blob = new Blob([yaml], { type: 'text/yaml;charset=utf-8' });
       const url = URL.createObjectURL(blob);
@@ -65,7 +66,7 @@ export function initConfigPanel(onApplied) {
       return;
     }
     try {
-      importYAMLToState(yaml);
+      applyConfigPatch(importYAMLToPatch(yaml));
       statusEl.textContent = `✓ ${t('config_applied')}`;
       statusEl.style.color = '#0a7';
       if (onApplied) onApplied();

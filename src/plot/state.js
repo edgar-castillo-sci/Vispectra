@@ -42,7 +42,7 @@ export const state = {
   seriesConfig: {},
     seriesConfigLocked: false,
   seriesWidthLocked: true,
-    masterWidth: 1.5,
+    masterWidth: 1.5,
 
   defaultColors: ['#000000', '#cc0000', '#0055cc', '#009933', '#6600cc', '#ff9900', '#00cccc', '#cc00cc'],
   defaultStyles: ['solid', 'dashed', 'dotted', 'dashdot']
@@ -131,4 +131,32 @@ export function adjustViewForFrameChange(oldWidth, oldHeight, newWidth, newHeigh
   const xAdj = adjustRange(limits.minX, limits.maxX, xRatio);
   const yAdj = adjustRange(limits.minY, limits.maxY, yRatio);
   state.viewLimits = { minX: xAdj.min, maxX: xAdj.max, minY: yAdj.min, maxY: yAdj.max };
+}
+/**
+ * Applies a partial config patch (from configToStatePatch / importYAMLToPatch).
+ * The patch is already sanitized, so this only merges and handles the
+ * view-history reset that a new view range implies.
+ */
+export function applyConfigPatch(patch) {
+  if (!patch || typeof patch !== 'object') return;
+
+  if (patch.frame)        state.frame        = { ...state.frame,        ...patch.frame };
+  if (patch.graphConfig)  state.graphConfig  = { ...state.graphConfig,  ...patch.graphConfig };
+  if (patch.columnConfig) state.columnConfig = { ...state.columnConfig, ...patch.columnConfig };
+
+  if (patch.axisConfig) {
+    if (patch.axisConfig.x) state.axisConfig.x = { ...state.axisConfig.x, ...patch.axisConfig.x };
+    if (patch.axisConfig.y) state.axisConfig.y = { ...state.axisConfig.y, ...patch.axisConfig.y };
+  }
+
+  if (patch.seriesConfig)               state.seriesConfig       = { ...patch.seriesConfig };
+  if ('seriesConfigLocked' in patch)    state.seriesConfigLocked = patch.seriesConfigLocked;
+  if ('seriesWidthLocked' in patch)     state.seriesWidthLocked  = patch.seriesWidthLocked;
+  if (Number.isFinite(patch.masterWidth)) state.masterWidth      = patch.masterWidth;
+
+  if (patch.viewLimits) {
+    state.viewLimits   = { ...patch.viewLimits };
+    state.viewHistory  = [{ limits: { ...state.viewLimits }, axis: 'xy' }];
+    state.historyIndex = 0;
+  }
 }
