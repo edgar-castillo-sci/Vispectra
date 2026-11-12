@@ -168,15 +168,29 @@ Licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. The AG
 
 ## Citation
 
-If you use Vispectra in academic work, please cite the conceptual DOI (which always points to the latest archived version) or the version-specific DOI for the release you used.
+If you use Vispectra in academic work, please cite the **version-specific
+DOI for the release you used** (stable identifier, reproducible) or the
+**conceptual DOI** (always points to the latest archived version).
+
+**This release (`v0.1.1-alpha`):**
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24153400.svg)](https://doi.org/10.5281/zenodo.24153400)
 
 **Conceptual DOI (always latest):**
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23177822.svg)](https://doi.org/10.5281/zenodo.23177822)
 
-Version-specific DOIs are assigned per release and listed on the
-[Zenodo record](https://doi.org/10.5281/zenodo.23177822).
+BibTeX for this release:
 
-BibTeX:
+    @software{castillo_vispectra_v011,
+      author       = {Castillo, Edgar},
+      title        = {Vispectra: A compiler for spectroscopic file formats},
+      year         = {2026},
+      version      = {v0.1.1-alpha},
+      publisher    = {Zenodo},
+      doi          = {10.5281/zenodo.24153400},
+      url          = {https://github.com/edgar-castillo-sci/Vispectra}
+    }
+
+BibTeX for the latest version (conceptual DOI):
 
     @software{castillo_vispectra,
       author       = {Castillo, Edgar},

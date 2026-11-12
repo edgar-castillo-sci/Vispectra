@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use Vispectra in academic work, please cite it. This file describes v0.1.1-alpha; the conceptual DOI listed under identifiers always points to the latest archived version."
+title: "Vispectra: A compiler for spectroscopic file formats"
+abstract: "Vispectra is a cross-platform, browser-based compiler and visualizer for spectroscopic file formats (UV-Vis, XRD, XPS, Raman, IR). It infers the grammatical structure of heterogeneous instrument outputs from a statistical sample of their data, builds a structural contract (the canon), and applies it to the rest. All processing is client-side: zero telemetry, no backend dependencies."
+version: v0.1.1-alpha
+doi: 10.5281/zenodo.24153400
+date-released: 2026-11-12
+license: AGPL-3.0
+url: "https://github.com/edgar-castillo-sci/Vispectra"
+repository-code: "https://github.com/edgar-castillo-sci/Vispectra"
+authors:
+  - family-names: Castillo
+    given-names: Edgar
+    affiliation: "Independent Researcher"
+    orcid: "https://orcid.org/0009-0006-4268-3323"
+keywords:
+  - spectroscopy
+  - uv-vis
+  - xrd
+  - xps
+  - raman
+  - ir
+  - compiler
+  - parser
+  - grammatical inference
+  - visualization
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23177822
+    description: "Conceptual DOI (always points to the latest version)"
