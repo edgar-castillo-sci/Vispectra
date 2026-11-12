@@ -1,6 +1,6 @@
 {
   "title": "Vispectra: A compiler for spectroscopic file formats",
-  "description": "Vispectra is a cross-platform, browser-based spectra plotter. At its core, it is a compiler that infers the grammar of spectroscopic files (UV-Vis, XRD, XPS, Raman, IR) from a sample of their data, builds a structural contract (the *canon*), and applies it to the rest. This approach addresses the problem of reading messy, heterogeneous instrument files and relates to the positive-only grammatical inference problem (Gold, 1967).\n\nThis version (v0.1.0-alpha) includes the complete parser specification, the documented pipeline architecture, and phases 00 (reading) and 09 (diagnostics) implemented. The compiler does not yet parse files: phases 01–08 are under development.",
+  "description": "Vispectra is a cross-platform, browser-based compiler and visualizer for spectroscopic file formats (UV-Vis, XRD, XPS, Raman, IR). It infers the grammatical structure of heterogeneous instrument outputs from a statistical sample of their data, builds a structural contract (the canon), and applies it to the rest. The parser handles American and European number formats, mixed notation within a single row, hard separators (semicolons, spaces, tabs), sparse files, and wide-format blocks. It never guesses silently: when the structure is truly ambiguous, it degrades to user intervention; when it is unambiguous, it commits to a deterministic resolution. The visualization engine renders publication-quality plots with hybrid SVG/Canvas, MinMaxLTTB downsampling for massive datasets, and full visual state serialization to YAML.\n\nThe compiler addresses the problem of reading messy, heterogeneous instrument files and relates to the positive-only grammatical inference problem (Gold, 1967). This release (v0.1.1-alpha) ships the complete parser pipeline (phases 00-09), a two-level canonical model, real-world UV-Vis fixtures, and the visualization engine. All processing is client-side in the browser: zero telemetry, no backend dependencies, no data leaves the machine.",
   "creators": [
     {
       "name": "Castillo, Edgar",
@@ -18,13 +18,15 @@
     "ir",
     "compiler",
     "parser",
-    "grammatical inference"
+    "grammatical inference",
+    "visualization",
+    "scientific computing"
   ],
   "license": "AGPL-3.0",
   "upload_type": "software",
   "access_right": "open",
   "language": "eng",
-  "version": "v0.1.0-alpha",
+  "version": "v0.1.1-alpha",
   "related_identifiers": [
     {
       "identifier": "https://github.com/edgar-castillo-sci/Vispectra",

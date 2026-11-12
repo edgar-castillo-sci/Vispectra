@@ -5,11 +5,14 @@ All notable changes to Vispectra will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.1-alpha] - 2026-11-11
 
-Focus: parser robustness for trailing commas and wide-format files, plus a
-publication-grade styling pass (font, frame, ticks, grid, legend frame,
-super-exponent) and per-series width control.
+Focus: parser robustness (trailing commas, mixed notation, hard separators),
+plus a publication-grade styling pass (font, frame, ticks, grid, legend frame,
+super-exponent) and per-series width control. Three fixes dominate this
+release: R107 (hard separators force decimal commas), R16 (fusion accepts
+any finite numeric concatenation), and R109 (dominant block uses an explicit
+tiebreaker).
 
 ### Added
 
@@ -67,6 +70,24 @@ super-exponent) and per-series width control.
 - `onSeriesToggle` writes the current active Y indices into
   `columnConfig.selectedY` so the save reflects the actual selection.
 
+**Examples**
+- Five real-world UV-Vis fixtures added to `examples/`:
+  `cary60_pvdf_hfp_40pctgo_2025-05-13.csv` (renamed from the raw
+  instrument name for URL-friendliness), `CNNi.csv`,
+  `26032024_Characterisation_UV_T2.3_FORTH.csv`,
+  `curvedata_opticaldensity.csv`, and `L1Ref.txt`.
+  The Cary 60 file drove the R107/R16 fixes; CNNi drove the
+  empty-column preservation fix and the 01b trailing-comma policy.
+
+**Tests**
+- Unit tests moved from `src/` to a mirror-structured `tests/`
+  directory (`tests/compiler/`, `tests/services/`, `tests/main.test.js`).
+  `node --test` recursively discovers `*.test.js` from CWD, so no
+  `package.json` change is required.
+- Five unit tests for the `services/config.js` refactor: purity of
+  `stateToConfig` and `configToStatePatch`, scalar round-trip, sanitizer
+  rejects invalid fields, YAML round-trip.
+
 ### Changed
 
 **Interaction**
@@ -85,10 +106,41 @@ super-exponent) and per-series width control.
   so the pattern slot count matches `applyResolution`.
 - `04b` `countColumns` / `04c` `applyResolution`: count one extra empty slot
   when the structure ends with a sep-comma or `|`.
+- R16 reformulated: a `dec` fusion is valid iff `Number(left + '.' + right)`
+  returns a finite number. Previously required both operands to be
+  `/^\d+$/`, rejecting any fusion with a sign or an exponent. Now `-9,58E-06`
+  (european scientific notation with sign) parses correctly. `Number` is
+  strict (rejects `-1.-5`, `1e5.2`, `1.2.5`, `1.+2`), so syntactic
+  violations still surface as `NaN`. `parseFloat` is deliberately not used:
+  it would silently truncate `-1.-5` to `-1`.
 
 **Disambiguation**
 - R98 honored: if any structure contains a dot-decimal (`n`), commas can
   only be separators; skip enumeration and use all-sep.
+- R107 fixed: the hard-separator check now runs **before** the R98 hasN
+  heuristic. Previously R107 was unreachable for any file mixing hard
+  separators with dot-decimal values, so every european cell split into
+  two columns. The allDec resolution is now validated against every
+  structure in the block; if it does not compose (e.g. `z,|,z` where the
+  comma is adjacent to a hard separator), the block is discarded as
+  garbage (commas are mandated to be decimal but do not fit).
+
+**Services**
+- `services/config.js` no longer imports the `state` singleton. New pure
+  readers (`stateToConfig`, `configToStatePatch`, `exportStateToYAML`,
+  `importYAMLToPatch`) replace the previous state-coupled functions.
+  A new `applyConfigPatch(patch)` in `plot/state.js` merges the sanitized
+  patch and resets view history when `viewLimits` is present. The
+  `services/` layer now matches its documented contract ("pure logic the
+  UI consumes").
+
+**Orchestrator**
+- R109 dominant-block selection now uses an explicit tiebreaker:
+  prefer the block with the most rows; on ties, prefer the wider block.
+  Previously the last-iterated block won, which silently disabled the
+  garbage filter whenever two blocks tied on row count. This also guards
+  against a wide-but-short metadata header stealing dominance from a
+  narrow-but-real data block.
 
 ### Fixed
 
@@ -96,6 +148,17 @@ super-exponent) and per-series width control.
   `Abs10`–`Abs20` and `Remark` clearly marked in the UI.
 - CNNi.csv trailing-comma case: 24 columns (last one empty), 601 rows, 0
   failed rows.
+- Cary 60 UV-Vis export: 36 columns (was 72 spurious columns with 46
+  duplicates). The hard-separator fix in `04b` splits `800,010376` once
+  instead of twice.
+- Parser: `-9,58E-06`, `-1,33E-04`, and other sign+exponent fusions no
+  longer rejected as `FUSION_UNSAFE`. The Cary 60 fixture went from many
+  failed rows to zero.
+- Orchestrator: R109 was silently disabled when two blocks tied on row
+  count, mixing both blocks with null-padding instead of discarding the
+  smaller one. Now deterministic regardless of iteration order.
+- `src/plot/state.js`: removed a stray ESC (0x1B) character that leaked
+  into the `masterWidth` line and broke browser parsing.
 - Role panel: DOM pickers stayed stale after recompact (Select All / toggle)
   — `refreshRolePanelFromState()` now syncs without a full rebuild.
 - Config: `state.columnConfig.selectedY` was never updated on checkbox
@@ -119,6 +182,10 @@ Same as `v0.1.0-alpha` (see below), plus:
 - Per-series width and master width are serialized under `graph:` in YAML
   rather than a dedicated `series:` block. Works, but a `v0.3.0` schema
   cleanup will likely move them.
+- `src/compiler/01b_trailing_comma.js` has no unit tests. The three
+  documented policies (`preserve` / `trim` / `none`) are exercised
+  indirectly via integration tests (CNNi.csv), but direct coverage is
+  pending.
 
 ### Planned for v0.2.0
 

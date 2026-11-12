@@ -1,18 +1,30 @@
 {
   "name": "vispectra",
-  "version": "0.1.0",
-  "description": "Compilador y visualizador de espectros (UV-Vis, XRD, XPS, Raman, IR)",
+  "version": "0.1.1-alpha",
+  "description": "A compiler for spectroscopic file formats (UV-Vis, XRD, XPS, Raman, IR)",
   "type": "module",
   "private": true,
   "license": "AGPL-3.0",
   "author": "Edgar Castillo",
   "homepage": "https://doi.org/10.5281/zenodo.23177822",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edgar-castillo-sci/Vispectra.git"
+  },
+  "bugs": {
+    "url": "https://github.com/edgar-castillo-sci/Vispectra/issues"
+  },
   "keywords": [
     "spectroscopy",
     "compiler",
     "parser",
     "visualization",
-    "grammatical inference"
+    "grammatical inference",
+    "uv-vis",
+    "xrd",
+    "xps",
+    "raman",
+    "ir"
   ],
   "scripts": {
     "dev": "npx serve .",
