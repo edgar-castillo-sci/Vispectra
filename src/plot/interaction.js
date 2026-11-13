@@ -44,15 +44,22 @@ export function attachInteraction(ctx) {
   overlay.setAttribute('style', 'cursor: crosshair;');
   svg.appendChild(overlay);
 
-  const zoomRect = document.createElementNS(SVG_NS, 'rect');
-  zoomRect.setAttribute('fill', 'rgba(0, 85, 204, 0.15)');
-  zoomRect.setAttribute('stroke', '#0055cc');
-  zoomRect.setAttribute('stroke-width', '1');
-  zoomRect.setAttribute('stroke-dasharray', '4 4');
-  zoomRect.setAttribute('style', 'display: none; pointer-events: none;');
-  svg.appendChild(zoomRect);
+  // ── Zoom rectangle: fixed-position div on body, NOT an SVG element.
+  //    Mutating SVG attributes on every mousemove forces the browser to
+  //    re-layout the whole SVG (hundreds of elements). A fixed div is
+  //    composited independently and its style changes are cheap.
+  let zoomRect = document.getElementById('plotZoomRect');
+  if (!zoomRect) {
+    zoomRect = document.createElement('div');
+    zoomRect.id = 'plotZoomRect';
+    zoomRect.style.cssText = 'position: fixed; pointer-events: none; display: none; background: rgba(0, 85, 204, 0.15); border: 1px dashed #0055cc; box-sizing: border-box; z-index: 9999;';
+    document.body.appendChild(zoomRect);
+  }
 
   let frozenRect = null;
+  let dragStartClient = null;
+  let pendingClientPos = null;
+  let moveRafId = null;
 
   const getMousePos = (e) => {
     const rect = frozenRect || svg.getBoundingClientRect();
@@ -64,14 +71,22 @@ export function attachInteraction(ctx) {
 
   const inPlotArea = (pos) => pos.x >= margin.left && pos.x <= baseWidth - margin.right;
 
+  // ── Binary search: dataPoints is sorted by x (done in drawPlot).
+  //    Previously O(n) over the full dataset on every hover move; with
+  //    zoom-out on a 100k file that's 100k iterations per mousemove.
+  //    Now O(log n) ≈ 17 iterations regardless of file size.
   const findClosestPoint = (xReal) => {
-    let closest = dataPoints[0];
-    let minDist = Math.abs(xReal - closest.x);
-    for (let i = 1; i < dataPoints.length; i++) {
-      const dist = Math.abs(xReal - dataPoints[i].x);
-      if (dist < minDist) { minDist = dist; closest = dataPoints[i]; }
+    const n = dataPoints.length;
+    if (n === 0) return null;
+    let lo = 0, hi = n - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (dataPoints[mid].x < xReal) lo = mid + 1;
+      else hi = mid;
     }
-    return closest;
+    const a = dataPoints[lo];
+    const b = lo > 0 ? dataPoints[lo - 1] : a;
+    return Math.abs(a.x - xReal) < Math.abs(b.x - xReal) ? a : b;
   };
 
   const updateSidebarValues = (point, yIdxArray) => {
@@ -159,36 +174,63 @@ export function attachInteraction(ctx) {
     showXTooltip(px, closest);
   }
 
+  // ── rAF-throttled zoom-rect update ──
+  const applyZoomRect = () => {
+    moveRafId = null;
+    if (!pendingClientPos || !frozenRect || !dragStartClient) {
+      pendingClientPos = null;
+      return;
+    }
+    const cp = pendingClientPos;
+    pendingClientPos = null;
+
+    const scaleX = frozenRect.width / width;
+    const scaleY = frozenRect.height / height;
+    const plotLeftPx = frozenRect.left + margin.left * scaleX;
+    const plotRightPx = frozenRect.left + (baseWidth - margin.right) * scaleX;
+    const plotTopPx = frozenRect.top + margin.top * scaleY;
+    const plotBottomPx = frozenRect.top + (baseHeight - margin.bottom) * scaleY;
+
+    const cx = Math.max(plotLeftPx, Math.min(plotRightPx, cp.x));
+    const cy = Math.max(plotTopPx, Math.min(plotBottomPx, cp.y));
+
+    zoomRect.style.left = Math.min(dragStartClient.x, cx) + 'px';
+    zoomRect.style.top = Math.min(dragStartClient.y, cy) + 'px';
+    zoomRect.style.width = Math.abs(cx - dragStartClient.x) + 'px';
+    zoomRect.style.height = Math.abs(cy - dragStartClient.y) + 'px';
+  };
+
   const onMouseMoveWindow = (e) => {
     if (!state.isDragging) return;
-    const pos = getMousePos(e);
-    pos.x = Math.max(margin.left, Math.min(baseWidth - margin.right, pos.x));
-    pos.y = Math.max(margin.top, Math.min(baseHeight - margin.bottom, pos.y));
-
-    const minXpx = Math.min(state.dragStart.x, pos.x), maxXpx = Math.max(state.dragStart.x, pos.x);
-    const minYpx = Math.min(state.dragStart.y, pos.y), maxYpx = Math.max(state.dragStart.y, pos.y);
-    zoomRect.setAttribute('x', minXpx); zoomRect.setAttribute('y', minYpx);
-    zoomRect.setAttribute('width', maxXpx - minXpx); zoomRect.setAttribute('height', maxYpx - minYpx);
+    pendingClientPos = { x: e.clientX, y: e.clientY };
+    if (moveRafId === null) {
+      moveRafId = requestAnimationFrame(applyZoomRect);
+    }
   };
 
   const onMouseUpWindow = (e) => {
     window.removeEventListener('mousemove', onMouseMoveWindow);
     window.removeEventListener('mouseup', onMouseUpWindow);
+    if (moveRafId !== null) {
+      cancelAnimationFrame(moveRafId);
+      moveRafId = null;
+    }
+    pendingClientPos = null;
     frozenRect = null;
 
-    if (!state.isDragging) return;
+    if (!state.isDragging) { dragStartClient = null; return; }
     state.isDragging = false;
 
-    zoomRect.setAttribute('style', 'display: none; pointer-events: none;');
-    const pos = getMousePos(e);
-    pos.x = Math.max(margin.left, Math.min(baseWidth - margin.right, pos.x));
-    pos.y = Math.max(margin.top, Math.min(baseHeight - margin.bottom, pos.y));
-    const dx = Math.abs(pos.x - state.dragStart.x);
-    const dy = Math.abs(pos.y - state.dragStart.y);
+    zoomRect.style.display = 'none';
 
-    if (dx < 15 && dy < 15) {
-      if (e.detail > 1) return;
-      if (!inPlotArea(pos)) return;
+    const dxClient = Math.abs(e.clientX - dragStartClient.x);
+    const dyClient = Math.abs(e.clientY - dragStartClient.y);
+
+    if (dxClient < 5 && dyClient < 5) {
+      // click → pin
+      if (e.detail > 1) { dragStartClient = null; return; }
+      const pos = getMousePos(e);
+      if (!inPlotArea(pos)) { dragStartClient = null; return; }
       state.isPinned = !state.isPinned;
       if (state.isPinned) {
         hoverGroup.setAttribute('style', 'display: block; pointer-events: none;');
@@ -201,6 +243,10 @@ export function attachInteraction(ctx) {
         clearAll();
       }
     } else {
+      // drag → zoom
+      const pos = getMousePos(e);
+      pos.x = Math.max(margin.left, Math.min(baseWidth - margin.right, pos.x));
+      pos.y = Math.max(margin.top, Math.min(baseHeight - margin.bottom, pos.y));
       const minPxX = Math.min(state.dragStart.x, pos.x), maxPxX = Math.max(state.dragStart.x, pos.x);
       const minPxY = Math.min(state.dragStart.y, pos.y), maxPxY = Math.max(state.dragStart.y, pos.y);
       const xA = unmapX(minPxX), xB = unmapX(maxPxX);
@@ -215,6 +261,7 @@ export function attachInteraction(ctx) {
       clearAll();
       redraw();
     }
+    dragStartClient = null;
   };
 
   overlay.addEventListener('mousedown', (e) => {
@@ -225,10 +272,13 @@ export function attachInteraction(ctx) {
     state.isDragging = true;
     state.dragStart = pos;
     frozenRect = svg.getBoundingClientRect();
+    dragStartClient = { x: e.clientX, y: e.clientY };
 
-    zoomRect.setAttribute('x', pos.x); zoomRect.setAttribute('y', pos.y);
-    zoomRect.setAttribute('width', 0); zoomRect.setAttribute('height', 0);
-    zoomRect.setAttribute('style', 'display: block; pointer-events: none;');
+    zoomRect.style.left = e.clientX + 'px';
+    zoomRect.style.top = e.clientY + 'px';
+    zoomRect.style.width = '0px';
+    zoomRect.style.height = '0px';
+    zoomRect.style.display = 'block';
     hoverGroup.setAttribute('style', 'display: none; pointer-events: none;');
     hideXTooltip();
 
