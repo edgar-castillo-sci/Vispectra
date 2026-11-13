@@ -701,3 +701,77 @@ input[type="checkbox"] {
 .export-option.disabled input {
   cursor: not-allowed;
 }
+
+/* ============================================================
+   FILE PANEL — full width, horizontal (below drop zone)
+   ============================================================ */
+
+#filePanel {
+  transition: box-shadow 0.15s;
+}
+
+#filePanel:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+#filePanel #salida {
+  padding: 6px 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-family: var(--f-mono);
+  font-size: 0.78rem;
+  color: #475569;
+  white-space: pre-wrap;
+  min-height: 20px;
+}
+
+@media (max-width: 960px) {
+  #filePanel {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  #filePanel #salida {
+    min-width: 0;
+  }
+}
+
+/* ============================================================
+   INLINE-EDITABLE WIDTH INPUT (used by rolePanel.js)
+   ============================================================ */
+
+.width-input {
+  width: 48px;
+  padding: 2px 4px;
+  font-family: var(--f-mono);
+  font-size: 0.78rem;
+  text-align: right;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--c-text);
+  cursor: text;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.width-input:hover {
+  border-color: var(--c-border-strong);
+  background: var(--c-surface);
+}
+
+.width-input:focus {
+  outline: none;
+  border-color: var(--c-primary);
+  background: var(--c-surface);
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.15);
+}
+
+.width-input::-webkit-inner-spin-button,
+.width-input::-webkit-outer-spin-button {
+  opacity: 0.4;
+}
+
+.width-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

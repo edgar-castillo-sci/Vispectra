@@ -30,37 +30,35 @@
 </div>
 <input type="file" id="entradaArchivos" multiple accept=".txt,.csv,.tsv,.dat,.asc,.xlsx,text/plain,text/csv" style="display: none;">
 
+<!-- File panel — full width, horizontal -->
+<div id="filePanel" style="max-width: 1600px; margin: 12px auto; padding: 12px 24px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px;">
+  <div id="fileActions" style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+    <button id="botonProcesar" data-i18n="btn_process">Process File</button>
+    <button id="botonExportCsvRaw" style="background: #777; display: none;" data-i18n="btn_export_csv_raw">Raw CSV</button>
+  </div>
+  <div id="salida" data-i18n="status_waiting" style="flex: 1; min-width: 150px; font-size: 0.85rem; color: #555;">Waiting for files...</div>
+  <div id="exportGroup" style="display: none; gap: 8px; align-items: center; flex-shrink: 0; padding: 6px 12px; background: #fff; border: 1px solid #ddd; border-radius: 6px;">
+    <select id="selectFormat" style="min-width: 120px;">
+      <option value="svg">SVG (Vector)</option>
+      <option value="png">PNG (High Res)</option>
+      <option value="jpeg">JPEG</option>
+      <option value="pdf">PDF (Vector)</option>
+    </select>
+    <label id="exportTransparentLabel" class="export-option">
+      <input type="checkbox" id="exportTransparent">
+      <span data-i18n="export_transparent">Transparent</span>
+    </label>
+    <button id="botonExportar" data-i18n="btn_export_graph">Export</button>
+    <button id="botonExportCsvProcessed" style="background: #555;" data-i18n="btn_export_csv_proc">CSV</button>
+  </div>
+</div>
+
 <div class="container" style="display: grid; grid-template-columns: 340px 1fr; gap: 24px; padding: 2rem; max-width: 1600px; margin: 0 auto; align-items: start;">
 
   <!-- ============================================================ -->
   <!-- COLUMNA IZQUIERDA: Controles                                 -->
   <!-- ============================================================ -->
   <div class="sidebar">
-
-    <!-- File panel -->
-    <div style="background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 15px;">
-      <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-        <button id="botonProcesar" data-i18n="btn_process" style="flex: 1;">Process File</button>
-        <button id="botonExportCsvRaw" style="background: #777; display: none;" data-i18n="btn_export_csv_raw">Raw CSV</button>
-      </div>
-
-      <div id="salida" data-i18n="status_waiting" style="font-size: 0.85rem; color: #555; min-height: 20px; margin-bottom: 8px;">Waiting for files...</div>
-
-      <div id="exportGroup" style="display: none; gap: 5px; flex-wrap: wrap; align-items: center;">
-          <select id="selectFormat" style="flex: 1; min-width: 100px;">
-              <option value="svg">SVG (Vector)</option>
-              <option value="png">PNG (High Res)</option>
-              <option value="jpeg">JPEG</option>
-              <option value="pdf">PDF (Vector)</option>
-          </select>
-          <label id="exportTransparentLabel" class="export-option">
-              <input type="checkbox" id="exportTransparent">
-              <span data-i18n="export_transparent">Transparent</span>
-          </label>
-          <button id="botonExportar" data-i18n="btn_export_graph">Export</button>
-          <button id="botonExportCsvProcessed" style="background: #555;" data-i18n="btn_export_csv_proc">CSV</button>
-      </div>
-    </div>
 
     <!-- Role panel -->
     <div id="rolePanel" style="display: none;">
@@ -75,14 +73,22 @@
 
       <button id="botonGraficar" style="display: none; background: #009933; width: 100%; margin-bottom: 12px;" data-i18n="btn_update_plot">Update Plot</button>
 
-      <div class="role-selector">
-        <label for="selectX" data-i18n="select_x">X-Axis:</label>
-        <select id="selectX"></select>
-      </div>
-
-      <div class="role-selector">
-        <label data-i18n="select_y">Y-Series:</label>
-        <div id="checkboxesY"></div>
+      <!-- X-Axis & Y-Series (collapsible) -->
+      <div class="role-selector" style="background: #fff5f8; border-color: #ffd6e5;">
+        <label style="font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+          <span>🎯 <span data-i18n="panel_xy">X-Axis & Y-Series</span></span>
+          <input type="checkbox" id="toggleXYPanel" checked style="margin: 0; cursor: pointer;">
+        </label>
+        <div id="xyPanel" style="margin-top: 10px;">
+          <div class="role-selector" style="margin-bottom: 8px;">
+            <label for="selectX" data-i18n="select_x">X-Axis:</label>
+            <select id="selectX"></select>
+          </div>
+          <div class="role-selector">
+            <label data-i18n="select_y">Y-Series:</label>
+            <div id="checkboxesY"></div>
+          </div>
+        </div>
       </div>
 
       <!-- Math Pipeline -->

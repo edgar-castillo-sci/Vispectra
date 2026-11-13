@@ -113,6 +113,7 @@ export function initUI(procesarFn, graficarFn) {
   bindCollapsiblePanel('toggleFramePanel', 'framePanel');
   bindCollapsiblePanel('toggleConfigPanel', 'configPanel');
   bindCollapsiblePanel('toggleAppearancePanel', 'appearancePanel');
+  bindCollapsiblePanel('toggleXYPanel', 'xyPanel');
 
   // ── Export options: enable/disable "Transparent" per format ──
   const updateTransparentState = () => {
@@ -239,6 +240,11 @@ export function initUI(procesarFn, graficarFn) {
       if (botonGraficar) botonGraficar.style.display = e.target.checked ? 'none' : 'block';
       if (e.target.checked) actualizarGrafico();
     });
+  }
+
+  // Manual "Update Plot" button (visible only when auto-plot is off)
+  if (botonGraficar) {
+    botonGraficar.addEventListener('click', () => actualizarGrafico());
   }
 
   if (botonExportar) {
