@@ -46,17 +46,20 @@
 
       <div id="salida" data-i18n="status_waiting" style="font-size: 0.85rem; color: #555; min-height: 20px; margin-bottom: 8px;">Waiting for files...</div>
 
-      <div id="exportGroup" style="display: none; gap: 5px; flex-wrap: wrap;">
-        <select id="selectFormat" style="flex: 1; min-width: 100px;">
-          <option value="svg">SVG (Vector)</option>
-          <option value="png">PNG (High Res)</option>
-          <option value="jpeg">JPEG</option>
-          <option value="pdf">PDF (Vector)</option>
-        </select>
-        <button id="botonExportar" data-i18n="btn_export_graph">Export</button>
-        <button id="botonExportCsvProcessed" style="background: #555;" data-i18n="btn_export_csv_proc">CSV</button>
+      <div id="exportGroup" style="display: none; gap: 5px; flex-wrap: wrap; align-items: center;">
+          <select id="selectFormat" style="flex: 1; min-width: 100px;">
+              <option value="svg">SVG (Vector)</option>
+              <option value="png">PNG (High Res)</option>
+              <option value="jpeg">JPEG</option>
+              <option value="pdf">PDF (Vector)</option>
+          </select>
+          <label id="exportTransparentLabel" class="export-option">
+              <input type="checkbox" id="exportTransparent">
+              <span data-i18n="export_transparent">Transparent</span>
+          </label>
+          <button id="botonExportar" data-i18n="btn_export_graph">Export</button>
+          <button id="botonExportCsvProcessed" style="background: #555;" data-i18n="btn_export_csv_proc">CSV</button>
       </div>
-    </div>
 
     <!-- Role panel -->
     <div id="rolePanel" style="display: none;">

@@ -6,23 +6,20 @@ import { applyPipeline } from './pipeline.js';
 // PLOT EXPORT (SVG / PNG / JPEG / PDF)
 // ============================================================
 
-export function exportarPlot(svg, format) {
+export function exportarPlot(svg, format, options = {}) {
   if (!svg || !svg.innerHTML) return;
 
+  const transparent = options.transparent === true;
   const frame = state.frame || { width: 800, height: 500 };
   const { width, height } = frame;
 
-  // 1. Serializar el SVG
   const serializer = new XMLSerializer();
   let svgString = serializer.serializeToString(svg);
 
-  // 2. Garantizar xmlns
   if (!svgString.includes('xmlns="http://www.w3.org/2000/svg"')) {
     svgString = svgString.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
   }
 
-  // 3. Forzar width/height explícitos y eliminar style/width/height viejos
-  //    Esto evita que el navegador "estire" el texto al cargarlo como <img>
   svgString = svgString.replace(/<svg([^>]*)>/, (match, attrs) => {
     const clean = attrs
       .replace(/\s+width="[^"]*"/g, '')
@@ -32,9 +29,18 @@ export function exportarPlot(svg, format) {
   });
 
   if (format === 'svg') {
+    if (!transparent) {
+      // Inyectar rect blanco como primer hijo → queda al fondo del z-order
+      // dentro del SVG (no tapa nada). SVG no serializa CSS externo, así
+      // que el background del #spectrumSvg no viaja con la exportación.
+      svgString = svgString.replace(
+        /(<svg[^>]*>)/,
+        `$1<rect width="${width}" height="${height}" fill="#ffffff"/>`
+      );
+    }
     descargarArchivo(svgString, 'image/svg+xml;charset=utf-8', 'svg');
   } else if (format === 'png' || format === 'jpeg') {
-    exportarRaster(svgString, format, width, height);
+    exportarRaster(svgString, format, width, height, transparent);
   } else if (format === 'pdf') {
     exportarPDF(svg, width, height);
   }
@@ -43,7 +49,7 @@ export function exportarPlot(svg, format) {
 // ------------------------------------------------------------
 // PNG / JPEG — Renderiza a canvas a 3x para alta resolución
 // ------------------------------------------------------------
-function exportarRaster(svgString, format, width, height) {
+function exportarRaster(svgString, format, width, height, transparent) {
   const SCALE = 3;
   const img = new Image();
   const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
@@ -55,13 +61,13 @@ function exportarRaster(svgString, format, width, height) {
     canvas.height = height * SCALE;
     const ctx = canvas.getContext('2d');
 
-    if (format === 'jpeg') {
+    // JPEG no soporta transparencia → siempre blanco.
+    // PNG respeta el flag `transparent`.
+    if (format === 'jpeg' || !transparent) {
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // El SVG tiene width/height explícitos, así que el navegador lo
-    // rasteriza nativamente a este tamaño (no hay upscaling)
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
     const mime = format === 'jpeg' ? 'image/jpeg' : 'image/png';

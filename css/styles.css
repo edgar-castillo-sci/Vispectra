@@ -680,3 +680,24 @@ input[type="checkbox"] {
   border-color: #0055cc;
   box-shadow: 0 0 0 2px rgba(0, 85, 204, 0.15);
 }
+/* Export options (transparent bg checkbox) */
+.export-option {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: #555;
+  cursor: pointer;
+  user-select: none;
+  padding: 0 4px;
+}
+.export-option input[type="checkbox"] {
+  margin: 0;
+}
+.export-option.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.export-option.disabled input {
+  cursor: not-allowed;
+}

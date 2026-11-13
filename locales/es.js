@@ -148,4 +148,5 @@ export default {
   copy: 'Copiar',
   copied: '¡Copiado!',
   close: 'Cerrar',
+  export_transparent: 'Transparente',
 };

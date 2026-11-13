@@ -44,6 +44,8 @@ export function initUI(procesarFn, graficarFn) {
   const botonExportar = document.getElementById('botonExportar');
   const botonExportCsvProcessed = document.getElementById('botonExportCsvProcessed');
   const selectFormat = document.getElementById('selectFormat');
+  const exportTransparent = document.getElementById('exportTransparent');
+  const exportTransparentLabel = document.getElementById('exportTransparentLabel');
   const salida = document.getElementById('salida');
   const rolePanel = document.getElementById('rolePanel');
   const exportGroup = document.getElementById('exportGroup');
@@ -71,7 +73,7 @@ export function initUI(procesarFn, graficarFn) {
     if (toggleAutoPlot && toggleAutoPlot.checked) actualizarGrafico();
   };
 
-    const onSeriesToggle = () => {
+  const onSeriesToggle = () => {
     const active = getActiveYIndices();
     state.columnConfig.selectedY = active;
 
@@ -105,12 +107,27 @@ export function initUI(procesarFn, graficarFn) {
   if (document.getElementById('toggleAppearancePanel')) {
     initAppearancePanel(() => actualizarGrafico());
   }
-    // Init about panel (citation badges + modal)
+  // Init about panel (citation badges + modal)
   initAboutPanel();
   bindCollapsiblePanel('toggleAxesPanel', 'axesPanel');
   bindCollapsiblePanel('toggleFramePanel', 'framePanel');
   bindCollapsiblePanel('toggleConfigPanel', 'configPanel');
   bindCollapsiblePanel('toggleAppearancePanel', 'appearancePanel');
+
+  // ── Export options: enable/disable "Transparent" per format ──
+  const updateTransparentState = () => {
+    if (!selectFormat || !exportTransparent) return;
+    const fmt = selectFormat.value;
+    const supportsTransparency = (fmt === 'svg' || fmt === 'png');
+    exportTransparent.disabled = !supportsTransparency;
+    if (exportTransparentLabel) {
+      exportTransparentLabel.classList.toggle('disabled', !supportsTransparency);
+    }
+  };
+  if (selectFormat && exportTransparent) {
+    selectFormat.addEventListener('change', updateTransparentState);
+    updateTransparentState();
+  }
 
   // ── Language ──
   if (langSelector) {
@@ -237,7 +254,8 @@ export function initUI(procesarFn, graficarFn) {
 
         salida.textContent = t('export_exporting');
         const svg = document.getElementById('spectrumSvg');
-        exportarPlot(svg, selectFormat.value);
+        const transparent = !!(exportTransparent && exportTransparent.checked);
+        exportarPlot(svg, selectFormat.value, { transparent });
         salida.textContent = prevText;
       } catch (err) {
         console.error('Export failed:', err);
