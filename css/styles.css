@@ -315,9 +315,10 @@ input[type="checkbox"] {
   display: block;
   width: 100%;
   height: auto;
-  background: var(--c-surface);
+  background: transparent;
+  position: relative;
+  z-index: 2;
 }
-
 /* --- Range panel --- */
 #rangePanel {
   padding: var(--s-3);
