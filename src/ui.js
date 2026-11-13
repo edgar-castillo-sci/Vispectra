@@ -12,6 +12,7 @@ import { initConfigPanel } from './ui/configPanel.js';
 import { initRangePanel } from './ui/rangePanel.js';
 import { initAppearancePanel } from './ui/appearancePanel.js';
 import { state, resetView } from './plot/state.js';
+import { initAboutPanel } from './ui/aboutPanel.js';
 
 let archivos = [];
 let onProcesar = null;
@@ -104,7 +105,8 @@ export function initUI(procesarFn, graficarFn) {
   if (document.getElementById('toggleAppearancePanel')) {
     initAppearancePanel(() => actualizarGrafico());
   }
-
+    // Init about panel (citation badges + modal)
+  initAboutPanel();
   bindCollapsiblePanel('toggleAxesPanel', 'axesPanel');
   bindCollapsiblePanel('toggleFramePanel', 'framePanel');
   bindCollapsiblePanel('toggleConfigPanel', 'configPanel');

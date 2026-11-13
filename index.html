@@ -19,10 +19,10 @@
 
 <div class="header">
     <h1 data-i18n="app_title">Vispectra</h1>
-    <select id="langSelector" class="lang-selector">
-        <option value="en">English</option>
-        <option value="es">Español</option>
-    </select>
+    <select id="langSelector">
+  <option value="en">🇬🇧 EN</option>
+  <option value="es">🇲🇽 ES</option>
+</select>
 </div>
 
 <div id="zonaDrop" data-i18n="drop_zone">
@@ -129,7 +129,7 @@
   <!-- ============================================================ -->
   <!-- COLUMNA DERECHA: Plot + range panel                          -->
   <!-- ============================================================ -->
-  <div class="main-plot" style="position: sticky; top: 20px; display: flex; flex-direction: column; gap: 8px; align-items: stretch;">
+<div class="main-plot" style="position: sticky; top: calc(var(--header-height) + 20px); display: flex; flex-direction: column; gap: 8px; align-items: stretch;">
     <div id="plotWrapper" style="position: relative; width: 100%; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff;">
       <svg id="spectrumSvg" xmlns="http://www.w3.org/2000/svg" style="display: block; width: 100%; height: 100%;"></svg>
     </div>
