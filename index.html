@@ -34,7 +34,6 @@
 <div id="filePanel" style="max-width: 1600px; margin: 12px auto; padding: 12px 24px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px;">
   <div id="fileActions" style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
     <button id="botonProcesar" data-i18n="btn_process">Process File</button>
-    <button id="botonExportCsvRaw" style="background: #777; display: none;" data-i18n="btn_export_csv_raw">Raw CSV</button>
   </div>
   <div id="salida" data-i18n="status_waiting" style="flex: 1; min-width: 150px; font-size: 0.85rem; color: #555;">Waiting for files...</div>
   <div id="exportGroup" style="display: none; gap: 8px; align-items: center; flex-shrink: 0; padding: 6px 12px; background: #fff; border: 1px solid #ddd; border-radius: 6px;">
@@ -49,7 +48,9 @@
       <span data-i18n="export_transparent">Transparent</span>
     </label>
     <button id="botonExportar" data-i18n="btn_export_graph">Export</button>
+    <span class="export-divider" aria-hidden="true"></span>
     <button id="botonExportCsvProcessed" style="background: #555;" data-i18n="btn_export_csv_proc">CSV</button>
+    <button id="botonExportCsvRaw" style="background: #777; display: none;" data-i18n="btn_export_csv_raw">Raw CSV</button>
   </div>
 </div>
 

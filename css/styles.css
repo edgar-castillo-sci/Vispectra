@@ -775,3 +775,12 @@ input[type="checkbox"] {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* Vertical divider between plot export and data export in #exportGroup */
+.export-divider {
+  display: inline-block;
+  width: 1px;
+  height: 20px;
+  background: #ddd;
+  margin: 0 4px;
+}
