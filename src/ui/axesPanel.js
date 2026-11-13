@@ -59,9 +59,6 @@ export function initAxesPanel(onUpdate) {
         <label style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.8rem; color: #555;">
           ${t('axis_invert')}: <input type="checkbox" class="cfg-invert">
         </label>
-        <label style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.8rem; color: #555;">
-          ${t('axis_flip')}: <input type="checkbox" class="cfg-flip">
-        </label>
       </div>
     </div>
   `;
@@ -88,7 +85,6 @@ export function initAxesPanel(onUpdate) {
     group.querySelector('.cfg-count').value = conf.count;
     group.querySelector('.cfg-step').value = conf.step;
     group.querySelector('.cfg-invert').checked = conf.invert === true;
-    group.querySelector('.cfg-flip').checked = conf.flip === true;
 
     group.querySelector('.cfg-linear-options').style.display = isLog ? 'none' : 'block';
     group.querySelector('.cfg-minor-labels').style.display = (conf.minor > 0) ? 'flex' : 'none';
@@ -117,7 +113,6 @@ export function initAxesPanel(onUpdate) {
     group.querySelector('.cfg-count').onchange = (e) => handleChange('count', parseInt(e.target.value) || 5);
     group.querySelector('.cfg-step').onchange = (e) => handleChange('step', parseFloat(e.target.value) || 1);
     group.querySelector('.cfg-invert').onchange = (e) => handleChange('invert', e.target.checked);
-    group.querySelector('.cfg-flip').onchange = (e) => handleChange('flip', e.target.checked);
   });
 
   syncUI('x');
