@@ -4,7 +4,12 @@
 // Opens a modal asking the user to pick a resolution per ambiguous
 // block. Returns a resolutions map compatible with
 // main.js's compile(file, { resolutions }).
+//
+// All strings come from i18n via t(); placeholders are interpolated
+// at runtime: {pattern}, {rows}, {example}, {parts}, {cols}.
 // ============================================================
+
+import { t } from '../i18n.js';
 
 export function openDisambiguationModal(ambiguities) {
   return new Promise((resolve) => {
@@ -22,14 +27,12 @@ export function openDisambiguationModal(ambiguities) {
       'box-shadow:0 10px 40px rgba(0,0,0,0.3);';
 
     const title = document.createElement('h2');
-    title.textContent = 'Comma disambiguation required';
+    title.textContent = t('disamb_modal_title');
     title.style.cssText = 'margin:0 0 0.75rem 0;font-size:1.1rem;';
     panel.appendChild(title);
 
     const intro = document.createElement('p');
-    intro.textContent =
-      'This file has ambiguous comma sequences. Each block below can be ' +
-      'read in more than one way. Pick one interpretation per block.';
+    intro.textContent = t('disamb_modal_intro');
     intro.style.cssText = 'margin:0 0 1rem 0;font-size:0.9rem;color:#444;';
     panel.appendChild(intro);
 
@@ -50,7 +53,9 @@ export function openDisambiguationModal(ambiguities) {
         ? block.pattern.substring(0, 30) + '...'
         : block.pattern;
 
-      header.textContent = `Pattern: ${shortPattern} (${block.instances} rows)`;
+      header.textContent = t('disamb_modal_pattern')
+        .replace('{pattern}', shortPattern)
+        .replace('{rows}', String(block.instances));
       section.appendChild(header);
 
       // Example preview (scrollable)
@@ -61,13 +66,13 @@ export function openDisambiguationModal(ambiguities) {
           'font-family:monospace;background:#fff;border:1px solid #eee;' +
           'padding:4px 6px;border-radius:4px;overflow-x:auto;white-space:nowrap;';
 
-        // Acortar el ejemplo si es demasiado largo
         const shortExample = block.example.length > 150
           ? block.example.substring(0, 150) + '...'
           : block.example;
 
-        exContainer.textContent = `Example: ${shortExample}`;
-        exContainer.title = block.example; // Tooltip para ver completo
+        exContainer.textContent = t('disamb_modal_example')
+          .replace('{example}', shortExample);
+        exContainer.title = block.example;
         section.appendChild(exContainer);
       }
 
@@ -81,7 +86,6 @@ export function openDisambiguationModal(ambiguities) {
         const opt = document.createElement('option');
         opt.value = res.id;
 
-        // Mostrar una representación visual acortada de la resolución
         const parts = res.commas
           .map((c) => (c === 'dec' ? 'D' : 'S'))
           .slice(0, 10)
@@ -89,9 +93,13 @@ export function openDisambiguationModal(ambiguities) {
 
         const colCount = res.columns === -1 ? '?' : res.columns;
 
-        opt.textContent =
-          `${parts} → ${colCount} column(s)` +
-          (res.isDefault ? ' (recommended)' : '');
+        const template = res.isDefault
+          ? t('disamb_modal_resolution_rec')
+          : t('disamb_modal_resolution');
+
+        opt.textContent = template
+          .replace('{parts}', parts)
+          .replace('{cols}', String(colCount));
 
         if (res.isDefault) opt.selected = true;
         select.appendChild(opt);
@@ -106,9 +114,9 @@ export function openDisambiguationModal(ambiguities) {
       'display:flex;justify-content:flex-end;gap:0.5rem;margin-top:1.5rem;';
 
     const cancelBtn = document.createElement('button');
-    cancelBtn.textContent = 'Cancel';
+    cancelBtn.textContent = t('disamb_modal_cancel');
     cancelBtn.style.cssText =
-      'padding:0.5rem 1rem;border:1px solid #ccc;background:#f8f8f8;' +
+      'padding:0.5rem 1rem;border:1px solid #ccc;background:#f8f8f8;color:#333;' +
       'border-radius:4px;cursor:pointer;font-size:0.9rem;';
     cancelBtn.onclick = () => {
       document.body.removeChild(overlay);
@@ -116,7 +124,7 @@ export function openDisambiguationModal(ambiguities) {
     };
 
     const applyBtn = document.createElement('button');
-    applyBtn.textContent = 'Apply';
+    applyBtn.textContent = t('disamb_modal_apply');
     applyBtn.style.cssText =
       'padding:0.5rem 1rem;border:none;background:#0a7;color:#fff;' +
       'border-radius:4px;cursor:pointer;font-weight:600;font-size:0.9rem;';

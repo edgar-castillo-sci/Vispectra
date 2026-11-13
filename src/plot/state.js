@@ -42,7 +42,7 @@ export const state = {
   seriesConfig: {},
     seriesConfigLocked: false,
   seriesWidthLocked: true,
-    masterWidth: 1.5,
+    masterWidth: 0.8,
 
   defaultColors: ['#000000', '#cc0000', '#0055cc', '#009933', '#6600cc', '#ff9900', '#00cccc', '#cc00cc'],
   defaultStyles: ['solid', 'dashed', 'dotted', 'dashdot']

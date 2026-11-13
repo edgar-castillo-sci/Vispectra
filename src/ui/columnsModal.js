@@ -1,9 +1,13 @@
 // ============================================================
 // UI — COLUMNS MODAL
 // ============================================================
-// Pregunta al usuario si desea colapsar columnas idénticas.
-// Devuelve true (colapsar) o false (mantener todas).
+// Asks the user whether to collapse identical columns.
+// Returns true (collapse) or false (keep all).
+// All strings come from i18n via t(); placeholders {total}, {dups},
+// {unique} are interpolated at runtime.
 // ============================================================
+
+import { t } from '../i18n.js';
 
 export function openColumnsModal(duplicatesCount, uniqueCount, totalCount) {
   return new Promise((resolve) => {
@@ -20,15 +24,15 @@ export function openColumnsModal(duplicatesCount, uniqueCount, totalCount) {
       'max-width:600px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,0.3);';
 
     const title = document.createElement('h2');
-    title.textContent = 'Duplicate columns detected';
+    title.textContent = t('cols_modal_title');
     title.style.cssText = 'margin:0 0 0.75rem 0;font-size:1.1rem;';
     panel.appendChild(title);
 
     const intro = document.createElement('p');
-    intro.innerHTML =
-      `This file produced <b>${totalCount} columns</b>, but <b>${duplicatesCount} of them</b> are <b>exactly identical</b> to others.<br><br>` +
-      `This usually happens in wide-format files where the X-axis is repeated for every Y-value.<br><br>` +
-      `Would you like to collapse the duplicates (reducing to <b>${uniqueCount} columns</b>) and <b>auto-select all Y-values</b> for plotting?`;
+    intro.innerHTML = t('cols_modal_intro')
+      .replace('{total}', String(totalCount))
+      .replace('{dups}', String(duplicatesCount))
+      .replace('{unique}', String(uniqueCount));
     intro.style.cssText = 'margin:0 0 1rem 0;font-size:0.9rem;color:#444;line-height:1.4;';
     panel.appendChild(intro);
 
@@ -36,9 +40,9 @@ export function openColumnsModal(duplicatesCount, uniqueCount, totalCount) {
     footer.style.cssText = 'display:flex;justify-content:flex-end;gap:0.5rem;margin-top:1.5rem;';
 
     const keepBtn = document.createElement('button');
-    keepBtn.textContent = 'Keep all columns';
+    keepBtn.textContent = t('cols_modal_keep');
     keepBtn.style.cssText =
-      'padding:0.5rem 1rem;border:1px solid #ccc;background:#f8f8f8;' +
+      'padding:0.5rem 1rem;border:1px solid #ccc;background:#f8f8f8;color:#333;' +
       'border-radius:4px;cursor:pointer;font-size:0.9rem;';
     keepBtn.onclick = () => {
       document.body.removeChild(overlay);
@@ -46,7 +50,7 @@ export function openColumnsModal(duplicatesCount, uniqueCount, totalCount) {
     };
 
     const collapseBtn = document.createElement('button');
-    collapseBtn.textContent = 'Collapse & Select Y';
+    collapseBtn.textContent = t('cols_modal_collapse');
     collapseBtn.style.cssText =
       'padding:0.5rem 1rem;border:none;background:#0a7;color:#fff;' +
       'border-radius:4px;cursor:pointer;font-weight:600;font-size:0.9rem;';

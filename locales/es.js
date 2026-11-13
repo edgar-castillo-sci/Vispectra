@@ -148,5 +148,23 @@ export default {
   copy: 'Copiar',
   copied: '¡Copiado!',
   close: 'Cerrar',
-  export_transparent: 'Transparente',
+    export_transparent: 'Transparente',
+      // ── Panel labels ──
+  panel_xy: 'Eje X y Series Y',
+
+  // ── Modal de columnas duplicadas ──
+  cols_modal_title: 'Columnas duplicadas detectadas',
+  cols_modal_intro: 'Este archivo produjo <b>{total} columnas</b>, pero <b>{dups} de ellas</b> son <b>exactamente idénticas</b> a otras.<br><br>Esto suele ocurrir en archivos de formato ancho donde el eje X se repite para cada valor Y.<br><br>¿Quieres colapsar los duplicados (reduciendo a <b>{unique} columnas</b>) y <b>auto-seleccionar todos los valores Y</b> para graficar?',
+  cols_modal_keep: 'Mantener todas',
+  cols_modal_collapse: 'Colapsar y seleccionar Y',
+
+  // ── Modal de desambiguación ──
+  disamb_modal_title: 'Desambiguación de comas requerida',
+  disamb_modal_intro: 'Este archivo tiene secuencias de comas ambiguas. Cada bloque de abajo puede leerse de más de una forma. Elige una interpretación por bloque.',
+  disamb_modal_pattern: 'Patrón: {pattern} ({rows} filas)',
+  disamb_modal_example: 'Ejemplo: {example}',
+  disamb_modal_resolution: '{parts} → {cols} columna(s)',
+  disamb_modal_resolution_rec: '{parts} → {cols} columna(s) (recomendado)',
+  disamb_modal_cancel: 'Cancelar',
+  disamb_modal_apply: 'Aplicar',
 };

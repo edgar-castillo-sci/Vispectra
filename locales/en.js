@@ -150,4 +150,23 @@ export default {
   copied: 'Copied!',
   close: 'Close',
   export_transparent: 'Transparent',
+
+  // ── Panel labels ──
+  panel_xy: 'X-Axis & Y-Series',
+
+  // ── Columns modal ──
+  cols_modal_title: 'Duplicate columns detected',
+  cols_modal_intro: 'This file produced <b>{total} columns</b>, but <b>{dups} of them</b> are <b>exactly identical</b> to others.<br><br>This usually happens in wide-format files where the X-axis is repeated for every Y-value.<br><br>Would you like to collapse the duplicates (reducing to <b>{unique} columns</b>) and <b>auto-select all Y-values</b> for plotting?',
+  cols_modal_keep: 'Keep all columns',
+  cols_modal_collapse: 'Collapse & Select Y',
+
+  // ── Disambiguation modal ──
+  disamb_modal_title: 'Comma disambiguation required',
+  disamb_modal_intro: 'This file has ambiguous comma sequences. Each block below can be read in more than one way. Pick one interpretation per block.',
+  disamb_modal_pattern: 'Pattern: {pattern} ({rows} rows)',
+  disamb_modal_example: 'Example: {example}',
+  disamb_modal_resolution: '{parts} → {cols} column(s)',
+  disamb_modal_resolution_rec: '{parts} → {cols} column(s) (recommended)',
+  disamb_modal_cancel: 'Cancel',
+  disamb_modal_apply: 'Apply',
 };

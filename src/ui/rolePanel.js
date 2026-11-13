@@ -2,6 +2,10 @@ import { t } from '../i18n.js';
 import { state } from '../plot/state.js';
 
 const SVG_NS = "http://www.w3.org/2000/svg";
+const DEFAULT_WIDTH = 0.8;
+const MIN_WIDTH = 0.1;
+const MAX_WIDTH = 10;
+const STEP_WIDTH = 0.05;
 
 let normalChecked = [];
 let onlyChecked = [];
@@ -81,6 +85,11 @@ function dashArrayFor(style) {
   return 'none';
 }
 
+function clampWidth(w) {
+  if (!Number.isFinite(w)) return DEFAULT_WIDTH;
+  return Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, w));
+}
+
 function updateSwatch(colIdx) {
   const conf = state.seriesConfig[colIdx];
   if (!conf) return;
@@ -88,8 +97,8 @@ function updateSwatch(colIdx) {
   if (!svg) return;
   const line = svg.querySelector('line');
   if (!line) return;
-  line.setAttribute('stroke', conf.color || '#888');
-  line.setAttribute('stroke-width', String(conf.width || 1.5));
+  line.setAttribute('stroke', conf.color || '#888888');
+  line.setAttribute('stroke-width', String(conf.width || state.masterWidth || DEFAULT_WIDTH));
   line.setAttribute('stroke-dasharray', dashArrayFor(conf.style));
 }
 
@@ -104,7 +113,7 @@ export function recompactSeriesConfig(columns, activeYIndices) {
 
     if (!state.seriesConfig[colIdx]) {
       state.seriesConfig[colIdx] = {
-        width: state.seriesWidthLocked ? state.masterWidth : 1.5,
+        width: state.seriesWidthLocked ? state.masterWidth : DEFAULT_WIDTH,
         label: `Col ${colIdx}`,
       };
     }
@@ -128,12 +137,15 @@ export function refreshRolePanelFromState() {
   });
   document.querySelectorAll('.y-width-slider').forEach((slider) => {
     const idx = parseInt(slider.dataset.col);
-    const w = state.seriesConfig[idx]?.width ?? 1.5;
+    const w = state.seriesConfig[idx]?.width ?? state.masterWidth ?? DEFAULT_WIDTH;
     slider.value = String(w);
     slider.disabled = state.seriesWidthLocked;
     slider.style.opacity = state.seriesWidthLocked ? '0.4' : '1';
     const valueEl = document.querySelector(`.y-width-value[data-col="${idx}"]`);
-    if (valueEl) valueEl.textContent = w.toFixed(2);
+    if (valueEl) {
+      valueEl.value = w.toFixed(2);
+      valueEl.disabled = state.seriesWidthLocked;
+    }
   });
   document.querySelectorAll('.y-swatch-svg').forEach((svg) => {
     updateSwatch(parseInt(svg.dataset.col));
@@ -147,7 +159,10 @@ export function refreshRolePanelFromState() {
     masterSlider.disabled = !state.seriesWidthLocked;
     masterSlider.style.opacity = state.seriesWidthLocked ? '1' : '0.4';
   }
-  if (masterValue) masterValue.textContent = state.masterWidth.toFixed(2);
+  if (masterValue) {
+    masterValue.value = state.masterWidth.toFixed(2);
+    masterValue.disabled = !state.seriesWidthLocked;
+  }
   if (lockToggle) lockToggle.checked = state.seriesWidthLocked;
   // Checkboxes (only if selectedY is concrete array)
   if (Array.isArray(state.columnConfig?.selectedY)) {
@@ -254,8 +269,8 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
   row2.style.cssText = 'display: flex; align-items: center; gap: 6px; font-size: 0.8rem;';
   row2.innerHTML = `
     <span style="color:#555; font-weight:bold;">${t('master_width')}:</span>
-    <input type="range" id="masterWidthSlider" min="0.5" max="5" step="0.25" value="${state.masterWidth}" style="flex: 1; min-width: 60px;">
-    <span id="masterWidthValue" style="min-width: 30px; text-align:right; font-family: monospace;">${state.masterWidth.toFixed(2)}</span>
+    <input type="range" id="masterWidthSlider" min="${MIN_WIDTH}" max="5" step="${STEP_WIDTH}" value="${state.masterWidth}" style="flex: 1; min-width: 60px;">
+    <input type="number" id="masterWidthValue" class="width-input" min="${MIN_WIDTH}" max="${MAX_WIDTH}" step="${STEP_WIDTH}" value="${state.masterWidth.toFixed(2)}">
     <label style="display:flex; align-items:center; gap:4px; cursor:pointer; color:#555;">
       <input type="checkbox" id="lockWidthsToggle" ${state.seriesWidthLocked ? 'checked' : ''}> ${t('lock_widths')}
     </label>
@@ -285,7 +300,7 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
       if (!state.seriesConfig[i]) state.seriesConfig[i] = {};
       const conf = state.seriesConfig[i];
 
-      if (!conf.width) conf.width = state.seriesWidthLocked ? state.masterWidth : 1.5;
+      if (!conf.width) conf.width = state.seriesWidthLocked ? state.masterWidth : DEFAULT_WIDTH;
       if (state.seriesWidthLocked) conf.width = state.masterWidth;
       if (!conf.label) conf.label = `${t('col_prefix')} ${originalIndices ? originalIndices[i] : i}`;
 
@@ -381,8 +396,8 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
       const line = document.createElementNS(SVG_NS, 'line');
       line.setAttribute('x1', '4'); line.setAttribute('y1', '8');
       line.setAttribute('x2', '46'); line.setAttribute('y2', '8');
-      line.setAttribute('stroke', conf.color || '#888');
-      line.setAttribute('stroke-width', String(conf.width || 1.5));
+      line.setAttribute('stroke', conf.color || '#888888');
+      line.setAttribute('stroke-width', String(conf.width || state.masterWidth || DEFAULT_WIDTH));
       line.setAttribute('stroke-dasharray', dashArrayFor(conf.style));
       line.setAttribute('stroke-linecap', 'round');
       swatch.appendChild(line);
@@ -408,10 +423,12 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
       panel.dataset.col = i;
       panel.style.cssText = 'display: none; flex-direction: column; gap: 4px; margin-top: 6px; padding-left: 20px; font-size: 0.8rem; color: #555;';
 
+      const currentWidth = state.seriesConfig[i].width || state.masterWidth || DEFAULT_WIDTH;
+
       panel.innerHTML = `
         <label style="display:flex; align-items:center; gap:6px;">
           <span style="min-width:45px;">Color</span>
-          <input type="color" class="y-color-input" data-col="${i}" value="${state.seriesConfig[i].color || '#888'}" style="width:28px; height:22px; padding:0; border:1px solid #ccc; border-radius:3px; cursor:pointer;">
+          <input type="color" class="y-color-input" data-col="${i}" value="${state.seriesConfig[i].color || '#888888'}" style="width:28px; height:22px; padding:0; border:1px solid #ccc; border-radius:3px; cursor:pointer;">
         </label>
         <label style="display:flex; align-items:center; gap:6px;">
           <span style="min-width:45px;">${t('series_style')}</span>
@@ -424,8 +441,8 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
         </label>
         <label style="display:flex; align-items:center; gap:6px;">
           <span style="min-width:45px;">${t('style_width')}</span>
-          <input type="range" class="y-width-slider" data-col="${i}" min="0.5" max="5" step="0.25" value="${state.seriesConfig[i].width || 1.5}" style="flex:1;" ${state.seriesWidthLocked ? 'disabled' : ''}>
-          <span class="y-width-value" data-col="${i}" style="min-width:32px; text-align:right; font-family:monospace;">${(state.seriesConfig[i].width || 1.5).toFixed(2)}</span>
+          <input type="range" class="y-width-slider" data-col="${i}" min="${MIN_WIDTH}" max="5" step="${STEP_WIDTH}" value="${currentWidth}" style="flex:1;" ${state.seriesWidthLocked ? 'disabled' : ''}>
+          <input type="number" class="y-width-value width-input" data-col="${i}" min="${MIN_WIDTH}" max="${MAX_WIDTH}" step="${STEP_WIDTH}" value="${currentWidth.toFixed(2)}" ${state.seriesWidthLocked ? 'disabled' : ''}>
         </label>
       `;
 
@@ -446,13 +463,28 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
       });
 
       const widthSlider = panel.querySelector('.y-width-slider');
+      const widthInput = panel.querySelector('.y-width-value');
+
       widthSlider.addEventListener('input', (e) => {
         const w = parseFloat(e.target.value);
         state.seriesConfig[i].width = w;
-        const vEl = panel.querySelector('.y-width-value');
-        if (vEl) vEl.textContent = w.toFixed(2);
+        if (widthInput) widthInput.value = w.toFixed(2);
         updateSwatch(i);
         onSelectionChange();
+      });
+
+      // Inline edit: type a number, blur/Enter to apply
+      widthInput.addEventListener('change', (e) => {
+        let w = parseFloat(e.target.value);
+        w = clampWidth(w);
+        e.target.value = w.toFixed(2);
+        state.seriesConfig[i].width = w;
+        if (widthSlider) widthSlider.value = String(w);
+        updateSwatch(i);
+        onSelectionChange();
+      });
+      widthInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
       });
 
       row.appendChild(panel);
@@ -483,10 +515,12 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
     onSelectionChange();
   };
 
-  // ── Master width slider ──
+  // ── Master width slider + inline input ──
   const applyMasterWidth = (w) => {
+    w = clampWidth(w);
     state.masterWidth = w;
-    masterWidthValue.textContent = w.toFixed(2);
+    if (masterWidthValue) masterWidthValue.value = w.toFixed(2);
+    if (masterWidthSlider) masterWidthSlider.value = String(w);
     if (state.seriesWidthLocked) {
       const activeY = Array.from(document.querySelectorAll('.checkbox-y:checked')).map((cb) => parseInt(cb.value));
       for (const i of activeY) {
@@ -496,11 +530,12 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
           const slider = document.querySelector(`.y-width-slider[data-col="${i}"]`);
           if (slider) slider.value = String(w);
           const vEl = document.querySelector(`.y-width-value[data-col="${i}"]`);
-          if (vEl) vEl.textContent = w.toFixed(2);
+          if (vEl) vEl.value = w.toFixed(2);
         }
       }
     }
   };
+
   masterWidthSlider.addEventListener('input', (e) => {
     applyMasterWidth(parseFloat(e.target.value));
   });
@@ -508,11 +543,19 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
     onSelectionChange();
   });
 
+  masterWidthValue.addEventListener('change', (e) => {
+    const w = parseFloat(e.target.value);
+    applyMasterWidth(w);
+    onSelectionChange();
+  });
+  masterWidthValue.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+  });
+
   // ── Lock widths toggle ──
   lockWidthsToggle.onchange = (e) => {
     state.seriesWidthLocked = e.target.checked;
     if (state.seriesWidthLocked) {
-      // Apply master to all
       const activeY = Array.from(document.querySelectorAll('.checkbox-y:checked')).map((cb) => parseInt(cb.value));
       for (const i of activeY) {
         if (state.seriesConfig[i]) {
@@ -521,24 +564,27 @@ export function prepararRolePanel(numColumnas, originalIndices, autoSelect, onSe
         }
       }
     }
-    // Update individual sliders enabled/disabled
     document.querySelectorAll('.y-width-slider').forEach((slider) => {
       slider.disabled = state.seriesWidthLocked;
       slider.style.opacity = state.seriesWidthLocked ? '0.4' : '1';
       const i = parseInt(slider.dataset.col);
-      if (state.seriesConfig[i]) slider.value = String(state.seriesConfig[i].width || 1.5);
+      if (state.seriesConfig[i]) slider.value = String(state.seriesConfig[i].width || state.masterWidth || DEFAULT_WIDTH);
     });
     document.querySelectorAll('.y-width-value').forEach((vEl) => {
       const i = parseInt(vEl.dataset.col);
-      if (state.seriesConfig[i]) vEl.textContent = (state.seriesConfig[i].width || 1.5).toFixed(2);
+      vEl.disabled = state.seriesWidthLocked;
+      if (state.seriesConfig[i]) vEl.value = (state.seriesConfig[i].width || state.masterWidth || DEFAULT_WIDTH).toFixed(2);
     });
     masterWidthSlider.disabled = !state.seriesWidthLocked;
     masterWidthSlider.style.opacity = state.seriesWidthLocked ? '1' : '0.4';
+    masterWidthValue.disabled = !state.seriesWidthLocked;
     onSelectionChange();
   };
-  // Initial state for master slider
+
+  // Initial state for master controls
   masterWidthSlider.disabled = !state.seriesWidthLocked;
   masterWidthSlider.style.opacity = state.seriesWidthLocked ? '1' : '0.4';
+  masterWidthValue.disabled = !state.seriesWidthLocked;
 
   // ── Only Mode ──
   onlyModeToggle.checked = onlyModeActive;
