@@ -60,6 +60,7 @@
           <button id="botonExportar" data-i18n="btn_export_graph">Export</button>
           <button id="botonExportCsvProcessed" style="background: #555;" data-i18n="btn_export_csv_proc">CSV</button>
       </div>
+    </div>
 
     <!-- Role panel -->
     <div id="rolePanel" style="display: none;">
@@ -127,12 +128,13 @@
         <div id="appearancePanel" style="display: none; margin-top: 10px; font-size: 0.85rem;"></div>
       </div>
     </div>
+
   </div>
 
   <!-- ============================================================ -->
   <!-- COLUMNA DERECHA: Plot + range panel                          -->
   <!-- ============================================================ -->
-<div class="main-plot" style="position: sticky; top: calc(var(--header-height) + 20px); display: flex; flex-direction: column; gap: 8px; align-items: stretch;">
+  <div class="main-plot" style="position: sticky; top: calc(var(--header-height) + 20px); display: flex; flex-direction: column; gap: 8px; align-items: stretch;">
     <div id="plotWrapper" style="position: relative; width: 100%; border: 1px solid #eee; border-radius: 8px; overflow: hidden; background: #fff;">
       <svg id="spectrumSvg" xmlns="http://www.w3.org/2000/svg" style="display: block; width: 100%; height: 100%;"></svg>
     </div>
